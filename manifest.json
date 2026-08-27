@@ -1,0 +1,26 @@
+{
+  "name": "數學練習大冒險",
+  "short_name": "數學練習",
+  "description": "加減乘法闖關，一個大廳加七個小遊戲",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#120b1c",
+  "theme_color": "#120b1c",
+  "lang": "zh-Hant",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

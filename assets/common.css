@@ -1,0 +1,325 @@
+/* 九宮虎姬 共用樣式：三個玩法版本都吃這一份 */
+:root{
+  --bg:#120b1c; --panel:#1d1230; --line:#573a7d;
+  --gold:#f6c453; --gold2:#ffe9a8; --text:#f6efff; --dim:#a894c4;
+  --ok:#4ade80; --bad:#f87171; --p1:#f6c453; --p2:#6ea8ff;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{overflow-x:hidden}
+/* ⚠ 2026-08-23 Steve 回報：電腦滑鼠滾輪完全滾不動整個網頁。
+   實測抓出來是這行原本掛在 html,body 上的 overscroll-behavior-y:contain 造成的——
+   本意是防手機下拉刷新，結果連桌機滑鼠滾輪的捲動一起吃掉了（Chromium 的已知邊界案例，
+   把它設在 html 與 body 兩層同時生效時會整個吃掉捲動，不是只擋滾動鏈接到瀏覽器本身）。
+   改成只在觸控裝置上生效，滑鼠使用者（pointer:fine）完全不受影響。 */
+@media (pointer:coarse){
+  html,body{overscroll-behavior-y:contain}
+}
+body{
+  min-height:100dvh;color:var(--text);
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  background:radial-gradient(90% 60% at 50% -10%,#4b2a6b 0%,#1c1029 55%,var(--bg) 100%);
+  display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px 10px 28px;
+}
+body::before{
+  content:"";position:fixed;inset:-20%;z-index:-2;pointer-events:none;
+  background:
+    radial-gradient(circle at 20% 30%,#f6c45322,transparent 45%),
+    radial-gradient(circle at 80% 20%,#a855f733,transparent 40%),
+    radial-gradient(circle at 60% 90%,#22d3ee1a,transparent 45%);
+  will-change:transform;animation:drift 18s ease-in-out infinite alternate;
+}
+/* ⚠ 這裡不要放 scale：整片是比視窗還大的一層，縮放會每一幀重新光柵化，
+   量出來單這一項就吃掉主執行緒 140ms/秒（CPU 節流 6 倍）。只留位移，看起來一樣。 */
+@keyframes drift{to{transform:translate3d(2%,-2%,0)}}
+
+h1{
+  font-size:clamp(16px,2.4vw,22px);letter-spacing:3px;text-align:center;
+  background:linear-gradient(180deg,#fff6d8,var(--gold) 60%,#c98a1e);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 6px #0009);
+}
+
+/* 版本切換列 */
+.vers{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.vers a{
+  font-size:12px;text-decoration:none;color:var(--gold2);padding:5px 10px;border-radius:99px;
+  border:1px solid var(--line);background:#2a1a40;
+}
+.vers a.on{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#3a2400;font-weight:700}
+
+/* 角色 */
+.hero{display:none}
+@media (min-width:1080px){
+  .hero{
+    display:block;position:fixed;left:0;bottom:0;
+    height:min(62vh,620px);width:auto;max-width:25vw;object-fit:contain;object-position:bottom center;
+    z-index:-1;pointer-events:none;filter:drop-shadow(0 12px 40px #000c);
+    animation:float 6s ease-in-out infinite alternate;
+  }
+  .say.on{display:block;animation:sayIn .35s cubic-bezier(.2,1.6,.4,1)}
+}
+@keyframes float{to{transform:translateY(-12px)}}
+.hero.react{animation:heroJump .6s cubic-bezier(.2,1.5,.4,1)}
+@keyframes heroJump{
+  30%{transform:translateY(-26px) scale(1.06) rotate(-2deg)}
+  60%{transform:translateY(4px) scale(.98)}100%{transform:none}
+}
+.hero.shake{animation:heroShake .5s}
+@keyframes heroShake{20%{transform:rotate(-3deg)}45%{transform:rotate(3deg)}70%{transform:rotate(-2deg)}100%{transform:none}}
+.hero.glow{filter:drop-shadow(0 0 26px #f6c453cc) drop-shadow(0 12px 40px #000c)}
+.say{
+  display:none;position:fixed;left:min(20vw,250px);bottom:min(52vh,420px);z-index:3;
+  max-width:190px;padding:10px 14px;border-radius:16px 16px 16px 4px;
+  background:linear-gradient(180deg,#fff8e6,#ffe9a8);color:#3a2400;
+  font-size:15px;font-weight:800;line-height:1.5;text-align:center;box-shadow:0 8px 24px #000a;
+}
+@keyframes sayIn{from{transform:scale(.6) translateY(10px);opacity:0}}
+.cat{
+  position:absolute;right:min(-6vw,-46px);bottom:-18px;width:min(24vw,150px);z-index:8;
+  pointer-events:none;transform:translateY(125%) rotate(12deg);opacity:0;
+  transition:transform .45s cubic-bezier(.2,1.7,.4,1),opacity .2s linear;
+  filter:drop-shadow(0 8px 20px #000a);
+}
+.cat.on{transform:translateY(6%) rotate(0);opacity:1}
+.cat.big{animation:catBig .9s cubic-bezier(.2,1.5,.4,1)}
+@keyframes catBig{40%{transform:translateY(-6%) scale(1.22) rotate(-6deg)}100%{transform:translateY(6%)}}
+
+/* 背景金幣 */
+.coin{
+  position:fixed;top:-40px;z-index:-1;pointer-events:none;width:22px;height:22px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff3c4,#f6c453 45%,#b8860b 78%,#f6c45300 100%);
+  will-change:transform,opacity;animation:fall linear forwards;
+}
+@keyframes fall{
+  0%{transform:translate3d(0,0,0) rotate(0);opacity:0}10%{opacity:.85}
+  90%{opacity:.5}100%{transform:translate3d(0,105vh,0) rotate(720deg);opacity:0}
+}
+
+/* 共用元件 */
+.stats{display:flex;gap:8px;width:min(96vw,560px)}
+.st{
+  flex:1;background:linear-gradient(180deg,#2e1c47,#1a1029);border:1px solid var(--line);
+  border-radius:12px;padding:6px 4px;text-align:center;box-shadow:inset 0 1px 0 #ffffff14;
+}
+.st b{display:block;font-size:10px;color:var(--dim);letter-spacing:1px}
+.st span{font-size:clamp(15px,2.6vw,20px);color:var(--gold2);font-weight:700;font-variant-numeric:tabular-nums}
+.st.warn span{color:var(--bad);animation:pulse .5s infinite alternate}
+@keyframes pulse{to{transform:scale(1.12)}}
+
+.timebar{width:min(96vw,560px);height:8px;border-radius:99px;background:#2a1a3d;
+  overflow:hidden;border:1px solid var(--line)}
+.timebar i{display:block;height:100%;border-radius:99px;
+  background:linear-gradient(90deg,#4ade80,#f6c453 60%,#f87171);transition:width .25s linear}
+
+.btn{
+  height:52px;border:none;border-radius:16px;cursor:pointer;font-size:18px;font-weight:800;
+  letter-spacing:3px;color:#3a2400;background:linear-gradient(180deg,#fff0c4,var(--gold));
+  box-shadow:0 5px 0 #a97a12,0 10px 26px #0008;
+}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 #a97a12}
+.btn.ghost{background:#2a1a40;color:var(--gold2);border:1px solid var(--line);box-shadow:none;font-weight:700}
+
+/* 左上角固定小按鈕：返回上一頁／重新整理，八頁共用（見 common.js） */
+.pagectrl{
+  position:fixed;left:10px;top:10px;z-index:40;display:flex;gap:6px;
+  padding-top:env(safe-area-inset-top,0);
+}
+.pcbtn{
+  width:36px;height:36px;border-radius:50%;border:1px solid var(--line);cursor:pointer;
+  background:#1d1230cc;color:var(--gold2);font-size:17px;line-height:1;
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);
+  box-shadow:0 4px 12px #0006;
+}
+.pcbtn:active{transform:translateY(2px)}
+@media (max-width:480px){
+  .pagectrl{left:8px;top:8px;gap:5px}
+  .pcbtn{width:32px;height:32px;font-size:15px}
+}
+.levels{display:flex;gap:8px;width:min(96vw,560px)}
+.lv{
+  flex:1;padding:9px 4px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;
+  border:1px solid var(--line);background:#2a1a40;color:var(--gold2);line-height:1.4;
+}
+.lv b{display:block;font-size:10px;font-weight:500;color:var(--dim)}
+.lv.on{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#3a2400;border-color:var(--gold)}
+.lv.on b{color:#6b4a00}
+.note{font-size:11px;color:var(--dim);text-align:center;max-width:560px;line-height:1.7}
+.note b{color:var(--gold2)}
+
+/* 飄分與粒子 */
+.float{
+  position:absolute;pointer-events:none;font-weight:800;font-size:clamp(14px,3vw,22px);
+  color:var(--gold2);text-shadow:0 2px 8px #000;z-index:9;animation:floatup .9s ease-out forwards;
+}
+@keyframes floatup{to{transform:translateY(-46px) scale(1.15);opacity:0}}
+.spark{position:absolute;width:7px;height:7px;border-radius:50%;pointer-events:none;z-index:9;
+  animation:spark .7s ease-out forwards}
+@keyframes spark{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+
+/* 結算 */
+.over{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;
+  background:#0b0714dd;backdrop-filter:blur(6px);padding:16px}
+.over.on{display:flex;animation:fade .3s}
+@keyframes fade{from{opacity:0}}
+.card{
+  width:min(94vw,460px);background:linear-gradient(180deg,#2f1d48,#1a1028);border:1px solid var(--line);
+  border-radius:20px;padding:20px;text-align:center;box-shadow:0 20px 60px #000b;
+  animation:cardin .4s cubic-bezier(.2,1.5,.4,1);max-height:92vh;overflow:auto;
+}
+@keyframes cardin{from{transform:scale(.85) translateY(20px);opacity:0}}
+.card h2{font-size:24px;color:var(--gold);letter-spacing:2px;margin-bottom:4px}
+.card .big{font-size:44px;font-weight:900;color:var(--gold2);margin:6px 0;
+  font-variant-numeric:tabular-nums;text-shadow:0 3px 0 #7a4a00}
+.card .line{display:flex;justify-content:space-between;font-size:14px;color:var(--dim);
+  padding:6px 2px;border-bottom:1px dashed #ffffff1a}
+.card .line span{color:var(--text);font-weight:700}
+.weak{margin-top:12px;text-align:left}
+.weak h3{font-size:13px;color:var(--gold);margin-bottom:6px}
+.weak ul{list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+.weak li{background:#3a2456;border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:13px}
+.weak li i{font-style:normal;color:var(--bad);font-size:11px}
+.card .btn{margin-top:16px;width:100%}
+
+
+/* ---------- 手機（小朋友多半用手機玩，這裡把觸控目標放大、版本列改成一行可滑） ---------- */
+@media (max-width:520px){
+  body{padding:8px 8px 76px;gap:8px;-webkit-user-select:none;user-select:none}
+  h1{font-size:clamp(16px,4.6vw,20px);letter-spacing:2px}
+
+  /* 手機省效能：整片背景的漸層一直在慢慢飄，一秒六十次重畫一整個畫面，
+     手機實測光這一項就把打怪頁從 60fps 砍到 30fps。看不太出來的東西先關掉 */
+  body::before{animation:none}
+
+  /* 八個遊戲擠成兩三行很難按：改成一行、可以左右滑，每顆也做大一點 */
+  .vers{
+    flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;width:100%;
+    padding:2px 2px 6px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;-ms-overflow-style:none;
+  }
+  .vers::-webkit-scrollbar{display:none}
+  .vers a{flex:none;font-size:13px;padding:12px 15px;scroll-snap-align:center}
+
+  .lv{padding:11px 4px;font-size:14px}
+  .lv b{font-size:11px}
+  .btn{height:56px;font-size:19px;letter-spacing:2px}
+  .btn.ghost{height:48px}
+  .st span{font-size:clamp(16px,4.4vw,20px)}
+  .note{font-size:12px;line-height:1.7}
+  .card{padding:16px;border-radius:18px}
+  .card .btn{height:54px}
+}
+
+/* ---------- 模式切換（練習／純玩，八頁共用） ---------- */
+.modebar{display:flex;gap:10px;width:100%}
+.modebar button{
+  position:relative;flex:1;min-height:52px;padding:14px 10px;border-radius:16px;cursor:pointer;
+  background:linear-gradient(180deg,#2a1a40,#1d1230);border:1px solid var(--line);color:var(--dim);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  transition:transform .14s ease,border-color .18s,background .18s,box-shadow .18s;
+}
+.modebar button i{font-size:22px;font-style:normal;line-height:1;margin-bottom:2px;filter:grayscale(.5) opacity(.7)}
+.modebar button b{font-size:15px;font-weight:800;letter-spacing:1px}
+.modebar button small{font-size:11px;opacity:.85}
+.modebar button:hover{transform:translateY(-2px);border-color:#8a63c9}
+.modebar button.on{
+  background:linear-gradient(180deg,#523775,#2c1b42);border-color:var(--gold);color:var(--text);
+  box-shadow:0 0 0 2px #f6c45333,0 10px 24px #0009;
+}
+.modebar button.on i{filter:none}
+.modebar button.on b{color:var(--gold2)}
+.modebar button.on::after{
+  content:"✓";position:absolute;top:8px;right:10px;width:18px;height:18px;border-radius:50%;
+  background:var(--gold);color:#3a2400;font-size:11px;font-weight:900;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* ---------- 題型選單 ---------- */
+/* 2026-08-24 Steve 回報：題型鈕在寬一點的螢幕會 5 顆硬擠一排，「減法」字幕比較長
+   就被擠到換行、看起來亂。改用 grid＋固定最小寬度，塞不下就整顆換到下一排，
+   不會有「同一排裡有的擠、有的鬆」的問題。 */
+.topicbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(116px,1fr));gap:8px;width:100%}
+/* 題型多了以後分「數學／語文」兩組（2026-08-27）：整排七顆在 390px 手機上會擠成一團 */
+.topicbar.grouped{display:block}
+.topicbar.grouped .tgname{
+  font-size:11px;color:var(--dim);letter-spacing:3px;text-align:left;
+  margin:2px 0 5px;padding-left:2px}
+.topicbar.grouped .tgname + .tgrow{margin-bottom:11px}
+.topicbar.grouped .tgrow:last-child{margin-bottom:0}
+.topicbar.grouped .tgrow{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px}
+.topicbar button{
+  min-height:46px;padding:8px 8px;border-radius:12px;cursor:pointer;
+  background:#2a1a40;border:1px solid var(--line);color:var(--gold2);
+  font-size:13px;font-weight:700;line-height:1.35;
+}
+.topicbar button b{display:block;font-size:10px;font-weight:500;color:var(--dim)}
+.topicbar button.on{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#3a2400;border-color:var(--gold)}
+.topicbar button.on b{color:#6b4a00}
+.setlab2{font-size:12px;color:var(--dim);letter-spacing:1px;width:min(96vw,560px);margin-bottom:-4px}
+#topicbar{width:min(96vw,560px)}
+/* 娛樂模式不出題，題型選單就沒有意義，收起來 */
+body.arcade #topicwrap{display:none}
+#modebar{width:min(96vw,560px)}
+.setlab{font-size:12px;color:var(--dim);letter-spacing:1px;margin-bottom:6px;display:block}
+
+.modebadge{
+  display:inline-block;margin-top:2px;padding:3px 12px;border-radius:99px;font-size:11px;font-weight:800;
+  letter-spacing:2px;color:#0b1220;background:linear-gradient(180deg,#8affc4,#2fd48a);
+  box-shadow:0 3px 10px #0007;
+}
+
+/* ---------- 精簡特效模式（低效能裝置自動開，或使用者手動選） ---------- */
+body.lowfx::before{animation:none}
+body.lowfx .coin{display:none}
+body.lowfx .spark,body.lowfx .dust{display:none}
+
+/* ---------- 模式唯讀顯示（遊戲頁）與密碼視窗 ---------- */
+.modeshow{
+  display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+  padding:9px 12px;border-radius:12px;background:#251739;border:1px solid var(--line);
+}
+.modeshow b{font-size:14px;color:var(--gold2);letter-spacing:1px}
+.modeshow span{font-size:11px;color:var(--dim)}
+.pwwrap{
+  position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;
+  background:#0b0714dd;backdrop-filter:blur(6px);padding:16px;
+}
+.pwbox{
+  width:min(92vw,340px);padding:22px 20px;border-radius:20px;text-align:center;
+  background:linear-gradient(180deg,#2f1d48,#1a1028);border:1px solid var(--line);
+  box-shadow:0 20px 60px #000b;
+}
+.pwbox h3{font-size:19px;color:var(--gold);letter-spacing:1px}
+.pwbox p{font-size:12px;color:var(--dim);margin:6px 0 14px}
+.pwbox input{
+  width:100%;height:52px;border-radius:12px;border:1px solid var(--line);background:#1b1029;
+  color:var(--text);font-size:24px;text-align:center;letter-spacing:8px;font-family:inherit;
+}
+.pwmsg{min-height:18px;font-size:12px;color:var(--bad);margin-top:8px}
+.pwbtns{display:flex;gap:8px;margin-top:6px}
+.pwbtns .btn{flex:1;height:46px;font-size:16px;letter-spacing:2px}
+.pwbox.shake{animation:pwShake .38s}
+@keyframes pwShake{20%{transform:translateX(-9px)}45%{transform:translateX(8px)}70%{transform:translateX(-5px)}100%{transform:none}}
+.rename{
+  margin-top:5px;font-size:11px;padding:4px 10px;border-radius:99px;cursor:pointer;
+  background:#1f1330;border:1px solid var(--line);color:var(--gold2);font-family:inherit;
+}
+.rename:hover{border-color:var(--gold)}
+
+/* ---------- 登入視窗 ---------- */
+.loginbox input{height:46px;font-size:16px;letter-spacing:1px;margin-bottom:8px;text-align:left;padding:0 14px}
+.loginbox .swap{
+  margin-top:12px;background:none;border:none;color:var(--gold2);font-size:12px;cursor:pointer;
+  text-decoration:underline;font-family:inherit;
+}
+.userbar{
+  display:flex;align-items:center;gap:8px;justify-content:center;width:100%;
+  padding:8px 12px;border-radius:12px;background:#251739;border:1px solid var(--line);font-size:13px;
+}
+.userbar b{color:var(--gold2)}
+.userbar span{color:var(--dim);font-size:11px}
+.userbar button{
+  margin-left:auto;padding:6px 12px;border-radius:99px;cursor:pointer;font-size:12px;font-family:inherit;
+  background:#1f1330;border:1px solid var(--line);color:var(--gold2);
+}
+.userbar button:hover{border-color:var(--gold)}

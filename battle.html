@@ -1,0 +1,2788 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>數學練習大冒險・勇者出擊</title>
+<meta name="theme-color" content="#120b1c">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="數學練習">
+<link rel="stylesheet" href="assets/common.css">
+<style>
+body{padding-bottom:16px}
+.wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
+
+/* 上方關卡列 */
+.topbar{display:flex;gap:8px;align-items:center}
+.topbar .chip{
+  background:linear-gradient(180deg,#2e1c47,#1a1029);border:1px solid var(--line);
+  border-radius:12px;padding:6px 12px;font-size:13px;font-weight:800;color:var(--gold2);
+}
+.topbar .chip b{color:var(--dim);font-weight:500;font-size:11px;margin-right:4px}
+.topbar .grow{flex:1}
+
+/* 戰場 */
+.field{
+  position:relative;width:100%;height:min(46vh,340px);height:min(46dvh,340px);border-radius:20px;overflow:hidden;
+  border:2px solid var(--line);box-shadow:0 16px 46px #000a,inset 0 0 60px #0008;
+  background:
+    radial-gradient(70% 50% at 50% 100%,#4a2a6e 0%,transparent 70%),
+    linear-gradient(180deg,#2a1740 0%,#180e26 100%);
+}
+/* 地板暗紋改掛在場景層裡（見 .scene .ground），鏡頭推近時才會跟著推 */
+/* ── 場景：天空／遠山／中景樹三層視差，每一大關換一種景 ──
+   三層滾動速度不一樣（遠的慢、近的快），戰場才有深度，不再是一塊底色 */
+.scene{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;
+  --s1:#2a1740;--s2:#1d1230;--s3:#180e26;--far:#3b2360;--mid:#241442;--sg:#6b3fa0}
+.field.sc2 .scene{--s1:#3a1414;--s2:#2a0f14;--s3:#1a0a10;--far:#5a1e22;--mid:#3a1216;--sg:#c2410c}
+.field.sc3 .scene{--s1:#0f2740;--s2:#0c1c30;--s3:#08131f;--far:#1b4468;--mid:#123048;--sg:#38bdf8}
+.field.sc4 .scene{--s1:#3a2c12;--s2:#2a1f0d;--s3:#1a1408;--far:#5c4416;--mid:#3d2d0f;--sg:#f6c453}
+.scene>*{position:absolute;inset:0}
+.scene .sky{background:linear-gradient(180deg,var(--s1) 0%,var(--s2) 58%,var(--s3) 100%)}
+/* 2026-08-24：四大關各一張手繪背景（Gemini 生的，無角色無怪物，下三分之一是空地）。
+   圖蓋在漸層上面，底下那層漸層留著當備援：圖沒載到也不會變成一片黑。
+   對齊地面用 `center 78%`，角色與怪物的腳才會踩在畫面裡的地上。 */
+.scene .pic{background-position:center 78%;background-size:cover;background-repeat:no-repeat}
+.field.sc1 .scene .pic{background-image:url(assets/bg_sc1.webp)}
+.field.sc2 .scene .pic{background-image:url(assets/bg_sc2.webp)}
+.field.sc3 .scene .pic{background-image:url(assets/bg_sc3.webp)}
+.field.sc4 .scene .pic{background-image:url(assets/bg_sc4.webp)}
+/* 有實拍背景之後，原本用 CSS 疊出來的遠山／中景樹／星星就不需要了（會跟圖裡的山打架）。
+   留著程式碼不刪，要退回純 CSS 版只要把這一條拿掉 */
+.scene .far,.scene .mid,.scene .stars{display:none}
+.scene .glow{mix-blend-mode:screen}
+.scene .glow{background:radial-gradient(70% 55% at 50% 104%,var(--sg) 0%,transparent 68%);opacity:.55;
+  animation:sceneGlow 5.5s ease-in-out infinite alternate}
+@keyframes sceneGlow{to{opacity:.85}}
+.scene .stars{
+  background-image:radial-gradient(2px 2px at 12% 22%,#fff9,transparent),
+    radial-gradient(1.6px 1.6px at 34% 12%,#fff7,transparent),
+    radial-gradient(2px 2px at 58% 26%,#fff8,transparent),
+    radial-gradient(1.4px 1.4px at 76% 14%,#fff6,transparent),
+    radial-gradient(2px 2px at 89% 30%,#fff9,transparent),
+    radial-gradient(1.4px 1.4px at 22% 38%,#fff5,transparent);
+  animation:twinkle 3.4s ease-in-out infinite alternate}
+@keyframes twinkle{from{opacity:.35}to{opacity:.9}}
+.scene .far,.scene .mid{
+  -webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;-webkit-mask-position:0 bottom;mask-position:0 bottom}
+.scene .far{
+  top:auto;height:46%;bottom:22%;background:var(--far);opacity:.85;
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cpath d='M0,100 L38,50 L68,72 L108,28 L148,68 L188,42 L228,76 L268,38 L308,66 L348,48 L400,84 L400,100 Z' fill='%23000'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cpath d='M0,100 L38,50 L68,72 L108,28 L148,68 L188,42 L228,76 L268,38 L308,66 L348,48 L400,84 L400,100 Z' fill='%23000'/%3E%3C/svg%3E");
+  left:-100%;right:auto;width:300%;
+  -webkit-mask-size:20.667% 100%;mask-size:20.667% 100%;
+  will-change:transform;animation:driftFar 68s linear infinite}
+.scene .mid{
+  top:auto;height:30%;bottom:20%;background:var(--mid);
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 100' preserveAspectRatio='none'%3E%3Cpath d='M0,100 L0,86 Q26,70 52,86 L52,100 Z M70,100 L88,46 L106,100 Z M120,100 L120,78 Q146,62 172,78 L172,100 Z M188,100 L208,40 L228,100 Z M240,100 L252,64 L264,100 Z M270,100 L270,82 Q286,72 300,82 L300,100 Z' fill='%23000'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 100' preserveAspectRatio='none'%3E%3Cpath d='M0,100 L0,86 Q26,70 52,86 L52,100 Z M70,100 L88,46 L106,100 Z M120,100 L120,78 Q146,62 172,78 L172,100 Z M188,100 L208,40 L228,100 Z M240,100 L252,64 L264,100 Z M270,100 L270,82 Q286,72 300,82 L300,100 Z' fill='%23000'/%3E%3C/svg%3E");
+  left:-100%;right:auto;width:300%;
+  -webkit-mask-size:14.667% 100%;mask-size:14.667% 100%;
+  will-change:transform;animation:driftMid 34s linear infinite}
+/* 位移量＝一個遮罩單元的寬度（20.667%／14.667% 各是整層 300% 寬的一格），
+   移完剛好接回同一個形狀，看起來是無縫的無限捲動 */
+@keyframes driftFar{to{transform:translateX(-20.667%)}}
+@keyframes driftMid{to{transform:translateX(-14.667%)}}
+/* 飄浮的光點：靠近地面往上飄，畫面就不會死板 */
+.scene .ground{top:auto;height:26%;bottom:0;
+  background:linear-gradient(180deg,#00000000,#00000066),
+             repeating-linear-gradient(90deg,#ffffff08 0 2px,transparent 2px 46px)}
+.scene .motes{
+  background-image:radial-gradient(2.5px 2.5px at 18% 80%,#ffe9a8aa,transparent),
+    radial-gradient(2px 2px at 46% 90%,#ffe9a888,transparent),
+    radial-gradient(3px 3px at 68% 76%,#ffe9a899,transparent),
+    radial-gradient(2px 2px at 86% 88%,#ffe9a877,transparent);
+  animation:motes 9s linear infinite}
+@keyframes motes{from{transform:translateY(0);opacity:.2}45%{opacity:.9}to{transform:translateY(-70px);opacity:0}}
+
+/* ── 鏡頭層：整個戰鬥世界一起推近拉遠，血條不跟著動 ── */
+#world{position:absolute;inset:0;z-index:1;transform-origin:72% 62%;
+  transition:transform .55s cubic-bezier(.2,.9,.3,1)}
+#world.zoom{transform:scale(1.12)}
+#world.zoomBig{transform:scale(1.28)}
+#world.pull{transform:scale(.96)}
+/* Boss 登場：全場壓暗只留 Boss */
+.curtain{position:absolute;inset:0;z-index:4;background:#05030a;opacity:0;pointer-events:none;
+  transition:opacity .35s}
+.curtain.on{opacity:.62}
+.field.bossmode .mobwrap{z-index:6}
+.field.bossmode #shMob{z-index:5}
+.bossname{
+  position:absolute;z-index:9;left:50%;top:44%;transform:translate(-50%,-50%);pointer-events:none;
+  font-size:clamp(24px,7vw,44px);font-weight:900;letter-spacing:6px;color:#fff;opacity:0;
+  text-shadow:0 4px 0 #7f1d1d,0 0 30px #ff6b6b,0 0 60px #ff2d2d}
+.bossname.on{animation:bossName 2.1s cubic-bezier(.2,1.3,.4,1) forwards}
+@keyframes bossName{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(2.4);filter:blur(10px)}
+  16%{opacity:1;transform:translate(-50%,-50%) scale(1);filter:blur(0)}
+  70%{opacity:1;transform:translate(-50%,-50%) scale(1.02)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.1)}
+}
+.bossname small{display:block;font-size:13px;letter-spacing:3px;color:#ffd0a8;margin-top:6px;text-shadow:none}
+/* 落地衝擊波 */
+.wave{position:absolute;z-index:4;pointer-events:none;border-radius:50%;
+  border:3px solid #fff;opacity:0;transform:translate(-50%,-50%) scale(.2)}
+.wave.on{animation:waveOut .6s cubic-bezier(.1,.8,.3,1) forwards}
+@keyframes waveOut{
+  0%{opacity:.9;transform:translate(-50%,-50%) scale(.15)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(2.6)}
+}
+/* 待機小動作：每隔幾秒晃一下頭或跳一下，光靠呼吸還是太安靜 */
+#mob.blink{animation:mobBlink 1s cubic-bezier(.3,1.2,.4,1)}
+@keyframes mobBlink{
+  0%{transform:none}
+  20%{transform:translateY(-12px) scale(1.04,.94)}
+  42%{transform:translateY(0) scale(.96,1.06)}
+  62%{transform:translateY(-4px) rotate(-3deg)}
+  82%{transform:rotate(2deg)}
+  100%{transform:none}
+}
+#hero2.blink{animation:heroBlink 1.1s ease-in-out}
+@keyframes heroBlink{
+  0%{transform:none}
+  30%{transform:translateY(-5px) rotate(-2deg)}
+  60%{transform:translateY(-2px) rotate(2deg)}
+  100%{transform:none}
+}
+/* 起步的腳下塵土 */
+.dust{
+  position:absolute;z-index:2;pointer-events:none;width:26px;height:12px;border-radius:50%;
+  background:radial-gradient(ellipse,#e9d9ffcc,#e9d9ff00 72%);opacity:0;
+  animation:dust .5s ease-out forwards;
+}
+@keyframes dust{
+  0%{opacity:.85;transform:translate(-50%,-50%) scale(.4)}
+  100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% - 14px)) scale(1.7)}
+}
+/* ── 序列幀特效：AI 生的影片抽幀拼成雪碧圖，黑底用 screen 混掉，光暈才完整 ── */
+.fxs{
+  position:absolute;z-index:7;pointer-events:none;transform:translate(-50%,-50%);
+  mix-blend-mode:screen;background-repeat:no-repeat;will-change:background-position;
+}
+/* 擊殺：白光溶解＋光環 */
+.dring{position:absolute;z-index:6;pointer-events:none;width:120px;height:120px;border-radius:50%;
+  border:6px solid #fff6c4;box-shadow:0 0 40px #ffd066,inset 0 0 30px #fff;
+  opacity:0;transform:translate(-50%,-50%) scale(.2)}
+.dring.on{animation:dring .7s cubic-bezier(.1,.75,.3,1) forwards}
+@keyframes dring{
+  0%{opacity:1;transform:translate(-50%,-50%) scale(.2)}
+  60%{opacity:.7}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(2.2)}
+}
+
+/* 鏡頭：沿攻擊方向先被推開再回彈，同時推近一點點（zoom punch）。
+   一般擊、弱點擊、爆擊三種強度，衰減都很快，畫面才不會糊掉 */
+.field.cam1{animation:impactCam .3s cubic-bezier(.36,.07,.19,.97)}
+.field.cam2{animation:impactCamMid .38s cubic-bezier(.36,.07,.19,.97)}
+.field.cam3{animation:impactCamHeavy .46s cubic-bezier(.36,.07,.19,.97)}
+@keyframes impactCam{
+  0%{transform:none}
+  10%{transform:scale(1.014) translate(7px,-5px)}
+  26%{transform:scale(1.008) translate(-6px,4px)}
+  44%{transform:scale(1.004) translate(4px,-2px)}
+  66%{transform:translate(-3px,1px)}
+  100%{transform:none}
+}
+@keyframes impactCamMid{
+  0%{transform:none}
+  8%{transform:scale(1.025) translate(12px,-8px) rotate(.4deg)}
+  22%{transform:scale(1.015) translate(-10px,6px) rotate(-.35deg)}
+  38%{transform:scale(1.008) translate(8px,-4px) rotate(.25deg)}
+  56%{transform:scale(1.004) translate(-5px,3px)}
+  76%{transform:translate(4px,-1px)}
+  100%{transform:none}
+}
+@keyframes impactCamHeavy{
+  0%{transform:none}
+  6%{transform:scale(1.035) translate(17px,-13px) rotate(.7deg)}
+  18%{transform:scale(1.025) translate(-15px,10px) rotate(-.6deg)}
+  30%{transform:scale(1.018) translate(12px,-8px) rotate(.45deg)}
+  44%{transform:scale(1.01) translate(-9px,6px) rotate(-.3deg)}
+  60%{transform:scale(1.005) translate(6px,-4px)}
+  78%{transform:translate(-3px,2px)}
+  100%{transform:none}
+}
+/* 擊殺：短暫慢動作＋壓暗，收尾才有份量 */
+.field.slowmo .fighter{animation-duration:1.6s !important}
+.field.slowmo::after{background:#00000066;transition:background .2s}
+.field.hurt::before{
+  content:"";position:absolute;inset:0;z-index:6;pointer-events:none;
+  box-shadow:inset 0 0 90px #f8717199;animation:hurtflash .5s ease-out forwards;
+}
+@keyframes hurtflash{to{opacity:0}}
+
+.fighter{position:absolute;bottom:8%;z-index:3;pointer-events:none;transition:transform .12s ease-out}
+/* 衝刺殘影：留在原地淡出，看得出移動軌跡 */
+/* 單張圖角色的攻擊／受傷姿勢 */
+#hero2.poseSwing{filter:drop-shadow(0 10px 18px #000a) brightness(1.12) contrast(1.06)}
+#hero2.poseHurt{filter:drop-shadow(0 10px 18px #000a) saturate(.6) brightness(.85)}
+.afterimg{
+  position:absolute;bottom:8%;z-index:2;pointer-events:none;opacity:.55;
+  filter:brightness(1.6) saturate(.4) drop-shadow(0 0 10px #ffe9a8);
+  animation:afterimg .34s ease-out forwards;
+}
+@keyframes afterimg{to{opacity:0;transform:translateX(-26px) scale(.97)}}
+/* 衝刺速度線 */
+.speedlines{
+  position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;
+  background:repeating-linear-gradient(92deg,
+    transparent 0 26px,#ffffff30 26px 28px,transparent 28px 54px);
+  mask-image:radial-gradient(ellipse at 70% 50%,#000 10%,transparent 72%);
+  -webkit-mask-image:radial-gradient(ellipse at 70% 50%,#000 10%,transparent 72%);
+}
+.speedlines.on{animation:speedl .26s ease-out}
+@keyframes speedl{0%{opacity:0;transform:translateX(30px)}35%{opacity:1}100%{opacity:0;transform:translateX(-40px)}}
+.gshadow{
+  position:absolute;bottom:7%;z-index:2;pointer-events:none;height:14px;border-radius:50%;
+  background:radial-gradient(ellipse,#000000aa 0%,#00000055 45%,transparent 72%);
+  filter:blur(2px);
+}
+#shHero{left:5%;width:15%}
+#shMob{right:5%;width:16%;animation:shMob 2.2s ease-in-out infinite alternate}
+@keyframes shMob{to{transform:scale(.86);opacity:.75}}
+/* 影子要跟著本體：被打飛就壓扁淡掉，死掉就收乾淨，不然會留一坨黑影在地上 */
+#shMob.hit{animation:shHit .46s ease-out}
+@keyframes shHit{
+  0%{transform:scale(1);opacity:1}
+  22%{transform:scale(1.24,.7) translateX(16px);opacity:.5}
+  100%{transform:scale(1);opacity:1}
+}
+#shMob.gone{animation:shGone .5s ease-in forwards}
+@keyframes shGone{to{transform:scale(.2);opacity:0}}
+#hero2{left:4%;height:62%;filter:drop-shadow(0 10px 18px #000a);
+  animation:heroIdle 2.6s ease-in-out infinite alternate}
+@keyframes heroIdle{from{transform:translateY(0) scale(1,1)}to{transform:translateY(-7px) scale(.99,1.02)}}
+#cat2{left:22%;height:30%;opacity:0;transform:translateX(-40px);filter:drop-shadow(0 8px 14px #000a)}
+/* 漂浮掛在外層 .mobwrap、受擊掛在 #mob 自己身上。
+   兩個動畫如果掛同一層會互相覆蓋，命中結束的瞬間會「跳」一下回漂浮的相位 */
+.mobwrap{right:4%;height:56%;animation:mobIdle 2.2s ease-in-out infinite alternate}
+@keyframes mobIdle{to{transform:translateY(-10px) scale(1.02)}}
+#mob{width:auto;height:100%;display:block;filter:drop-shadow(0 10px 18px #000a);
+  transform-origin:50% 100%}
+/* 逐幀素材自己就在呼吸，再疊 CSS 那套會變兩個節奏打架；受擊／死亡的還是要留 */
+#mob:not(.sprmode){animation:mobBreath 1.9s ease-in-out infinite alternate}
+/* 呼吸：腳底不動、身體上下起伏，靜止時也像活的 */
+@keyframes mobBreath{from{transform:scale(1,1)}to{transform:scale(.975,1.045)}}
+.fighter,.mobwrap,.afterimg{will-change:transform;backface-visibility:hidden}
+/* 圖片兩次都載入失敗的最後防線：至少畫一團剪影，不要讓怪物整個消失不見。
+   ⚠ img 是替代元素，::after 在大多數瀏覽器不會畫出來，警示改用 JS 插一個真正的 <div>。 */
+.mobwrap.imgfail{width:clamp(90px,26vw,170px)}
+#mob.imgfail{width:100%;height:100%;opacity:.55;
+  background:radial-gradient(circle at 40% 35%,#8a63c9,#2c1b42 72%);
+  -webkit-mask-image:radial-gradient(circle,#000 62%,transparent 78%);
+  mask-image:radial-gradient(circle,#000 62%,transparent 78%);
+}
+.imgfail-warn{
+  position:absolute;font-size:32px;pointer-events:none;z-index:4;
+  filter:drop-shadow(0 2px 6px #000a);
+}
+/* 掉寶飛進背包 */
+.loot{
+  position:fixed;z-index:30;pointer-events:none;font-size:30px;
+  filter:drop-shadow(0 0 12px var(--gl,#ffe9a8)) drop-shadow(0 4px 8px #000a);
+}
+.bagbtn.gotloot{animation:bagPop .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes bagPop{40%{transform:scale(1.22);box-shadow:0 0 0 4px #f6c45355}}
+
+/* ---------- 裝備強化 ---------- */
+.scrollbar{
+  display:flex;align-items:center;gap:10px;margin-top:10px;padding:8px 12px;border-radius:12px;
+  background:#241638;border:1px solid var(--line);font-size:13px;
+}
+.scrollbar b{color:var(--gold2);font-size:15px}
+.scrollbar button{
+  margin-left:auto;padding:6px 12px;border-radius:99px;cursor:pointer;font-family:inherit;font-size:12px;
+  background:linear-gradient(180deg,#fff0c4,var(--gold));color:#3a2400;border:none;font-weight:700;
+}
+.scrollbar button.no{background:#2a1a40;color:var(--dim);cursor:default}
+.enhbtn.risky{background:linear-gradient(180deg,#ffb4b4,#f87171);box-shadow:0 3px 0 #7f2020;color:#2a0808}
+.enhbtn.risky.no{background:#2a1a40;color:var(--dim);box-shadow:none}
+.boomfx{
+  position:absolute;inset:0;z-index:29;pointer-events:none;
+  background:radial-gradient(circle at 50% 40%,#fff 0%,#ffb648 18%,#f8717155 38%,transparent 65%);
+  animation:boomOut .7s ease-out forwards;
+}
+@keyframes boomOut{0%{opacity:0;transform:scale(.3)}18%{opacity:1}100%{opacity:0;transform:scale(1.5)}}
+
+
+.enh{
+  display:inline-block;padding:1px 7px;border-radius:99px;font-size:12px;font-weight:900;
+  color:#3a2400;background:linear-gradient(180deg,#ffe9a8,#f6c453);vertical-align:middle;
+}
+.enhbtn{
+  margin-top:8px;width:100%;padding:7px 6px;border-radius:10px;cursor:pointer;font-family:inherit;
+  background:linear-gradient(180deg,#fff0c4,var(--gold));color:#3a2400;border:none;
+  font-size:13px;font-weight:800;line-height:1.3;box-shadow:0 3px 0 #a97a12;
+}
+.enhbtn small{display:block;font-size:10px;font-weight:600;opacity:.8}
+.enhbtn:active{transform:translateY(2px);box-shadow:none}
+.enhbtn.no{background:#2a1a40;color:var(--dim);box-shadow:none;cursor:default}
+.enhmax{margin-top:8px;font-size:11px;color:var(--gold2);text-align:center}
+.enhmsg{
+  position:absolute;left:50%;top:22%;transform:translateX(-50%);z-index:30;pointer-events:none;
+  font-size:clamp(20px,4.6vw,30px);font-weight:900;text-shadow:0 3px 10px #000,0 0 20px currentColor;
+  animation:enhPop 1.4s cubic-bezier(.2,1.5,.4,1) forwards;
+}
+@keyframes enhPop{
+  0%{opacity:0;transform:translateX(-50%) scale(.5)}
+  18%{opacity:1;transform:translateX(-50%) scale(1.12)}
+  30%{transform:translateX(-50%) scale(1)}
+  80%{opacity:1}
+  100%{opacity:0;transform:translateX(-50%) translateY(-26px) scale(.95)}
+}
+
+/* ---------- 主動技能 ---------- */
+.skills{display:flex;gap:8px;width:min(96vw,560px)}
+.skill{
+  flex:1;min-height:56px;border-radius:14px;cursor:pointer;position:relative;overflow:hidden;
+  background:linear-gradient(180deg,#3a2456,#241638);border:1px solid var(--line);
+  color:var(--text);font-family:inherit;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:1px;padding:6px 8px;
+  transition:transform .12s ease,border-color .18s;
+}
+.skill b{font-size:14px;font-weight:800;letter-spacing:1px;color:var(--gold2)}
+.skill small{font-size:10px;color:var(--dim)}
+.skill em{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-style:normal;font-size:15px;font-weight:800;color:#fff;background:#0b0714aa;
+}
+.skill em:empty{display:none}
+.skill:not(:disabled):hover{transform:translateY(-2px);border-color:var(--gold)}
+.skill:not(:disabled):active{transform:translateY(2px)}
+.skill:disabled{cursor:default}
+.skill.locked{opacity:.65}
+
+/* 精簡特效模式：把量測到會掉幀的那幾層關掉（星星、光點、影子、殘影、外框光暈） */
+body.lowfx .scene .stars,
+body.lowfx .scene .motes,
+body.lowfx .afterimg,
+body.lowfx .speedlines{display:none}
+body.lowfx #hero2,body.lowfx #mob,body.lowfx #cat2{filter:none}
+body.lowfx .field{box-shadow:none}
+body.lowfx .shard{animation-duration:.35s}
+
+/* 怪物打中角色的爪痕 */
+.claw{
+  position:absolute;z-index:9;pointer-events:none;width:130px;height:110px;
+  transform:translate(-50%,-50%) rotate(-14deg);
+  background:
+    linear-gradient(105deg,transparent 46%,#fff 47%,#ffd9d9 50%,transparent 53%),
+    linear-gradient(105deg,transparent 60%,#fff 61%,#ffd9d9 64%,transparent 67%),
+    linear-gradient(105deg,transparent 32%,#fff 33%,#ffd9d9 36%,transparent 39%);
+  filter:drop-shadow(0 0 10px #ff8a8a);
+  animation:clawCut .4s ease-out forwards;
+}
+@keyframes clawCut{
+  0%{opacity:0;transform:translate(-50%,-50%) rotate(-14deg) scale(.5,1.25)}
+  22%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-50%) rotate(-14deg) scale(1.35,.9)}
+}
+
+/* 遠程怪的投射物 */
+.mobshot{
+  position:absolute;z-index:7;pointer-events:none;width:26px;height:26px;border-radius:50%;
+  background:radial-gradient(circle at 35% 32%,#eaffd0,#7ddc4a 46%,#2f7d1e 100%);
+  box-shadow:0 0 16px #9dff6ecc;
+}
+/* 召喚出護盾的怪：身上罩一層光殼 */
+.mobwrap.shielded::after{
+  content:"";position:absolute;inset:-8% -12%;border-radius:50%;pointer-events:none;
+  border:2px solid #8fd8ffcc;background:radial-gradient(circle,#8fd8ff22,transparent 68%);
+  box-shadow:0 0 22px #8fd8ff66,inset 0 0 18px #8fd8ff44;
+  animation:shieldPulse 1.6s ease-in-out infinite alternate;
+}
+@keyframes shieldPulse{to{transform:scale(1.05);opacity:.72}}
+
+/* 破綻印記：紅色描邊提醒「這隻現在用旋風斬會爆傷」 */
+.mobwrap.marked::before{
+  content:"";position:absolute;inset:-4% -6%;border-radius:40%;pointer-events:none;z-index:5;
+  border:2px dashed #ff5c5ccc;box-shadow:0 0 16px #ff5c5c88;
+  animation:markSpin 2.4s linear infinite;
+}
+@keyframes markSpin{to{transform:rotate(360deg)}}
+
+/* 破綻時機：金色脈動圈，開著的時候按攻擊才是必爆擊＋額外傷害。
+   跟 .marked 的紅色破綻是兩回事——這個是娛樂模式攻擊鈕的「時機」提示，
+   .marked 是技能連段的「印記」，顏色刻意分開不會搞混。 */
+.mobwrap.weakopen::after{
+  content:"";position:absolute;inset:-10% -14%;border-radius:50%;pointer-events:none;z-index:6;
+  border:3px solid #ffe066;box-shadow:0 0 24px #ffe066cc,inset 0 0 16px #ffe06666;
+  animation:weakPulse .5s ease-in-out infinite alternate;
+}
+@keyframes weakPulse{to{transform:scale(1.1);opacity:.6}}
+
+/* 出手預告：怪物繃緊＋頭上跳一顆驚嘆號 */
+.mobwrap.warn{animation:mobWarn .42s ease-in-out 3}
+@keyframes mobWarn{50%{transform:translateY(-6px) scale(1.05,.96)}}
+.warnMark{
+  position:absolute;left:50%;top:-14%;transform:translateX(-50%);z-index:9;pointer-events:none;
+  font-size:clamp(26px,5vw,40px);font-weight:900;color:#ffe066;
+  text-shadow:0 0 14px #ff9d00,0 3px 0 #a35a00;
+  animation:warnPop .5s cubic-bezier(.2,1.6,.4,1) infinite alternate;
+}
+@keyframes warnPop{from{transform:translateX(-50%) scale(.8)}to{transform:translateX(-50%) scale(1.15)}}
+
+/* 逐幀模式：img 本身變成雪碧圖的視窗，寬度由 aspect-ratio 算，其餘定位照舊。
+   ⚠ 這裡一定要把 drop-shadow 關掉：逐幀每換一格就重畫一次元素，
+   還要連整張圖的陰影一起重算，桌機也會掉幀（地上本來就有 .gshadow 影子）。 */
+.sprmode{width:auto;background-repeat:no-repeat}
+#hero2.sprmode,#mob.sprmode,#cat2.sprmode,.afterimg.sprmode{filter:none}
+/* 受擊：擠壓 → 被打飛 → 晃回來，中間夾白閃再轉紅 */
+#mob.hit{animation:mobHit .46s cubic-bezier(.2,1.2,.4,1), mobFlash .42s linear}
+@keyframes mobHit{
+  0%{transform:none}
+  7%{transform:translateX(-6px) scale(1.14,.86)}      /* 先被壓扁 */
+  22%{transform:translateX(20px) rotate(9deg) scale(.9,1.12)}
+  45%{transform:translateX(8px) rotate(-5deg) scale(1.04,.96)}
+  68%{transform:translateX(12px) rotate(3deg)}
+  100%{transform:none}
+}
+@keyframes mobFlash{
+  0%,14%{filter:brightness(7) saturate(0) drop-shadow(0 0 26px #fff)}
+  34%{filter:brightness(1.7) saturate(4) sepia(.7) hue-rotate(-35deg) drop-shadow(0 0 22px #ff4d4d)}
+  70%{filter:brightness(1.15) saturate(1.6) drop-shadow(0 0 12px #ff6b6b)}
+  100%{filter:none}
+}
+/* 命中停頓：整個戰場的動畫定格幾十毫秒，重量感就是從這裡來的 */
+.field.freeze .fighter,
+.field.freeze .shard,
+.field.freeze .impact,
+.field.freeze .dmg,
+.field.freeze .dmg b{animation-play-state:paused !important}
+.field.punch{animation:punch .16s ease-out}
+@keyframes punch{40%{transform:scale(1.035)}100%{transform:none}}
+
+/* 命中爆閃 */
+.impact{
+  position:absolute;z-index:6;pointer-events:none;width:130px;height:130px;
+  transform:translate(-50%,-50%) scale(.2);opacity:0;
+  background:
+    radial-gradient(circle,#ffffffee 0%,#fff6c4aa 22%,transparent 62%),
+    conic-gradient(from 0deg,transparent 0deg,#fff 6deg,transparent 12deg,transparent 84deg,
+      #fff 90deg,transparent 96deg,transparent 174deg,#fff 180deg,transparent 186deg,
+      transparent 264deg,#fff 270deg,transparent 276deg);
+  filter:blur(.4px);
+}
+.impact.on{animation:impact .3s ease-out forwards}
+@keyframes impact{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.2) rotate(0)}
+  25%{opacity:1;transform:translate(-50%,-50%) scale(1.1) rotate(18deg)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.7) rotate(34deg)}
+}
+/* 碎片 */
+.shard{
+  position:absolute;z-index:6;pointer-events:none;width:9px;height:9px;border-radius:2px;
+  background:#ffe9a8;box-shadow:0 0 8px #ffd06688;
+  animation:shard .58s cubic-bezier(.15,.7,.4,1) forwards;
+}
+@keyframes shard{
+  0%{transform:translate(0,0) rotate(0) scale(1);opacity:1}
+  100%{transform:translate(var(--sx),var(--sy)) rotate(var(--sr)) scale(.3);opacity:0}
+}
+#mob.die{animation:mobDie .9s cubic-bezier(.3,.6,.4,1) forwards}
+@keyframes mobDie{
+  0%{transform:none;filter:brightness(1)}
+  18%{transform:translateY(-18px) scale(1.1,.9);filter:brightness(6) saturate(0) drop-shadow(0 0 30px #fff)}
+  38%{transform:translateY(-26px) rotate(-12deg) scale(1.02);filter:brightness(3) drop-shadow(0 0 22px #ffd066)}
+  100%{transform:translateY(30px) rotate(60deg) scale(.15);opacity:0;filter:brightness(2) blur(6px)}
+}
+#mob.attack{animation:mobAtk .62s cubic-bezier(.3,.9,.4,1)}
+/* 幅度要夠大才看得出「牠在攻擊」：原本只有 -96px 又沒變形，玩起來像滑過來。
+   蓄力壓扁往後 → 拉長撲過來 → 過頭回彈 → 晃回原位 */
+@keyframes mobAtk{
+  0%{transform:none}
+  22%{transform:translateX(64px) scale(.86,1.16) rotate(7deg)}      /* 蓄力：縮起來往後 */
+  30%{transform:translateX(76px) scale(.84,1.18) rotate(9deg)}
+  48%{transform:translateX(-140px) scale(1.22,.84) rotate(-13deg)}  /* 撲：拉長衝過來 */
+  60%{transform:translateX(-104px) scale(1.06,.96) rotate(-7deg)}
+  78%{transform:translateX(-34px) scale(.98,1.02) rotate(4deg)}
+  100%{transform:none}
+}
+
+/* 斬擊特效 */
+.slash{
+  position:absolute;z-index:5;pointer-events:none;width:52%;height:78%;right:2%;bottom:6%;
+  background:
+    conic-gradient(from 196deg at 26% 34%,#ffffff00 0deg,#ffffffee 10deg,#fff3c8cc 20deg,#ffffff00 46deg),
+    conic-gradient(from 206deg at 26% 34%,#ffffff00 0deg,#ffd98a88 26deg,#ffffff00 52deg);
+  filter:blur(.6px) drop-shadow(0 0 18px #ffe9a8) drop-shadow(0 0 40px #ffb84d66);
+  opacity:0;transform:scale(.55) rotate(-38deg);
+}
+.slash.on{animation:slash .35s ease-out}
+@keyframes slash{
+  0%{opacity:0;transform:scale(.5) rotate(-46deg)}
+  18%{opacity:1;transform:scale(1.05) rotate(-18deg)}
+  55%{opacity:.85;transform:scale(1.22) rotate(6deg)}
+  100%{opacity:0;transform:scale(1.45) rotate(22deg)}
+}
+/* 數字跳出來的方式照物理走：外層等速往旁邊飄、內層走拋物線（上升減速、下墜加速）再彈一下，
+   放大只在前 1/4 段做完，最後才淡出。爆擊整體再放大 1.5 倍（--pop）。 */
+.dmg{
+  --pop:1;--up:-76px;--dx:0px;
+  position:absolute;z-index:7;pointer-events:none;
+  animation:dmgDrift .92s linear forwards, dmgFade .92s linear forwards;
+}
+.dmg b{
+  display:block;font-size:clamp(22px,5.4vw,38px);font-weight:900;color:#fff;
+  text-shadow:0 3px 0 #b8320f,0 0 18px #ff8a3d;transform-origin:50% 100%;
+  animation:dmgArc .92s linear forwards, dmgPop .92s cubic-bezier(.2,1.7,.35,1) forwards;
+}
+@keyframes dmgDrift{from{transform:translateX(0)}to{transform:translateX(var(--dx))}}
+@keyframes dmgFade{0%,72%{opacity:1}100%{opacity:0}}
+@keyframes dmgArc{
+  0%  {transform:translateY(0);animation-timing-function:cubic-bezier(.12,.72,.34,1)}
+  38% {transform:translateY(var(--up));animation-timing-function:cubic-bezier(.62,0,.92,.48)}
+  60% {transform:translateY(0);animation-timing-function:cubic-bezier(.12,.72,.34,1)}
+  76% {transform:translateY(calc(var(--up)*.3));animation-timing-function:cubic-bezier(.62,0,.92,.48)}
+  90%,100%{transform:translateY(0)}
+}
+@keyframes dmgPop{
+  0%  {scale:calc(var(--pop)*.35)}
+  16% {scale:calc(var(--pop)*1.22)}
+  30% {scale:calc(var(--pop)*.94)}
+  44%,100%{scale:var(--pop)}
+}
+.dmg.crit{--pop:1.5;--up:-92px}
+.dmg.crit b{color:#fff3c4;text-shadow:0 3px 0 #a86200,0 0 26px #ffcf5c}
+
+/* 血條 */
+.bars{position:absolute;left:0;right:0;top:0;z-index:4;padding:10px 12px;display:flex;
+  flex-direction:column;gap:6px}
+.bar{background:#00000066;border:1px solid #ffffff22;border-radius:99px;height:16px;
+  position:relative;overflow:hidden}
+.bar i{position:absolute;inset:0;transform-origin:left;transition:transform .35s cubic-bezier(.2,1,.3,1)}
+.bar span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;color:#fff;text-shadow:0 1px 3px #000;letter-spacing:1px}
+.bar.mob i{background:linear-gradient(90deg,#f87171,#dc2626)}
+/* 掉血殘影：白條慢半拍才追上，看得出「這一下扣了多少」 */
+.bar .ghost{background:#ffffffcc;transition:transform .55s cubic-bezier(.4,0,.2,1) .22s}
+.bar.hero i{background:linear-gradient(90deg,#4ade80,#16a34a)}
+.bar.timerbar{height:8px}
+.bar.timerbar i{background:linear-gradient(90deg,#facc15,#f97316)}
+
+/* 題目與答案 */
+.qbox{
+  border-radius:18px;padding:12px;text-align:center;
+  background:linear-gradient(180deg,#3b2456,#20132f);border:2px solid var(--line);
+  box-shadow:0 10px 30px #0008,inset 0 1px 0 #ffffff18;position:relative;overflow:hidden;
+}
+.qbox .q{font-size:clamp(30px,7.4vw,50px);font-weight:900;color:#fff;
+  text-shadow:0 3px 0 #7a4a00,0 8px 22px #000a;letter-spacing:2px}
+.qbox .q em{font-style:normal;color:var(--gold)}
+.qbox .weak{font-size:12px;color:#ffd0a8;margin-top:2px}
+/* 語文題（注音／字母）：畫面上看不到答案，只有這顆喇叭可以重聽 */
+.qbox .spk{
+  position:absolute;right:9px;top:50%;transform:translateY(-50%);
+  width:44px;height:44px;border-radius:50%;cursor:pointer;
+  border:1px solid var(--gold);color:#3a2400;font-size:20px;
+  background:linear-gradient(180deg,var(--gold2),var(--gold));
+  display:none;align-items:center;justify-content:center;box-shadow:0 3px 0 #7a4a00;
+}
+.qbox.hasvoice .spk{display:flex}
+.qbox .spk:active{transform:translateY(calc(-50% + 3px));box-shadow:0 1px 0 #7a4a00}
+.qbox .spk.on{animation:spkpulse .5s ease}
+@keyframes spkpulse{50%{transform:translateY(-50%) scale(1.18)}}
+/* 聽發音的題目，題目區只放一顆大耳朵，不能把答案寫出來 */
+.qbox .q.listen{font-size:clamp(30px,7vw,44px);letter-spacing:6px}
+.qbox.in{animation:qin .3s cubic-bezier(.2,1.5,.4,1)}
+@keyframes qin{from{transform:translateY(-14px) scale(.94);opacity:0}}
+
+.ans{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.ans button{
+  height:clamp(56px,13vw,74px);border-radius:16px;cursor:pointer;border:1px solid var(--line);
+  background:linear-gradient(180deg,#3a2557,#251739);color:#fff;
+  font-size:clamp(22px,5.4vw,32px);font-weight:900;box-shadow:0 5px 0 #17102a;
+  transition:transform .1s,background .2s;
+}
+.ans button:active{transform:translateY(4px);box-shadow:0 1px 0 #17102a}
+.ans button.right{background:linear-gradient(180deg,#86efac,#16a34a);color:#04240f;box-shadow:0 5px 0 #0d5c26}
+.ans button.wrong{background:linear-gradient(180deg,#fca5a5,#dc2626);color:#3a0505;box-shadow:0 5px 0 #7f1d1d}
+.ans button:disabled{cursor:default}
+/* 符號題的選項字要更大，低年級才看得清楚 */
+.ans.sym button{font-size:clamp(34px,9vw,48px);letter-spacing:0}
+
+/* 必殺技 */
+.ult{
+  display:flex;align-items:center;gap:10px;border-radius:16px;padding:8px 12px;
+  background:linear-gradient(180deg,#2e1c47,#1a1029);border:1px solid var(--line);
+}
+.ult .bar2{flex:1;height:12px;border-radius:99px;background:#241638;overflow:hidden}
+.ult .bar2 i{display:block;height:100%;width:0;border-radius:99px;
+  background:linear-gradient(90deg,#6ea8ff,#f6c453);transition:width .3s ease}
+.ult button{
+  padding:10px 16px;border-radius:12px;border:none;cursor:pointer;font-weight:900;font-size:15px;
+  color:#3a2400;background:linear-gradient(180deg,#fff0c4,var(--gold));box-shadow:0 4px 0 #a97a12;
+}
+.ult button:disabled{filter:grayscale(.7) brightness(.6);cursor:default}
+.ult button.ready{animation:ultReady .7s ease-in-out infinite alternate}
+@keyframes ultReady{to{box-shadow:0 4px 0 #a97a12,0 0 26px #f6c453}}
+
+/* 必殺技全螢幕演出 */
+.ultfx{
+  position:fixed;inset:0;z-index:19;display:none;align-items:center;justify-content:center;
+  background:#000000cc;pointer-events:none;
+}
+.ultfx.on{display:flex;animation:fade .2s}
+.ultfx .line{position:absolute;inset:0;
+  background:repeating-linear-gradient(100deg,#ffffff22 0 6px,transparent 6px 22px);
+  animation:speed .5s linear infinite}
+@keyframes speed{to{transform:translateX(-28px)}}
+.ultfx img{height:min(46vh,360px);animation:ultCat .9s cubic-bezier(.2,1.4,.4,1)}
+@keyframes ultCat{
+  0%{transform:translateX(-60vw) scale(.6) rotate(-20deg);opacity:0}
+  40%{transform:none;opacity:1}
+  100%{transform:translateX(50vw) scale(1.1);opacity:0}
+}
+.ultfx b{position:absolute;font-size:clamp(30px,9vw,68px);color:#fff;letter-spacing:6px;
+  text-shadow:0 4px 0 #a83a00,0 0 40px #ffb547;animation:ultText .9s ease-out}
+@keyframes ultText{from{transform:scale(.4);opacity:0}60%{transform:scale(1.1)}}
+
+/* 等級與經驗 */
+.lvchip{display:flex;align-items:center;gap:6px}
+.expbar{width:70px;height:7px;border-radius:99px;background:#241638;overflow:hidden}
+.expbar i{display:block;height:100%;width:0;border-radius:99px;
+  background:linear-gradient(90deg,#6ea8ff,#f6c453);transition:width .4s ease}
+.bagbtn{cursor:pointer;position:relative;font-family:inherit}
+.dot2{display:none;position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;
+  background:#f87171;box-shadow:0 0 8px #f87171}
+.dot2.on{display:block;animation:pulse .7s infinite alternate}
+
+/* 掉落提示 */
+.drop{
+  position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);z-index:9;pointer-events:none;
+  background:linear-gradient(180deg,#2f1d48ee,#1a1028ee);border:2px solid var(--gold);
+  border-radius:14px;padding:10px 18px;text-align:center;display:none;box-shadow:0 10px 30px #000b;
+}
+.drop.on{display:block;animation:dropIn .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes dropIn{from{transform:translate(-50%,-20%) scale(.6);opacity:0}}
+.drop b{display:block;font-size:16px;font-weight:900}
+.drop small{font-size:12px;color:var(--dim)}
+.drop .rar{font-size:11px;font-weight:800}
+
+/* 裝備視窗 */
+.gearwin{position:fixed;inset:0;z-index:22;display:none;align-items:center;justify-content:center;
+  background:#0b0714e8;backdrop-filter:blur(6px);padding:14px}
+.gearwin.on{display:flex;animation:fade .25s}
+.gearbox{
+  width:min(94vw,520px);max-height:92vh;overflow:auto;border-radius:20px;padding:18px;
+  background:linear-gradient(180deg,#2f1d48,#1a1028);border:1px solid var(--line);
+  box-shadow:0 20px 60px #000b;animation:cardin .35s cubic-bezier(.2,1.5,.4,1);
+}
+.gearbox h2{font-size:20px;color:var(--gold);letter-spacing:2px;text-align:center;margin-bottom:4px}
+.power{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap}
+.power div{flex:1;min-width:70px;background:#241638;border:1px solid var(--line);border-radius:10px;
+  padding:6px 2px;text-align:center;font-size:13px;font-weight:800;color:var(--gold2)}
+.power div b{display:block;font-size:10px;color:var(--dim);font-weight:500}
+.slots{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media (min-width:420px){ .slots{grid-template-columns:repeat(3,1fr)} }
+/* 一鍵裝備：放在背包上面，按了就把每一格換成背包裡最好的那件 */
+.autobar{display:flex;align-items:center;gap:8px;margin-top:12px}
+.autobar button{
+  flex:1;padding:10px;border-radius:10px;border:1px solid var(--gold);cursor:pointer;
+  background:linear-gradient(180deg,#4a2f6e,#33204d);color:var(--gold);font-size:14px;font-weight:800;
+}
+.autobar button.no{opacity:.45;border-color:var(--line);color:var(--dim);cursor:default}
+.slot{
+  background:#241638;border:1px dashed var(--line);border-radius:12px;padding:8px;text-align:center;
+  min-height:86px;display:flex;flex-direction:column;justify-content:center;gap:2px;cursor:pointer;
+}
+.slot .ic{font-size:22px}
+.slot .nm{font-size:12px;font-weight:800}
+.slot .st2{font-size:10px;color:var(--dim);line-height:1.4}
+.slot.empty .nm{color:#6b578a}
+.baglist{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.bagitem{
+  display:flex;align-items:center;gap:8px;background:#241638;border:1px solid var(--line);
+  border-radius:10px;padding:8px 10px;
+}
+.bagitem .ic{font-size:20px}
+.bagitem .info{flex:1;text-align:left}
+.bagitem .info b{display:block;font-size:13px}
+.bagitem .info small{font-size:11px;color:var(--dim)}
+.bagitem button{
+  padding:6px 10px;border-radius:8px;border:1px solid var(--line);cursor:pointer;
+  background:#3a2456;color:var(--gold2);font-size:12px;font-weight:800;
+}
+.bagitem button.eq{background:linear-gradient(180deg,#fff0c4,var(--gold));color:#3a2400;border:none}
+.bagitem.better{box-shadow:0 0 0 2px #4ade8066 inset}
+.empty-tip{text-align:center;color:var(--dim);font-size:12px;padding:14px}
+
+/* ===== 魔法 ===== */
+.spell{
+  position:absolute;z-index:7;pointer-events:none;height:38%;left:16%;bottom:22%;
+  mix-blend-mode:screen;
+  /* ⚠ 不要在這裡加 drop-shadow：這張圖是**不透明的黑底**素材，
+     drop-shadow 是照 alpha 描邊的，整張圖不透明 → 描出來就是一個矩形光暈，
+     疊上 screen 後看起來就是「火球變成方形」（Steve 2026-08-23 回報）。
+     光暈本來素材裡就有，不需要再補。 */
+  opacity:0;
+}
+.spell.fly{animation:spellFly .5s cubic-bezier(.35,0,.7,.6) forwards}
+@keyframes spellFly{
+  0%{opacity:0;transform:translateX(-40px) scale(.4) rotate(-12deg)}
+  18%{opacity:1;transform:translateX(0) scale(.95)}
+  85%{opacity:1;transform:translateX(330px) scale(1.15) rotate(8deg)}
+  100%{opacity:0;transform:translateX(360px) scale(1.3)}
+}
+.spell.drop{animation:spellDrop .5s cubic-bezier(.4,0,.6,1) forwards}
+@keyframes spellDrop{
+  0%{opacity:0;transform:translate(300px,-160px) scale(.6)}
+  25%{opacity:1}
+  70%{opacity:1;transform:translate(310px,20px) scale(1.2)}
+  100%{opacity:0;transform:translate(310px,30px) scale(1.35)}
+}
+/* 腳下魔法陣 */
+.circle{
+  position:absolute;z-index:2;pointer-events:none;left:2%;bottom:2%;width:26%;
+  mix-blend-mode:screen;
+  opacity:0;transform:scaleY(.35);
+  /* 同上：黑底不透明素材不能用 drop-shadow，會描出方框 */
+}
+.circle.on{animation:circleUp .8s ease-out forwards}
+@keyframes circleUp{
+  0%{opacity:0;transform:scaleY(.35) scale(.5) rotate(0)}
+  30%{opacity:1;transform:scaleY(.35) scale(1.05) rotate(60deg)}
+  100%{opacity:0;transform:scaleY(.35) scale(1.25) rotate(200deg)}
+}
+/* 施法時角色被光包住 */
+.field.casting .fighter#hero2{filter:drop-shadow(0 0 26px var(--sc,#ffd066)) brightness(1.25)}
+
+/* ===== 連擊特效：邊框發光＋大字 ===== */
+.comboFrame{
+  position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:20px;opacity:0;
+  box-shadow:inset 0 0 0 3px var(--cc,#f6c453),inset 0 0 44px var(--cc,#f6c45366);
+}
+.comboFrame.on{animation:cframe .9s ease-out}
+@keyframes cframe{0%{opacity:0}22%{opacity:1}100%{opacity:0}}
+.comboBig{
+  position:absolute;left:50%;top:26%;transform:translate(-50%,-50%);z-index:8;pointer-events:none;
+  font-size:clamp(26px,7vw,52px);font-weight:900;letter-spacing:2px;opacity:0;white-space:nowrap;
+  color:#fff;text-shadow:0 3px 0 #a83a00,0 0 30px var(--cc,#f6c453);
+}
+.comboBig.on{animation:cbig .95s cubic-bezier(.2,1.6,.4,1)}
+@keyframes cbig{
+  0%  {opacity:0;transform:translate(-50%,-30%) scale(.4) rotate(-8deg);
+       animation-timing-function:cubic-bezier(.12,.72,.34,1)}
+  20% {opacity:1;transform:translate(-50%,-86%) scale(1.28) rotate(2deg);
+       animation-timing-function:cubic-bezier(.62,0,.92,.48)}
+  44% {opacity:1;transform:translate(-50%,-50%) scale(1.02) rotate(0);
+       animation-timing-function:cubic-bezier(.12,.72,.34,1)}
+  62% {opacity:1;transform:translate(-50%,-66%) scale(1.08);
+       animation-timing-function:cubic-bezier(.62,0,.92,.48)}
+  80% {opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-60%) scale(.96)}
+}
+/* 連擊到一定次數，整個戰場邊緣冒火／結霜／帶電 */
+.field.aura1{box-shadow:0 16px 46px #000a,inset 0 0 60px #0008,inset 0 0 40px #f6c45355}
+.field.aura2{box-shadow:0 16px 46px #000a,inset 0 0 60px #0008,inset 0 0 60px #6ea8ff66}
+.field.aura3{box-shadow:0 16px 46px #000a,inset 0 0 60px #0008,inset 0 0 80px #f87171aa}
+
+.tip{font-size:12px;color:var(--dim);text-align:center;line-height:1.7}
+.tip b{color:var(--gold2)}
+
+/* ---------- 手機：小螢幕上角色跟怪物會疊在一起，戰場拉高、兩邊各自縮一點 ---------- */
+/* ---------- 娛樂模式的操作面板 ---------- */
+.acts{display:none;gap:10px;width:min(96vw,560px)}
+body.arcade .acts{display:flex}
+body.arcade .qbox,body.arcade #ans{display:none}
+.act{
+  flex:1;min-height:76px;border-radius:18px;cursor:pointer;border:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  color:#3a2400;font-family:inherit;position:relative;overflow:hidden;
+  transition:transform .1s ease,filter .15s;
+}
+.act b{font-size:20px;font-weight:900;letter-spacing:3px}
+.act small{font-size:11px;font-weight:700;opacity:.8}
+.act.atk{background:linear-gradient(180deg,#ffd08a,#f6905c);box-shadow:0 5px 0 #a9521b,0 10px 24px #0008}
+.act.dodge{background:linear-gradient(180deg,#bfe4ff,#6ea8ff);box-shadow:0 5px 0 #2b5c9e,0 10px 24px #0008}
+.act:active{transform:translateY(4px)}
+.act:disabled{filter:grayscale(.7) brightness(.7);cursor:default}
+/* 冷卻：底下那條由左往右補回來 */
+.act i{position:absolute;left:0;bottom:0;height:5px;width:0;background:#ffffffcc}
+.act.cool i{transition:width linear}
+/* 閃避成功的瞬間，角色會有一圈藍光 */
+#hero2.evade{filter:drop-shadow(0 0 22px #6ea8ff) brightness(1.3)}
+
+/* ---------- 開始前的設定區 ---------- */
+.setup{display:flex;flex-direction:column;gap:10px;width:min(96vw,560px)}
+.setlab{font-size:12px;color:var(--dim);letter-spacing:1px;margin-bottom:-2px}
+body.arcade #topicwrap{display:none}
+body.arcade #rangewrap{display:none}
+body:not(.arcade) #diffwrap{display:none}
+body.playing .setup{display:none}
+/* 開打之後「開始冒險」就收起來，戰鬥畫面才乾淨；
+   要重來走右上角暫停裡的「結束這一場」，或結算畫面的「再挑戰一次」 */
+body.playing #start{display:none}
+
+/* ---------- 戰鬥中的畫面瘦身（2026-08-23）----------
+   開打就把標題、版本切換列、開打前的設定區收掉，只留右上角的暫停與說明。
+   玩法說明從畫面底下那張大卡片，改成右上角「？」點開的彈窗。 */
+body.playing h1,
+body.playing .vers,
+body.playing #modeBadge{display:none}
+body.playing .tipwrap{display:none}
+.tipwrap{display:none}                    /* 說明文字只活在彈窗裡，不再佔畫面 */
+
+.iconbtn{
+  width:38px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;
+  font-size:17px;line-height:1;cursor:pointer;flex:none;
+}
+#pauseBtn{display:none}
+body.playing #pauseBtn{display:flex}
+
+/* 說明彈窗與暫停彈窗共用同一種底 */
+.modalwrap{
+  position:fixed;inset:0;z-index:60;background:#07040ce8;
+  display:none;align-items:center;justify-content:center;padding:16px;
+}
+.modalwrap.on{display:flex;animation:mwIn .18s ease-out}
+@keyframes mwIn{from{opacity:0}}
+.modalbox{
+  width:min(94vw,470px);max-height:86vh;overflow:auto;position:relative;
+  border-radius:20px;padding:20px 18px 18px;text-align:center;
+  background:linear-gradient(180deg,#33204d,#1a1029);border:2px solid var(--line);
+  box-shadow:0 22px 60px #000b;animation:mbIn .26s cubic-bezier(.2,1.5,.4,1);
+}
+@keyframes mbIn{from{transform:translateY(18px) scale(.92);opacity:0}}
+.modalbox h2{margin:0 0 12px;font-size:20px;color:var(--gold);letter-spacing:2px}
+.modalbox .xbtn{
+  position:absolute;right:10px;top:10px;width:32px;height:32px;border-radius:10px;cursor:pointer;
+  border:1px solid var(--line);background:#20132f;color:var(--dim);font-size:15px;line-height:1;
+}
+.modalbox .tip{display:block;text-align:left;font-size:13px;line-height:1.9;color:#d6c8ec}
+.modalbox .tip + .tip{margin-top:10px}
+.keyrow{
+  display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px;
+  padding-top:12px;border-top:1px solid var(--line);
+}
+.keyrow span{
+  font-size:12px;color:var(--dim);background:#20132f;border:1px solid var(--line);
+  border-radius:9px;padding:5px 9px;
+}
+.keyrow span b{color:var(--gold2)}
+.modalbox .btn{width:100%;margin-top:10px}
+
+/* ---------- 操作區重排：攻擊／閃避一排，必殺技與兩顆技能併成第二排 ----------
+   手機拇指按得到的範圍就是畫面下緣那一塊，五顆按鈕擠在一起比散開好按。 */
+.combat{display:flex;flex-direction:column;gap:7px;width:min(96vw,560px)}
+.row3{display:flex;flex-direction:column;gap:7px}
+.row3 .ult{padding:6px 10px;gap:9px}
+.row3 .ult .ultlab{font-size:12px;font-weight:800;color:var(--gold2);letter-spacing:1px;flex:none}
+.row3 .ult .bar2{height:8px}
+.row3 .ult button{padding:8px 14px;font-size:14px;box-shadow:0 3px 0 #a97a12}
+.row3 .skills{width:auto}
+.row3 .skills:empty{display:none}
+/* 三顆技能等寬一排，字不要折行 */
+.row3 .skills .skill{min-height:52px;padding:5px 4px}
+.row3 .skills .skill b{font-size:13px;letter-spacing:0}
+.row3 .skills .skill small{font-size:9.5px;line-height:1.3}
+
+@media (max-width:520px){
+  body{padding-bottom:96px}
+  .topbar{gap:5px;flex-wrap:wrap}
+  .topbar .chip{padding:6px 8px;font-size:12.5px;white-space:nowrap}
+  .topbar .bagbtn{padding:10px 10px;font-size:13px}
+  /* 「裝備」兩個字在手機收起來，只留圖示，右上角才擠得下說明與暫停 */
+  .topbar .bagbtn .lb{display:none}
+  /* 打起來之後金幣不是當下要看的資訊，收掉才排得下說明與暫停（結算畫面還是會報） */
+  body.playing .topbar .goldchip{display:none}
+  .topbar .chip b{font-size:10px;margin-right:3px}
+  .field{height:min(42vh,330px);height:min(42dvh,330px)}
+  #hero2{left:1%;height:52%}
+  .mobwrap{right:1%;height:46%}
+  #shHero{left:2%;width:17%}
+  #shMob{right:2%;width:17%}
+  /* 手機省效能（實測 CPU 放慢四倍：這兩項讓打怪頁從 30fps 回到 60fps）
+     1. drop-shadow 每換一格逐幀都要重算一次整張圖的陰影，最貴；地上本來就有 .gshadow 影子
+     2. 星星與飄浮光點是整片覆蓋的動畫層，畫面小根本看不出來 */
+  #hero2,#mob,#cat2,.afterimg{filter:none}
+  .scene .stars,.scene .motes{display:none}
+  .qbox{padding:10px 12px}
+  .qbox .q{font-size:clamp(26px,8vw,38px)}
+  .ans button{height:56px;font-size:22px}
+  .tip{font-size:11px;line-height:1.7}
+  .combat{gap:7px}
+  .row3{gap:7px}
+  .act{min-height:66px}
+  .act b{font-size:18px;letter-spacing:2px}
+  .skill{min-height:52px}
+  .skill b{font-size:13px}
+  .iconbtn{width:34px;height:34px;font-size:15px}
+  .modalbox{padding:18px 14px 14px}
+}
+</style>
+</head>
+<body>
+<h1>勇 者 出 擊</h1>
+<div class="vers"></div>
+
+<div class="wrap">
+  <div class="topbar">
+    <div class="chip lvchip"><b>Lv</b><span id="lv">1</span>
+      <div class="expbar"><i id="expBar"></i></div>
+    </div>
+    <div class="chip goldchip"><b>金幣</b><span id="gold">0</span></div>
+    <div class="chip"><b>關卡</b><span id="stage">1-1</span></div>
+    <div class="grow"></div>
+    <button class="chip bagbtn" id="bagBtn">🎒<span class="lb"> 裝備</span> <i class="dot2" id="bagDot"></i></button>
+    <button class="chip iconbtn" id="helpBtn" title="怎麼玩" aria-label="怎麼玩">？</button>
+    <button class="chip iconbtn" id="pauseBtn" title="暫停" aria-label="暫停">⏸</button>
+  </div>
+
+  <div class="field" id="field">
+    <div class="bars">
+      <div class="bar mob"><i class="ghost" id="mobHpGhost"></i><i id="mobHp"></i><span id="mobHpText">敵人</span></div>
+      <div class="bar timerbar"><i id="mobTimer"></i></div>
+      <div class="bar hero"><i class="ghost" id="heroHpGhost"></i><i id="heroHp"></i><span id="heroHpText">小勇者</span></div>
+    </div>
+    <div id="world">
+    <div class="scene">
+      <div class="sky"></div><div class="pic"></div><div class="glow"></div><div class="stars"></div>
+      <div class="far"></div><div class="mid"></div><div class="ground"></div><div class="motes"></div>
+    </div>
+    <div class="gshadow" id="shHero"></div>
+    <div class="gshadow" id="shMob"></div>
+    <img class="fighter" id="hero2" src="assets/fx_hero_ready.webp" alt="">
+    <img class="fighter" id="cat2" src="assets/fx_cat_attack.webp" alt="">
+    <div class="fighter mobwrap" id="mobWrap"><img id="mob" src="assets/mob_slime.webp" alt=""></div>
+    <div class="slash" id="slash"></div>
+    <div class="speedlines" id="speedlines"></div>
+    <img class="circle" id="circle" src="assets/fx_holy.webp" alt="">
+    <img class="spell" id="spell" src="assets/fx_fire.webp" alt="">
+    <div class="comboFrame" id="comboFrame"></div>
+    <div class="comboBig" id="comboBig"></div>
+    <div class="impact" id="impact"></div>
+    <div class="curtain" id="curtain"></div>
+    </div><!-- /#world -->
+    <div class="bossname" id="bossName"></div>
+    <div class="drop" id="drop"></div>
+  </div>
+
+  <!-- 開打前的那一組：大按鈕擺在戰場正下方，設定放在按鈕底下。
+       Steve 2026-08-23：「開始冒險應該移到上方，比較直觀、不用往下拉」 -->
+  <button class="btn" id="start">開 始 冒 險</button>
+
+  <div class="setup" id="setup">
+    <div id="modebar"></div>
+    <div id="topicwrap">
+      <div class="setlab">練習模式要出哪種題目</div>
+      <div id="topicbar"></div>
+    </div>
+    <div id="rangewrap">
+      <div class="setlab">加減法數字範圍</div>
+      <div id="rangebar"></div>
+    </div>
+    <div id="voicewrap">
+      <div class="setlab">題目要不要唸出來</div>
+      <div id="voicebar"></div>
+    </div>
+    <div id="diffwrap">
+      <div class="setlab">娛樂模式的難度</div>
+      <div class="levels" id="difbar">
+        <div class="lv" data-d="easy">悠閒<b>敵人慢、傷害低</b></div>
+        <div class="lv on" data-d="normal">普通<b>標準速度</b></div>
+        <div class="lv" data-d="hard">狠角色<b>又快又痛</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="qbox" id="qbox">
+    <div class="q" id="q">準備好了嗎？</div>
+    <button class="spk" id="spkBtn" type="button" title="再唸一次" aria-label="再唸一次">🔊</button>
+    <div class="weak" id="weakTip"></div>
+  </div>
+
+  <div class="ans" id="ans"></div>
+
+  <!-- 操作區：攻擊／閃避一排，必殺技與兩顆技能併成第二排，手機拇指按得到 -->
+  <div class="combat">
+    <!-- 娛樂模式的操作區（不出題時才顯示） -->
+    <div class="acts" id="acts">
+      <button class="act atk" id="actAtk"><b>攻　擊</b><small id="atkCd">點一下打一次</small></button>
+      <button class="act dodge" id="actDodge"><b>閃　避</b><small id="dodgeCd">敵人出手前按</small></button>
+    </div>
+    <div class="row3">
+      <div class="ult">
+        <span class="ultlab">必殺技</span>
+        <div class="bar2"><i id="ultBar"></i></div>
+        <button id="ultBtn" disabled>小虎撲擊</button>
+      </div>
+      <!-- 主動技能：兩顆就好，多了手機按不完（冷卻時底下那條會補回來） -->
+      <div class="skills" id="skills"></div>
+    </div>
+  </div>
+
+  <div class="tipwrap" id="tipwrap">
+  <p class="tip" id="tipPractice">
+    答對就出手，<b>答得越快傷害越高</b>；敵人上方的黃條倒數完會反擊。<br>
+    每隻敵人都有<b>害怕的乘法表</b>，打中弱點是<b>兩倍傷害</b>（出乘法題時才有）。<br>
+    連續答對會自動放魔法：<b>3 連火球術</b>、<b>5 連冰霜術</b>、<b>7 連落雷術</b>、<b>10 連聖光審判</b>（還會回血）。
+  </p>
+  <p class="tip" id="tipArcade" style="display:none">
+    不出題。按<b>攻擊</b>打人，敵人上方的黃條倒數完牠就撲上來，這時按<b>閃避</b>可以完全躲掉。<br>
+    <b>倒數剩最後半秒才按閃避是「完美閃避」</b>：多回必殺、下一擊變成加成反擊。<br>
+    技能有連段：先放<b>破魂突刺</b>打上破綻，再放<b>旋風斬</b>會引爆額外傷害。<br>
+    敵人身上不定時會亮<b>金色破綻圈</b>，那時按攻擊必定爆擊還有額外傷害。<br>
+    連續打中不被打到會累積連擊，一樣會自動放魔法；<b>太久沒出手連擊會斷掉</b>，被打到也會歸零。
+  </p>
+  </div>
+</div>
+
+<div class="modalwrap" id="helpwin">
+  <div class="modalbox">
+    <button class="xbtn" id="helpClose" aria-label="關閉">✕</button>
+    <h2>怎 麼 玩</h2>
+    <div id="helpBody"></div>
+    <div class="keyrow" id="helpKeys"></div>
+    <button class="btn" id="helpOk">知 道 了</button>
+  </div>
+</div>
+
+<div class="modalwrap" id="pausewin">
+  <div class="modalbox">
+    <h2>暫 停 中</h2>
+    <button class="btn" id="resumeBtn">繼 續 冒 險</button>
+    <button class="btn ghost" id="quitBtn" style="height:44px">結 束 這 一 場</button>
+  </div>
+</div>
+
+<div class="ultfx" id="ultfx">
+  <div class="line"></div>
+  <img id="ultCat" src="assets/fx_cat_attack.webp" alt="">
+  <b>小虎撲擊！</b>
+</div>
+
+<div class="gearwin" id="gearwin">
+  <div class="gearbox">
+    <h2>裝 備</h2>
+    <div class="power" id="power"></div>
+    <div class="scrollbar" id="scrollBar"></div>
+    <div class="slots" id="slots"></div>
+    <div class="autobar"><button id="autoEq">✨ 一鍵裝備（自動換上更好的）</button></div>
+    <div class="baglist" id="baglist"></div>
+    <button class="btn" id="closeGear" style="width:100%;margin-top:14px">關 閉</button>
+    <button class="btn ghost" id="resetSave" style="width:100%;margin-top:8px;height:40px">清除存檔重新開始</button>
+  </div>
+</div>
+
+<div class="over" id="over">
+  <div class="card">
+    <h2 id="ovTitle">這次沒過關</h2>
+    <div class="big" id="ovBig">1-1</div>
+    <div class="line">打倒的敵人 <span id="ovKill">0</span></div>
+    <div class="line">造成的總傷害 <span id="ovDmg">0</span></div>
+    <div class="line" id="ovQAline">答對／答錯 <span id="ovQA">0 / 0</span></div>
+    <div class="line">最快作答 <span id="ovFast">—</span></div>
+    <div class="line">獲得金幣 <span id="ovGold">0</span></div>
+    <div class="weak"><h3>最該再練的乘法</h3><ul id="ovWeak"></ul></div>
+    <button class="btn" id="again">再 挑 戰 一 次</button>
+  </div>
+</div>
+
+<script src="assets/common.js"></script>
+<script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
+<script>
+/* ---------- 敵人：每隻怕不同的乘法表，打弱點兩倍傷害 ---------- */
+const MOBS = [
+  {img:'assets/mob_slime.webp',  name:'黏黏怪',   hp:110, atk:10, weak:[2,3],   exp:24, drop:0.40, spr:'slime'},
+  {img:'assets/mob_bat.webp',    name:'小蝙蝠',   hp:135, atk:12, weak:[4,5],   exp:30, drop:0.45},
+  {img:'assets/mob_mush.webp',   name:'香菇怪',   hp:165, atk:13, weak:[6],     exp:36, drop:0.50},
+  {img:'assets/mob_rock.webp',   name:'石頭怪',   hp:195, atk:15, weak:[7],     exp:42, drop:0.55},
+  {img:'assets/mob_ghost.webp',  name:'幽靈球',   hp:225, atk:16, weak:[8],     exp:48, drop:0.55},
+  {img:'assets/mob_cactus.webp', name:'仙人掌',   hp:255, atk:17, weak:[9],     exp:54, drop:0.60, ranged:true},
+  {img:'assets/mob_ice.webp',    name:'冰晶怪',   hp:290, atk:18, weak:[6,7],   exp:62, drop:0.62},
+  {img:'assets/mob_flame.webp',  name:'火焰怪',   hp:320, atk:19, weak:[8,9],   exp:70, drop:0.65},
+  {img:'assets/mob_robot.webp',  name:'鐵皮機器', hp:355, atk:20, weak:[7,8],   exp:80, drop:0.70},
+  /* 2026-08-22 新增：出手快的衝鋒型、會擋傷害的精英、閃來閃去的刺客 */
+  {img:'assets/mob_boar.webp',     name:'暴走野豬', hp:300, atk:21, weak:[3,4],   exp:76, drop:0.62, fast:0.75},
+  {img:'assets/mob_bee.webp',      name:'蜂后',     hp:330, atk:18, weak:[5,6],   exp:84, drop:0.66, summon:true},
+  {img:'assets/mob_ninja.webp',    name:'影武者貓', hp:340, atk:23, weak:[8,9],   exp:92, drop:0.70, fast:0.8},
+  {img:'assets/mob_gargoyle.webp', name:'石像守衛', hp:480, atk:24, weak:[6,7,9], exp:120, drop:0.9, armor:0.72},
+  {img:'assets/mob_boss.webp',   name:'虎王石像', hp:430, atk:22, weak:[7,8,9], exp:110, drop:1, boss:true},
+  {img:'assets/mob_dragon.webp', name:'紫金巨龍', hp:560, atk:26, weak:[6,7,8,9], exp:150, drop:1, boss:true, spr:'dragon'},
+  /* 2026-08-23 大量新增：37 隻普通怪＋8 隻 Boss（Steve：至少 50 種普通、10 種 Boss）。
+     數值接續原本最後一隻（紫金巨龍 hp560/atk26/exp150）往上爬，
+     怪物血量走 setMob() 的 1.06^關卡、經驗走 1.15^關卡（脫鉤那套邏輯），這裡只需要給基礎值。 */
+  {img:'assets/mob_firefly.webp', name:'螢火蟲精靈', hp:590, atk:27, weak:[2, 3], exp:158, drop:0.66},
+  {img:'assets/mob_thorn.webp', name:'荊棘藤蔓怪', hp:612, atk:28, weak:[3, 6], exp:163, drop:0.67, summon:true},
+  {img:'assets/mob_owlmage.webp', name:'貓頭鷹法師', hp:635, atk:28, weak:[4], exp:168, drop:0.68, ranged:true},
+  {img:'assets/mob_hedgehog.webp', name:'刺蝟滾滾', hp:658, atk:29, weak:[3, 7], exp:173, drop:0.68, fast:0.8},
+  {img:'assets/mob_raccoon.webp', name:'浣熊小偷', hp:680, atk:29, weak:[3, 6], exp:178, drop:0.69, fast:0.8},
+  {img:'assets/mob_scorpion.webp', name:'沙塵蠍', hp:702, atk:30, weak:[2], exp:183, drop:0.70},
+  {img:'assets/mob_camel.webp', name:'骸骨駱駝', hp:725, atk:30, weak:[3], exp:188, drop:0.71, armor:0.75},
+  {img:'assets/mob_lizard.webp', name:'沙丘蜥蜴', hp:748, atk:31, weak:[5], exp:193, drop:0.72},
+  {img:'assets/mob_jelly.webp', name:'水母怪', hp:770, atk:31, weak:[2, 6], exp:198, drop:0.72},
+  {img:'assets/mob_crab.webp', name:'寄居蟹士兵', hp:792, atk:32, weak:[8], exp:204, drop:0.73, armor:0.75},
+  {img:'assets/mob_octomage.webp', name:'章魚法師', hp:815, atk:32, weak:[9], exp:209, drop:0.74, ranged:true},
+  {img:'assets/mob_coralfish.webp', name:'珊瑚魚人', hp:838, atk:33, weak:[6, 8], exp:214, drop:0.75},
+  {img:'assets/mob_thundereagle.webp', name:'雷鷹', hp:860, atk:33, weak:[4], exp:219, drop:0.76, fast:0.8},
+  {img:'assets/mob_windbird.webp', name:'風之信使鳥', hp:882, atk:34, weak:[4, 8], exp:224, drop:0.76, ranged:true},
+  {img:'assets/mob_cloudghost.webp', name:'雲霧幽靈', hp:905, atk:34, weak:[4], exp:229, drop:0.77},
+  {img:'assets/mob_goblinminer.webp', name:'礦工地精', hp:928, atk:35, weak:[7], exp:234, drop:0.78},
+  {img:'assets/mob_crystalbat.webp', name:'水晶蝙蝠', hp:950, atk:35, weak:[3], exp:239, drop:0.79},
+  {img:'assets/mob_lavaworm.webp', name:'熔岩蟲', hp:972, atk:36, weak:[3], exp:244, drop:0.80, ranged:true},
+  {img:'assets/mob_skeleton.webp', name:'骷髏兵', hp:995, atk:36, weak:[7], exp:249, drop:0.80, armor:0.75},
+  {img:'assets/mob_ghostknight.webp', name:'幽靈騎士', hp:1018, atk:37, weak:[6, 8], exp:254, drop:0.81, summon:true},
+  {img:'assets/mob_mummy.webp', name:'木乃伊', hp:1040, atk:38, weak:[9], exp:259, drop:0.82},
+  {img:'assets/mob_gearspider.webp', name:'齒輪蜘蛛', hp:1062, atk:38, weak:[3, 5], exp:264, drop:0.83, summon:true},
+  {img:'assets/mob_steamtank.webp', name:'蒸汽坦克', hp:1085, atk:39, weak:[6], exp:269, drop:0.84, armor:0.75},
+  {img:'assets/mob_zapmouse.webp', name:'電磁飛鼠', hp:1108, atk:39, weak:[6, 7], exp:274, drop:0.85, fast:0.8},
+  {img:'assets/mob_windspirit.webp', name:'風元精', hp:1130, atk:40, weak:[3], exp:279, drop:0.85, ranged:true},
+  {img:'assets/mob_earthgolem.webp', name:'土元精', hp:1152, atk:40, weak:[5], exp:284, drop:0.86, armor:0.75},
+  {img:'assets/mob_shadowwolf.webp', name:'暗影狼', hp:1175, atk:41, weak:[3], exp:289, drop:0.87},
+  {img:'assets/mob_poisonfrog.webp', name:'毒蛙', hp:1198, atk:41, weak:[3], exp:294, drop:0.88},
+  {img:'assets/mob_bunnyfist.webp', name:'兔子拳士', hp:1220, atk:42, weak:[6], exp:300, drop:0.89, fast:0.8},
+  {img:'assets/mob_runegargoyle.webp', name:'符文石像鬼', hp:1242, atk:42, weak:[7], exp:305, drop:0.89, armor:0.75},
+  {img:'assets/mob_bookspirit.webp', name:'魔導書精', hp:1265, atk:43, weak:[7], exp:310, drop:0.90, ranged:true},
+  {img:'assets/mob_crystalbutterfly.webp', name:'水晶蝴蝶', hp:1288, atk:43, weak:[5], exp:315, drop:0.91, summon:true},
+  {img:'assets/mob_pumpkinlantern.webp', name:'南瓜燈怪', hp:1310, atk:44, weak:[6, 7], exp:320, drop:0.92},
+  {img:'assets/mob_icepenguin.webp', name:'冰霜企鵝', hp:1332, atk:44, weak:[3, 6], exp:325, drop:0.93},
+  {img:'assets/mob_mudturtle.webp', name:'泥沼龜怪', hp:1355, atk:45, weak:[4, 6], exp:330, drop:0.93},
+  {img:'assets/mob_batwing.webp', name:'夜翼魔', hp:1378, atk:45, weak:[3, 5], exp:335, drop:0.94, fast:0.8},
+  {img:'assets/mob_starfish.webp', name:'星光海星怪', hp:1400, atk:46, weak:[8], exp:340, drop:0.95},
+  /* 8 隻新 Boss，接在最後——跟現有兩隻 Boss 一樣，每打倒一隻就結束這次冒險 */
+  {img:'assets/mob_bosstitan.webp', name:'巨石泰坦', hp:900, atk:30, weak:[6, 7, 8], exp:260, drop:1, boss:true},
+  {img:'assets/mob_bossphoenix.webp', name:'烈焰鳳凰', hp:1086, atk:33, weak:[4, 5, 7], exp:297, drop:1, boss:true},
+  {img:'assets/mob_bosskraken.webp', name:'深淵巨蛛章魚', hp:1271, atk:36, weak:[2, 3, 9], exp:334, drop:1, boss:true},
+  {img:'assets/mob_bosslich.webp', name:'巫妖領主', hp:1457, atk:39, weak:[4, 5, 7], exp:371, drop:1, boss:true},
+  {img:'assets/mob_bosshydra.webp', name:'雙頭火龍', hp:1643, atk:43, weak:[3, 6, 9], exp:409, drop:1, boss:true},
+  {img:'assets/mob_bossgolemking.webp', name:'黃金機甲皇', hp:1829, atk:46, weak:[3, 7, 9], exp:446, drop:1, boss:true},
+  {img:'assets/mob_bossqueenspider.webp', name:'蛛后', hp:2014, atk:49, weak:[5, 7, 9], exp:483, drop:1, boss:true},
+  {img:'assets/mob_bossstorm.webp', name:'雷霆巨神', hp:2200, atk:52, weak:[3, 4, 9], exp:520, drop:1, boss:true}
+];
+/* ---------- 裝備掉落率（2026-08-23 Steve 指定：一律壓在 10% 以下） ----------
+   原本是直接吃 MOBS 每一筆的 `drop`（0.40～0.80），等於小怪也有四到八成掉裝備，
+   結果背包一直塞滿、每一件都不稀罕、也撐不起「要不要拿去賭 +7」這個決定。
+   改成把原本的 drop 當「這隻怪有多肥」的相對強度，映射到 2%～8%；Boss 給上限 10%。
+   ⚠ 不去改那 60 筆資料——資料留著當強度指標，換算集中在這一支，要調只改這裡。
+   ⚠ **Boss 也壓在 10% 以下是照 Steve 的字面要求**。Boss 的主要獎勵改由金幣、經驗、
+      以及卷軸（Boss 25% 掉）撐著。若之後要讓 Boss 例外，改 DROP_CAP_BOSS 這一個數字就好。 */
+const DROP_MIN = 0.02, DROP_CAP_MOB = 0.08, DROP_CAP_BOSS = 0.10;
+function dropChance(m){
+  if(!m) return DROP_MIN;
+  if(m.boss) return DROP_CAP_BOSS;
+  const t = Math.max(0, Math.min(1, ((m.drop || 0.4) - 0.4) / 0.6));   // 0.40～1.0 → 0～1
+  return DROP_MIN + t * (DROP_CAP_MOB - DROP_MIN);
+}
+
+const ANSWER_TIME = 9;
+
+let P = Save.power();                 // 目前能力（基礎＋裝備）
+let maxHp = P.hp, heroHp = P.hp;
+let wave = Save.d.wave, round = Save.d.round;
+let mob = null, mobHp = 0;
+let qa = 1, qb = 1, ans = 0, qStart = 0, locked = true, running = false;
+let ult = 0, combo = 0, kills = 0, totalDmg = 0, right = 0, wrong = 0, fastest = null;
+let earnGold = 0, earnExp = 0, drops = [];
+let mobTimer = ANSWER_TIME, loop = null;
+/* ── 兩種模式（Steve 2026-08-22）──
+   練習模式：出題，答對出手（原本的玩法）
+   娛樂模式：不出題，自己按攻擊與閃避，敵人倒數完就撲上來 */
+let arcade = false, QQ = null;
+const DIFF_KEY = 'mul99_diff';
+const DIFFS = {
+  easy:   {time:6.6, dmg:0.70, cd:520, name:'悠閒'},
+  normal: {time:4.6, dmg:1.00, cd:460, name:'普通'},
+  hard:   {time:3.4, dmg:1.35, cd:420, name:'狠角色'}
+};
+function difKey(){ try{ const d = localStorage.getItem(DIFF_KEY); return DIFFS[d] ? d : 'normal'; }catch(e){ return 'normal'; } }
+const D = () => DIFFS[difKey()];
+let turnTime = ANSWER_TIME;        // 這一回合的倒數總長（兩種模式不一樣）
+let atkReady = true, dodgeReady = true, invuln = 0, hits = 0, taken = 0;
+let telegraphed = false;        // 這一回合的攻擊預告放過了沒
+let paused = false;             // 暫停中（右上角那顆）
+
+const F = () => $('field');
+const setBar = (el, r) => el.style.transform = 'scaleX(' + Math.max(0, Math.min(1, r)) + ')';
+/* 血條連殘影一起更新：紅條立刻掉，白條慢半拍追上 */
+function setHp(who, r){
+  setBar($(who), r);
+  setBar($(who + 'Ghost'), r);
+}
+
+/* ---------- 角色逐格動畫 ---------- */
+const HERO_FRAMES = {
+  ready:'assets/fx_hero_ready.webp', swing:'assets/fx_hero_swing.webp',
+  after:'assets/fx_hero_after.webp', hurt:'assets/fx_hero_hurt.webp'
+};
+const ready = {};
+const SPELL_IMG = {
+  fire:'assets/fx_fire.webp', ice:'assets/fx_ice.webp',
+  thunder:'assets/fx_thunder.webp', holy:'assets/fx_holy.webp', slash:'assets/fx_slash_big.webp'
+};
+/* 一開始只載「馬上要用到的」：角色四格、貓、目前這隻怪與下一隻。
+   魔法特效與後面的怪等閒下來再補，手機第一次進來才不用先吞掉一大包圖 */
+const requested = new Set();          // ready 只放「載好了」，要不要重複發請求另外記
+function preload(list){
+  for(const src of list){
+    if(!src || requested.has(src)) continue;
+    requested.add(src);
+    const im = new Image();
+    im.onload = () => ready[src] = true;
+    im.src = src;
+  }
+}
+let HERO = heroOf(Save.d.hero);
+function preloadNearby(){
+  const i = Math.min(MOBS.length - 1, (Save.d.wave || 0));
+  preload([MOBS[i] && MOBS[i].img, MOBS[i+1] && MOBS[i+1].img]);
+  /* 有逐幀素材的怪，雪碧圖也要一起先抓（巨龍那兩張加起來 740KB，臨時抓會閃一下） */
+  for(const m of [MOBS[i], MOBS[i+1]]){
+    if(m && m.spr) preload(['assets/spr_' + m.spr + '_idle.webp', 'assets/spr_' + m.spr + '_atk.webp']);
+  }
+}
+preload([...Object.values(HERO_FRAMES), 'assets/fx_cat_attack.webp', HERO.img]);
+/* 逐幀雪碧圖：角色自己那組跟第一隻怪的先載，播到才抓會閃一下空白 */
+if(HERO.frames) preload(['assets/spr_hero_idle.webp', 'assets/spr_hero_atk.webp']);
+preload(['assets/spr_slime_idle.webp', 'assets/spr_slime_atk.webp',
+         'assets/fx_whirl.webp', 'assets/fx_heal.webp']);
+preloadNearby();
+/* ⚠ 原本這裡是「把 60 隻怪 ＋ 全部魔法特效 ＋ 六個職業一次抓完」。
+   那些圖解碼後是好幾十 MB，手機記憶體一吃緊就開始卡，而且九成當下根本用不到。
+   改成只抓接下來 6 隻怪，其餘等真的走到那一關再由 preloadNearby() 補。 */
+const PRELOAD_AHEAD = 6;
+const preloadRest = () => {
+  const i = Math.min(MOBS.length - 1, Save.d.wave || 0);
+  preload([...MOBS.slice(i, i + PRELOAD_AHEAD).map(m => m.img),
+           ...Object.values(SPELL_IMG),
+           'assets/fxs_fire.webp', 'assets/fxs_thunder.webp', 'assets/fxs_holy.webp']);
+};
+/* 等首屏該載的都載完、再閒個一秒多才補其餘的圖，才不會跟首屏搶頻寬 */
+addEventListener('load', () => setTimeout(() => {
+  if('requestIdleCallback' in window) requestIdleCallback(preloadRest, {timeout:3000});
+  else preloadRest();
+}, 1200));
+/* 小虎姬有分解動作就換圖；其他角色只有一張，改用變形表現動作 */
+function heroFrame(k){
+  const el = $('hero2');
+  /* 小虎姬有整組逐幀，走 Spr；挑第 7～22 格（揮擊那段）對上 heroSwing 的節奏 */
+  if(HERO.frames && SPR.hero_idle){
+    el.classList.remove('poseSwing','poseHurt');
+    const rest = () => IDLE_SPRITE() ? Spr.play(el, 'hero_idle', {loop:true})
+                                     : Spr.off(el, HERO_FRAMES.ready);
+    if(k === 'swing')      Spr.play(el, 'hero_atk', {from:7, to:23, fps:45, done:rest});
+    else if(k === 'hurt'){
+      if(IDLE_SPRITE()) Spr.play(el, 'hero_idle', {from:0, to:1});
+      else Spr.off(el, HERO_FRAMES.hurt);
+      el.classList.add('poseHurt');
+    }
+    else if(k !== 'after') rest();
+    return;
+  }
+  if(HERO.frames){
+    if(ready[HERO_FRAMES[k]]) el.src = HERO_FRAMES[k];
+    el.classList.remove('poseSwing','poseHurt');
+  }else{
+    if(ready[HERO.img]) el.src = HERO.img;
+    el.classList.toggle('poseSwing', k === 'swing' || k === 'after');
+    el.classList.toggle('poseHurt', k === 'hurt');
+  }
+}
+
+function afterImage(){
+  const h = $('hero2');
+  const img = document.createElement('img');
+  img.className = 'afterimg';
+  img.src = h.src;
+  if(h.dataset.spr){                                  // 逐幀模式：src 是透明像素，要連背景一起複製
+    img.classList.add('sprmode');
+    const s = getComputedStyle(h);
+    img.style.aspectRatio = h.style.aspectRatio;
+    img.style.backgroundImage = s.backgroundImage;
+    img.style.backgroundSize = s.backgroundSize;
+    img.style.backgroundPosition = s.backgroundPosition;
+  }
+  img.style.left = h.style.left || getComputedStyle(h).left;
+  img.style.height = getComputedStyle(h).height;
+  img.style.transform = h.style.transform;
+  W().appendChild(img);
+  setTimeout(()=>img.remove(), 360);
+}
+/* 攻擊節奏照動畫原理走：預備 → 衝刺 → 命中 → 收招。
+   整段是「一條」時間軸（Web Animations API），不是五顆 setTimeout 疊出來的——
+   分開排程各自會漂移，中間就會看到卡頓。換圖的時間點也一起掛在同一條軸上。 */
+const SWING_MS = 620;
+function heroSwing(onHit){
+  const h = $('hero2');
+  heroFrame('ready');
+  h.style.transform = '';
+  h.style.transition = 'none';
+
+  const anim = h.animate([
+    {offset:0,    transform:'translateX(0) scale(1,1)',            easing:'cubic-bezier(.3,.9,.5,1)'},
+    {offset:.21,  transform:'translateX(-20px) scale(1.03,.95)',   easing:'cubic-bezier(.55,0,.9,.45)'},
+    {offset:.40,  transform:'translateX(132px) scale(1.07,.97)',   easing:'cubic-bezier(.2,.7,.4,1)'},
+    {offset:.47,  transform:'translateX(122px) scale(1.02,1.02)',  easing:'cubic-bezier(.3,0,.5,1)'},
+    {offset:.70,  transform:'translateX(56px) scale(.99,1.02)',    easing:'cubic-bezier(.2,1.1,.4,1)'},
+    {offset:1,    transform:'translateX(0) scale(1,1)'}
+  ], {duration:SWING_MS, fill:'none'});
+  h._swing = anim;
+
+  const at = (k, fn) => setTimeout(fn, SWING_MS * k);
+  at(.21, () => {                                    // 衝刺起步：換圖、速度線、殘影
+    heroFrame('swing');
+    const sl = $('speedlines');
+    sl.classList.remove('on'); void sl.offsetWidth; sl.classList.add('on');
+    const hr = $('hero2').getBoundingClientRect(), wr = W().getBoundingClientRect();
+    const sc = wr.width / W().offsetWidth || 1;
+    dust((hr.left - wr.left + hr.width*0.5)/sc, (hr.bottom - wr.top - 6)/sc, 6);
+    afterImage();
+  });
+  at(.30, afterImage);
+  at(.40, () => {                                    // 命中
+    heroFrame('after');
+    const s = $('slash');
+    s.classList.remove('on'); void s.offsetWidth; s.classList.add('on');
+    onHit && onHit();
+  });
+  at(.72, () => heroFrame('ready'));
+}
+function heroHurtAnim(){
+  const h = $('hero2');
+  heroFrame('hurt');
+  h.style.transition = 'none';
+  h.animate([
+    {offset:0,   transform:'translateX(0) rotate(0)'},
+    {offset:.18, transform:'translateX(-28px) rotate(-7deg)', easing:'cubic-bezier(.2,.9,.4,1)'},
+    {offset:.55, transform:'translateX(-10px) rotate(-2deg)', easing:'cubic-bezier(.2,1.2,.4,1)'},
+    {offset:1,   transform:'translateX(0) rotate(0)'}
+  ], {duration:520, fill:'none'});
+  setTimeout(()=>heroFrame('ready'), 430);
+}
+function catRush(){
+  const c = $('cat2');
+  c.style.transition = 'none'; c.style.opacity = '0'; c.style.transform = 'translateX(-60px) scale(.7)';
+  requestAnimationFrame(()=>{
+    c.style.transition = 'transform .5s cubic-bezier(.2,1.5,.4,1),opacity .15s';
+    c.style.opacity = '1'; c.style.transform = 'translateX(190px) scale(1.15)';
+    setTimeout(()=>{ c.style.opacity = '0'; c.style.transform = 'translateX(240px) scale(.8)'; }, 480);
+  });
+}
+/* 畫面震動。原本這裡加的是 .field.shake，但整份 CSS 沒有這條規則（.hero.shake 是別的元素），
+   所以一直都沒有真的晃過。改成共用 cam1/2/3 那三段強度，1 輕、2 中、3 重。 */
+function shake(power){
+  const f = F(), c = (power >= 3 || power === undefined) ? 'cam3' : power >= 2 ? 'cam2' : 'cam1';
+  f.classList.remove('cam1','cam2','cam3'); void f.offsetWidth;
+  f.classList.add(c);
+  clearTimeout(f._shkT);
+  f._shkT = setTimeout(()=>f.classList.remove(c), 520);
+}
+/* 怪物被打退：距離依這一下有多重決定。位移放在外層 .mobwrap（內層 #mob 那條是擠壓變形），
+   用 WAAPI 蓋掉 .mobwrap 原本的漂浮動畫，播完自己會接回去 */
+function knockback(power){
+  const mw = $('mobWrap');
+  const kb = power >= 3 ? 52 : power >= 2 ? 36 : 22;
+  try{ mw._kb && mw._kb.cancel(); }catch(e){}
+  mw._kb = mw.animate([
+    {offset:0,   transform:'translateX(0)'},
+    {offset:.16, transform:'translateX(' + kb + 'px)',       easing:'cubic-bezier(.1,.9,.3,1)'},
+    {offset:.48, transform:'translateX(' + (kb*.34) + 'px)', easing:'cubic-bezier(.3,0,.4,1)'},
+    {offset:.74, transform:'translateX(' + (kb*.12) + 'px)'},
+    {offset:1,   transform:'translateX(0)'}
+  ], {duration: power >= 3 ? 560 : 400, easing:'cubic-bezier(.2,1,.3,1)', fill:'none'});
+}
+
+/* ---------- 打擊感 ----------
+   命中停頓 → 爆閃 → 碎片 → 擠壓變形 → 震動，五件事疊起來才有「打到東西」的感覺 */
+const W = () => $('world');
+function mobCenter(){
+  // 座標基準是鏡頭層而不是戰場：推近時特效才不會飄掉
+  const f = W().getBoundingClientRect(), m = $('mob').getBoundingClientRect();
+  const sc = f.width / W().offsetWidth || 1;
+  return {x: (m.left - f.left + m.width*0.42) / sc, y: (m.top - f.top + m.height*0.45) / sc};
+}
+/* 鏡頭：出手前輕輕拉遠，命中瞬間推近，收招回原位 */
+function camPull(){ const w = W(); w.classList.remove('zoom','zoomBig'); w.classList.add('pull'); }
+function camPush(big){
+  const w = W(); w.classList.remove('pull','zoom','zoomBig');
+  w.classList.add(big ? 'zoomBig' : 'zoom');
+  clearTimeout(w._camT);
+  w._camT = setTimeout(()=>w.classList.remove('zoom','zoomBig'), big ? 900 : 620);
+}
+function impactAt(pt){
+  const el = $('impact');
+  el.style.left = pt.x + 'px';
+  el.style.top  = pt.y + 'px';
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+}
+const SMALL_SCREEN = matchMedia('(max-width:520px)').matches;
+function shards(pt, n, crit, dir){
+  n = Math.max(3, Math.round(n * (SMALL_SCREEN ? .6 : 1) * (Fx.low() ? .5 : 1)));   // 手機與精簡模式少噴一點
+  for(let i=0;i<n;i++){
+    const d = document.createElement('div');
+    d.className = 'shard';
+    // 沿攻擊方向（由左往右）噴出去，扇形 ±55 度，這樣看得出這一下是從哪個方向打的
+    const ang = (-55 + Math.random()*110) * Math.PI/180;
+    const dist = 50 + Math.random()*(crit ? 150 : 95);
+    d.style.setProperty('--sx', Math.cos(ang)*dist*(dir || 1) + 'px');   // dir=-1：怪打過來，往左噴
+    d.style.setProperty('--sy', (Math.sin(ang)*dist + 30) + 'px');   // 尾端受重力往下掉
+    d.style.setProperty('--sr', (Math.random()*720-360) + 'deg');
+    d.style.left = (pt.x + (Math.random()*30-15)) + 'px';
+    d.style.top  = (pt.y + (Math.random()*30-15)) + 'px';
+    const sz = 6 + Math.random()*(crit ? 9 : 6);
+    d.style.width = d.style.height = sz + 'px';
+    d.style.animationDuration = (.45 + Math.random()*.3) + 's';
+    if(crit && i % 3 === 0) d.style.background = '#fff';
+    W().appendChild(d);
+    setTimeout(()=>d.remove(), 900);
+  }
+}
+/* 戰場上正在跑的動畫（含角色那條時間軸）一起暫停／放慢。
+   血條的 transition 要排除掉——凍住的話，白色殘影慢半拍追上的效果就沒了 */
+function fieldAnims(){
+  try{
+    return F().getAnimations({subtree:true}).filter(a => {
+      const t = a.effect && a.effect.target;
+      return t && t.closest && !t.closest('.bars');
+    });
+  }catch(e){ return []; }
+}
+function freezeField(ms){
+  const list = fieldAnims();
+  list.forEach(a => { try{ a.pause(); }catch(e){} });
+  setTimeout(() => list.forEach(a => { try{ a.play(); }catch(e){} }), ms);
+}
+function slowmoField(ms, rate){
+  const list = fieldAnims();
+  list.forEach(a => { try{ a.playbackRate = rate; }catch(e){} });
+  setTimeout(() => list.forEach(a => { try{ a.playbackRate = 1; }catch(e){} }), ms);
+}
+/* ── 序列幀播放器 ──
+   一張雪碧圖逐格換 background-position，跟 CSS 漸層畫的假特效完全不同等級。
+   素材是 Gemini 生的 10 秒影片用 ffmpeg 抽幀拼起來的（scratchpad 的 sprite.py） */
+/* ── 角色／怪物的逐幀動畫 ──
+   素材是 Gemini（帳號 A）生的黑底動作影片，用 tools/sprite_char.py 抽幀去背拼成雪碧圖。
+   不另外加 DOM：直接讓原本的 <img> 掛 sprmode，src 換成透明像素、改用 background 顯示，
+   這樣定位、drop-shadow、受擊／死亡那些既有 class 全部照舊能用。 */
+const PX1 = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+const SPR = {
+  hero_idle:   {img:'assets/spr_hero_idle.webp',   cols:5, rows:3, n:15, ar:224/174, fps:8},
+  hero_atk:    {img:'assets/spr_hero_atk.webp',    cols:6, rows:5, n:29, ar:224/174, fps:24},
+  slime_idle:  {img:'assets/spr_slime_idle.webp',  cols:5, rows:4, n:16, ar:224/125, fps:8},
+  slime_atk:   {img:'assets/spr_slime_atk.webp',   cols:6, rows:5, n:29, ar:224/125, fps:20},
+  dragon_idle: {img:'assets/spr_dragon_idle.webp', cols:6, rows:4, n:24, ar:224/211, fps:10},
+  dragon_atk:  {img:'assets/spr_dragon_atk.webp',  cols:6, rows:5, n:30, ar:224/211, fps:14}
+};
+/* ---------- 待機不跑逐幀（2026-08-23 效能量測結論） ----------
+   量出來（CPU 節流 6 倍模擬中階手機，看主執行緒每秒被吃掉多少毫秒）：
+     兩隻待機都跑逐幀 638ms/秒 ｜ 只留角色 493 ｜ 兩隻都改靜圖 **114**
+   而且把逐幀降到 4fps 完全沒用（453），代表貴的不是「換格」而是
+   **「這個元素只要處在逐幀模式、又一直在動，每一個畫面都要重畫一次那張大雪碧圖」**。
+   will-change / contain 都試過，沒有用。
+   所以：**待機一律用靜圖（CSS 的呼吸與眨眼照舊），只有出手那 0.6 秒才播逐幀**——
+   那正好是動作最需要被看見、也最容易蓋掉成本的時候。
+   要在效能好的機器上把待機逐幀開回來：主控台打
+     localStorage.setItem('mul99_fx','high'); location.reload(); */
+const IDLE_SPRITE = () => Fx.get() === 'high';
+const Spr = {
+  /* 掛上去之後這個 img 就由 Spr 接管，回靜圖要呼叫 Spr.off() */
+  on(el, key){
+    const d = SPR[key]; if(!d) return false;
+    if(el.dataset.spr !== key){
+      el.dataset.spr = key;
+      el.src = PX1;
+      el.classList.add('sprmode');
+      el.style.aspectRatio = d.ar;
+      el.style.backgroundImage = 'url(' + d.img + ')';
+      el.style.backgroundSize = (d.cols*100) + '% ' + (d.rows*100) + '%';
+    }
+    return true;
+  },
+  off(el, src){
+    if(el.dataset.spr){
+      delete el.dataset.spr;
+      el.classList.remove('sprmode');
+      el.style.aspectRatio = el.style.backgroundImage = el.style.backgroundSize = '';
+      this.stop(el);
+    }
+    el.src = src;
+  },
+  frame(el, d, i){
+    const cx = i % d.cols, cy = (i / d.cols) | 0;
+    const px = d.cols > 1 ? cx/(d.cols-1)*100 : 0;
+    const py = d.rows > 1 ? cy/(d.rows-1)*100 : 0;
+    el.style.backgroundPosition = px + '% ' + py + '%';
+  },
+  stop(el){ if(el._sprRaf){ cancelAnimationFrame(el._sprRaf); el._sprRaf = 0; } },
+  /* loop:true 一直播（待機）；false 播完一次跑 done（出手） */
+  play(el, key, opt){
+    opt = opt || {};
+    if(!this.on(el, key)) return;
+    const d = SPR[key];
+    this.stop(el);
+    const from = opt.from || 0, to = Math.min(opt.to || d.n, d.n);
+    /* 逐幀每換一格就重畫一次整個元素，是低效能裝置最重的一項；
+       精簡模式壓到 12fps，動作還看得出來但重繪次數少一半以上 */
+    let fps = opt.fps || d.fps;
+    if(Fx.low()) fps = Math.min(fps, 12);
+    let i = from, last = 0;
+    this.frame(el, d, i);
+    const step = (t) => {
+      if(!el.isConnected){ el._sprRaf = 0; return; }
+      if(document.hidden){ el._sprRaf = requestAnimationFrame(step); return; }
+      if(t - last >= 1000/fps){
+        i++;
+        if(i >= to){
+          if(opt.loop){ i = from; }
+          else { el._sprRaf = 0; opt.done && opt.done(); return; }
+        }
+        this.frame(el, d, i); last = t;
+      }
+      el._sprRaf = requestAnimationFrame(step);
+    };
+    el._sprRaf = requestAnimationFrame(step);
+  }
+};
+const FXS = {
+  /* 這三張是單張特效圖，當成 1 格的雪碧圖用，播放器就不必分兩套 */
+  whirl:   {img:'assets/fx_whirl.webp',    cols:1, rows:1, n:1, ar:16/9, fps:1.6},
+  poison:  {img:'assets/fx_poison.webp',   cols:1, rows:1, n:1, ar:16/9, fps:1.6},
+  heal:    {img:'assets/fx_heal.webp',     cols:1, rows:1, n:1, ar:16/9, fps:1.6},
+  fire:    {img:'assets/fxs_fire.webp',    cols:6, rows:5, n:25, ar:1,     fps:26},
+  thunder: {img:'assets/fxs_thunder.webp', cols:6, rows:4, n:24, ar:16/9,  fps:28},
+  holy:    {img:'assets/fxs_holy.webp',    cols:6, rows:5, n:27, ar:1,     fps:24}
+};
+function playFx(key, pt, opt){
+  const d = FXS[key]; if(!d) return null;
+  opt = opt || {};
+  const w = opt.size || 260, h = w / d.ar;
+  const el = document.createElement('div');
+  el.className = 'fxs';
+  el.style.cssText =
+    'width:' + w + 'px;height:' + h + 'px;left:' + pt.x + 'px;top:' + (pt.y + (opt.dy||0)) + 'px;' +
+    'background-image:url(' + d.img + ');' +
+    'background-size:' + (d.cols*100) + '% ' + (d.rows*100) + '%;';
+  if(opt.hue) el.style.filter = 'hue-rotate(' + opt.hue + 'deg) saturate(' + (opt.sat||1.4) + ')' +
+                                (opt.bright ? ' brightness(' + opt.bright + ')' : '');
+  W().appendChild(el);
+  const n = Math.min(opt.n || d.n, d.n), fps = opt.fps || d.fps;
+  let i = 0, last = 0;
+  const step = (t) => {
+    if(!el.isConnected) return;
+    if(t - last >= 1000/fps){
+      if(i >= n){ el.remove(); return; }
+      const cx = i % d.cols, cy = (i / d.cols) | 0;
+      // 單張圖當 1 格用時 cols-1 會是 0，除下去就是 NaN、整張圖不見
+      const px = d.cols > 1 ? cx/(d.cols-1)*100 : 0;
+      const py = d.rows > 1 ? cy/(d.rows-1)*100 : 0;
+      el.style.backgroundPosition = px + '% ' + py + '%';
+      i++; last = t;
+    }
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  return el;
+}
+/* 四種魔法各自的序列幀長相（冰霜是把火焰整組轉成冰藍，同一份素材兩種用法） */
+const SPELL_FX = {
+  fire:    {key:'fire',    size:300, dy:8},
+  ice:     {key:'fire',    size:300, dy:8, hue:168, sat:1.7, bright:1.1},
+  thunder: {key:'thunder', size:460, dy:-10},
+  holy:    {key:'holy',    size:360, dy:-6}
+};
+/* 待機小動作：隨機間隔播一次，兩邊錯開才不會像在跳同一支舞 */
+let idleTimer = null;
+function idleBreak(){
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    if(running && !locked){
+      const el = Math.random() < .55 ? $('mob') : $('hero2');
+      el.classList.remove('blink'); void el.offsetWidth; el.classList.add('blink');
+      setTimeout(()=>el.classList.remove('blink'), 1200);
+    }
+    idleBreak();
+  }, 3600 + Math.random()*3600);
+}
+/* 腳下塵土：起步與落地都用得到 */
+function dust(x, y, n){
+  for(let i=0;i<(n||5);i++){
+    const d = document.createElement('div');
+    d.className = 'dust';
+    d.style.left = (x + (Math.random()*40-20)) + 'px';
+    d.style.top  = (y + (Math.random()*10-5)) + 'px';
+    d.style.setProperty('--dx', (Math.random()*70-20) + 'px');
+    d.style.animationDelay = (Math.random()*.12) + 's';
+    W().appendChild(d);
+    setTimeout(()=>d.remove(), 800);
+  }
+}
+/* 每一大關換一種景：紫夜森林 → 火山 → 冰原 → 黃金神殿，之後循環 */
+function applyScene(){
+  const f = F(), n = ((round - 1) % 4) + 1;
+  f.classList.remove('sc1','sc2','sc3','sc4');
+  f.classList.add('sc' + n);
+}
+/* 落地／爆裂用的白光圓環 */
+function ring(pt, cls, size){
+  const el = document.createElement('div');
+  el.className = cls;
+  el.style.left = pt.x + 'px'; el.style.top = pt.y + 'px';
+  if(size){ el.style.width = el.style.height = size + 'px'; }
+  W().appendChild(el);
+  void el.offsetWidth; el.classList.add('on');
+  setTimeout(()=>el.remove(), 900);
+}
+/* Boss 登場：壓暗全場 → 從天上砸下來 → 衝擊波＋震動 → 名字大字報 */
+function bossIntro(){
+  return new Promise(resolve => {
+    const f = F(), wrap = $('mobWrap'), cur = $('curtain'), nm = $('bossName');
+    locked = true;
+    f.classList.add('bossmode');
+    cur.classList.add('on');
+    W().classList.add('zoom');
+    Sfx.next();
+    wrap.animate([
+      {offset:0,   transform:'translateY(-320px) scale(1.5)', opacity:0},
+      {offset:.18, transform:'translateY(-300px) scale(1.45)', opacity:1, easing:'cubic-bezier(.6,0,.9,.4)'},
+      {offset:.46, transform:'translateY(14px) scale(1.06,.9)', easing:'cubic-bezier(.2,1.3,.4,1)'},
+      {offset:.62, transform:'translateY(-16px) scale(.97,1.05)'},
+      {offset:1,   transform:'translateY(0) scale(1)'}
+    ], {duration:1100, fill:'none'});
+
+    setTimeout(()=>{                       // 落地那一下
+      const pt = mobCenter();
+      ring({x:pt.x, y:pt.y + 60}, 'wave', 90);
+      playFx('fire', {x:pt.x, y:pt.y + 46}, {size:340, hue:-14, sat:.5, bright:1.2, fps:22});
+      shards({x:pt.x, y:pt.y + 60}, 16, true);
+      dust(pt.x, pt.y + 66, 10);
+      shake(); camPush(true);
+      beep(70, .38, 'sawtooth', .16);
+      beep(150, .22, 'square', .1);
+      nm.innerHTML = mob.name + '<small>弱點：' + (mob.weak || []).join('、') + ' 的乘法表</small>';
+      nm.classList.remove('on'); void nm.offsetWidth; nm.classList.add('on');
+    }, 500);
+
+    setTimeout(()=>{
+      cur.classList.remove('on');
+      f.classList.remove('bossmode');
+      W().classList.remove('zoom','zoomBig');
+      nm.classList.remove('on'); nm.innerHTML = '';
+      locked = false;
+      resolve();
+    }, 2200);
+  });
+}
+/* 擊殺爆裂：白光圓環 ×2 ＋ 大量碎片 ＋ 鏡頭推近 */
+function deathBurst(){
+  const pt = mobCenter();
+  ring(pt, 'dring', 120);
+  setTimeout(()=>ring(pt, 'dring', 190), 130);
+  shards(pt, SMALL_SCREEN ? 18 : 30, true);
+  camPush(true);
+  shake();
+}
+/* 命中：停頓 → 方向性鏡頭 → 爆閃 → 沿攻擊向量噴粒子。
+   停頓長度照業界慣例：一般 3~5 幀、重擊 8 幀上下、致命一擊 0.25 秒 */
+function hitEffect(crit, weak, lethal){
+  const m = $('mob'), f = F(), sh = $('shMob');
+  m.classList.remove('hit'); void m.offsetWidth; m.classList.add('hit');
+  sh.classList.remove('hit'); void sh.offsetWidth; sh.classList.add('hit');
+  const pt = mobCenter();
+  impactAt(pt);
+  shards(pt, lethal ? 26 : crit ? 20 : weak ? 14 : 10, crit || lethal);
+
+  if(crit || lethal) playFx('fire', pt, {size: lethal ? 260 : 190, n:16, fps:30});
+  const stop  = lethal ? 250 : crit ? 150 : weak ? 110 : 80;
+  const power = (lethal || crit) ? 3 : weak ? 2 : 1;
+  f.classList.add('freeze');
+  freezeField(stop);
+  setTimeout(()=>f.classList.remove('freeze'), stop);
+  shake(power);                       // 畫面震動
+  knockback(power);                   // 怪物微幅後退
+  Sfx.hit(crit || lethal);
+}
+function dmgText(text, crit){
+  const d = document.createElement('div');
+  d.className = 'dmg' + (crit ? ' crit' : '');
+  const b = document.createElement('b');
+  b.textContent = text;
+  d.appendChild(b);
+  d.style.right  = (12 + Math.random()*14) + '%';
+  d.style.bottom = (44 + Math.random()*10) + '%';
+  // 每個數字往左右不同方向飄，同時跳出好幾個才不會疊成一坨
+  d.style.setProperty('--dx', (Math.random()*84 - 42).toFixed(0) + 'px');
+  d.style.setProperty('--up', (-(crit ? 88 : 70) - Math.random()*18).toFixed(0) + 'px');
+  W().appendChild(d);
+  setTimeout(()=>d.remove(), 980);
+}
+
+/* ---------- 存檔面板 ---------- */
+function paintTop(){
+  $('lv').textContent = Save.d.lv;
+  $('gold').textContent = fmtN(Save.d.gold);
+  $('expBar').style.width = Save.d.lv >= MAX_LV ? '100%' : (Save.d.exp / Save.needExp() * 100) + '%';
+  $('stage').textContent = round + '-' + (wave+1);
+  $('bagDot').classList.toggle('on', hasBetter());
+}
+function hasBetter(){
+  return Save.d.bag.some(it => {
+    const cur = Save.d.gear[it.slot];
+    return !cur || gearScore(it) > gearScore(cur);   // 用含強化的分數，跟一鍵裝備同一套標準
+  });
+}
+function paintGear(){
+  P = Save.power();
+  $('power').innerHTML =
+    '<div><b>攻擊</b>' + P.atk + '</div>' +
+    '<div><b>血量</b>' + P.hp + '</div>' +
+    '<div><b>爆擊</b>' + P.crit + '%</div>' +
+    '<div><b>必殺充能</b>' + P.ult + '</div>' +
+    (P.cdr ? '<div><b>技能冷卻</b>-' + P.cdr + '%</div>' : '');
+  const slotName = SLOT_NAME;
+  $('slots').innerHTML = GEAR_SLOTS.map(k => {
+    const it = Save.d.gear[k];
+    if(!it) return '<div class="slot empty"><div class="ic">➕</div><div class="nm">' +
+      slotName[k] + '</div><div class="st2">還沒有裝備</div></div>';
+    const lv = enhLv(it), cost = enhCost(it), rate = enhRate(lv);
+    const risky = enhBoom(lv);
+    const can = lv < ENH_MAX && Save.d.gold >= cost && (Save.d.scroll || 0) >= 1;
+    return '<div class="slot" style="border-style:solid;border-color:' + it.color + '">' +
+      '<div class="ic">' + it.icon + '</div>' +
+      '<div class="nm" style="color:' + it.color + '">' + it.name + enhTag(it) + '</div>' +
+      '<div class="st2">' + gearLine(it) + '</div>' +
+      (lv >= ENH_MAX
+        ? '<div class="enhmax">已經滿級 +' + ENH_MAX + '</div>'
+        : '<button class="enhbtn' + (can ? '' : ' no') + (risky ? ' risky' : '') + '" data-enh="' + k + '">' +
+            '強化 +' + (lv+1) + (risky ? ' ⚠' : '') +
+            '<small>' + enhPreview(it) + '</small>' +
+            '<small>卷軸 1 ＋ ' + cost + ' 金幣・' +
+            (risky ? '成功 ' + rate + '%，失敗會爆' : '一定成功') + '</small></button>') +
+      '</div>';
+  }).join('');
+
+  $('autoEq').classList.toggle('no', !hasBetter());
+
+  const sp = scrollPrice();
+  $('scrollBar').innerHTML =
+    '<span>📜 強化卷軸 <b>' + (Save.d.scroll || 0) + '</b> 張</span>' +
+    '<button id="buyScroll"' + (Save.d.gold < sp ? ' class="no"' : '') + '>買一張 ' + fmtN(sp) + ' 金幣</button>';
+
+  const bag = Save.d.bag.slice().sort((a,b)=>gearScore(b)-gearScore(a));
+  $('baglist').innerHTML = bag.length ? bag.map(it => {
+    const cur = Save.d.gear[it.slot];
+    const better = !cur || gearScore(it) > gearScore(cur);
+    return '<div class="bagitem' + (better ? ' better' : '') + '">' +
+      '<div class="ic">' + it.icon + '</div>' +
+      '<div class="info"><b style="color:' + it.color + '">' + it.name + enhTag(it) +
+        ' <span class="rar">' + it.rarity + '</span>' + (better ? ' ⬆' : '') + '</b>' +
+        '<small>' + gearLine(it) + '</small></div>' +
+      '<button class="eq" data-eq="' + it.id + '">裝備</button>' +
+      '<button data-sell="' + it.id + '">賣 ' + sellPrice(it) + '</button></div>';
+  }).join('') : '<div class="empty-tip">背包是空的，打倒敵人就會掉裝備</div>';
+  paintTop();
+}
+const sellPrice = it => Math.max(5, Math.round(gearScore(it) * 0.8));
+
+/* 強化：吃一張強化卷軸 ＋ 一點金幣。
+   +6 以前必定成功；+7 起失敗會**爆炸消失**，所以要先確認過才動手。 */
+function enhance(slotKey){
+  const it = Save.d.gear[slotKey];
+  if(!it) return;
+  const lv = enhLv(it);
+  if(lv >= ENH_MAX) return;
+  const cost = enhCost(it);
+  if((Save.d.scroll || 0) < 1){ enhShout('沒有強化卷軸', '#f87171'); return; }
+  if(Save.d.gold < cost){ enhShout('金幣不夠', '#f87171'); return; }
+
+  if(enhBoom(lv) && !confirmBoom){        // 危險區第一次要先看過警告
+    askBoom(slotKey, lv);
+    return;
+  }
+  confirmBoom = false;
+
+  Save.d.scroll--;
+  Save.d.gold -= cost;
+  const ok = Math.random() * 100 < enhRate(lv);
+  if(ok){
+    it.enh = lv + 1;
+    enhShout('強化成功！+' + it.enh, '#ffe066');
+    Sfx.win && Sfx.win();
+  }else{
+    // 失敗＝爆炸。裝備直接從身上消失，這就是 +7 以上的代價
+    Save.d.gear[slotKey] = null;
+    enhShout('💥 爆炸了！' + it.name + ' 消失', '#f87171');
+    boomFx();
+    Sfx.bad && Sfx.bad();
+  }
+  Save.put();
+  P = Save.power();
+  if(maxHp < P.hp){ heroHp += P.hp - maxHp; }   // 換算後血量上限變高就補上差額
+  maxHp = P.hp;
+  paintHeroBar();
+  paintGear();
+}
+let confirmBoom = false;
+/* +7 以上一定要先看過這個警告：爆掉是不可逆的，不能讓人手滑 */
+function askBoom(slotKey, lv){
+  const it = Save.d.gear[slotKey];
+  const box = document.createElement('div');
+  box.className = 'pwwrap';
+  box.innerHTML =
+    '<div class="pwbox">' +
+      '<h3 style="color:var(--bad)">⚠ 這一級會爆炸</h3>' +
+      '<p>要把 <b style="color:' + it.color + '">' + it.name + ' +' + lv + '</b> 強化到 <b>+' + (lv+1) + '</b><br>' +
+        '成功率只有 <b>' + enhRate(lv) + '%</b>，<b style="color:var(--bad)">失敗裝備會直接消失</b>。<br>' +
+        '要賭嗎？</p>' +
+      '<div class="pwbtns">' +
+        '<button class="btn ghost" id="bmNo">算 了</button>' +
+        '<button class="btn" id="bmYes" style="background:linear-gradient(180deg,#ffb4b4,#f87171);box-shadow:0 5px 0 #7f2020">賭下去</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(box);
+  box.querySelector('#bmNo').onclick = () => box.remove();
+  box.querySelector('#bmYes').onclick = () => {
+    box.remove();
+    confirmBoom = true;
+    enhance(slotKey);
+  };
+  box.onclick = (e) => { if(e.target === box) box.remove(); };
+}
+function boomFx(){
+  const el = document.createElement('div');
+  el.className = 'boomfx';
+  $('gearwin').appendChild(el);
+  setTimeout(() => el.remove(), 700);
+}
+function enhShout(text, color){
+  $('gearwin').querySelectorAll('.enhmsg').forEach(x => x.remove());   // 連點時不要疊成一團
+  const el = document.createElement('div');
+  el.className = 'enhmsg';
+  el.textContent = text;
+  el.style.color = color;
+  $('gearwin').appendChild(el);
+  setTimeout(() => el.remove(), 1400);
+}
+function equip(id){
+  const i = Save.d.bag.findIndex(x => x.id === id);
+  if(i < 0) return;
+  const it = Save.d.bag.splice(i,1)[0];
+  const old = Save.d.gear[it.slot];
+  if(old) Save.d.bag.push(old);
+  Save.d.gear[it.slot] = it;
+  Save.put(); paintGear();
+  Sfx.ok(3);
+  afterGearChange();
+}
+/* 換裝會改變最大血量，戰鬥中要同步補上差額 */
+function afterGearChange(){
+  const np = Save.power();
+  if(running){ heroHp = Math.min(np.hp, heroHp + Math.max(0, np.hp - maxHp)); }
+  maxHp = np.hp;
+  paintHeroBar();
+}
+function sell(id){
+  const i = Save.d.bag.findIndex(x => x.id === id);
+  if(i < 0) return;
+  Save.d.gold += sellPrice(Save.d.bag[i]);
+  Save.d.bag.splice(i,1);
+  Save.put(); paintGear(); Sfx.tick();
+}
+/* 強化後主屬性會變多少——過了安定值之後跳很大，要讓玩家看得到才會想賭 */
+function enhPreview(it){
+  const key = it.atk ? 'atk' : (it.hp ? 'hp' : (it.crit ? 'crit' : (it.cdr ? 'cdr' : 'ult')));
+  const name = {atk:'攻擊', hp:'血量', crit:'爆擊', ult:'必殺', cdr:'冷卻縮短'}[key];
+  const now = gearStat(it, key);
+  const next = key === 'cdr'
+    ? Math.min(30, Math.round((it.cdr || 0) * enhMult(enhLv(it) + 1)))
+    : Math.round((it[key] || 0) * enhMult(enhLv(it) + 1));
+  return name + ' ' + now + ' → ' + next + '（+' + (next - now) + '）';
+}
+/* 卷軸要「很貴但固定」（Steve 2026-08-23：不要跟著等級漲，但也不能太好取得）。
+   價格是打怪金幣收入的量級之上，逼玩家要存一陣子，不是隨手就買。 */
+function scrollPrice(){ return 100000; }
+$('scrollBar').addEventListener('click', e => {
+  if(!e.target.closest('#buyScroll')) return;
+  const sp = scrollPrice();
+  if(Save.d.gold < sp){ enhShout('金幣不夠', '#f87171'); return; }
+  Save.d.gold -= sp;
+  Save.d.scroll = (Save.d.scroll || 0) + 1;
+  Save.put(); paintGear();
+  enhShout('買到一張卷軸', '#ffe066');
+});
+$('slots').addEventListener('click', e => {
+  const b = e.target.closest('[data-enh]');
+  if(b) enhance(b.dataset.enh);
+});
+$('baglist').addEventListener('click', e => {
+  const eq = e.target.closest('[data-eq]'), sl = e.target.closest('[data-sell]');
+  if(eq) equip(eq.dataset.eq);
+  else if(sl) sell(sl.dataset.sell);
+});
+$('autoEq').onclick = () => {
+  const changed = autoEquip();
+  if(!changed.length){ enhShout('身上這六件已經是最好的了', '#a5b4fc'); Sfx.tick(); return; }
+  paintGear();
+  afterGearChange();
+  Sfx.ok(3);
+  enhShout('換上 ' + changed.length + ' 件更好的裝備', '#ffe066');
+};
+$('bagBtn').onclick = () => { paintGear(); $('gearwin').classList.add('on'); };
+$('closeGear').onclick = () => $('gearwin').classList.remove('on');
+$('resetSave').onclick = () => {
+  if(!confirm('確定要清除存檔嗎？等級、金幣、裝備都會不見。')) return;
+  Save.reset();
+  round = 1; wave = 0;
+  P = Save.power(); maxHp = P.hp; heroHp = P.hp;
+  paintGear(); setMob(); paintHeroBar();
+  $('gearwin').classList.remove('on');
+};
+
+function paintHeroBar(){
+  setHp('heroHp', heroHp / maxHp);
+  $('heroHpText').textContent = playerName() + ' Lv' + Save.d.lv +
+    (Save.d.lv >= MAX_LV ? '（滿等）' : '') + '　' + fmtN(heroHp) + ' / ' + fmtN(maxHp);
+}
+
+/* ---------- 魔法：連續答對到門檻自動施放，越連越強 ---------- */
+const SPELLS = [
+  {at:3,  key:'fire',    name:'火球術',   color:'#ff8a3d', mult:1.6, mode:'fly',  word:'3 連擊！火球術'},
+  {at:5,  key:'ice',     name:'冰霜術',   color:'#6ea8ff', mult:2.2, mode:'fly',  word:'5 連擊！冰霜術'},
+  {at:7,  key:'thunder', name:'落雷術',   color:'#c4b5fd', mult:3.0, mode:'drop', word:'7 連擊！落雷術'},
+  {at:10, key:'holy',    name:'聖光審判', color:'#ffe9a8', mult:4.2, mode:'drop', word:'10 連擊！聖光審判', heal:20}
+];
+function spellFor(c){
+  const early = HERO.spellEarly || 0;          // 法師提早兩連就放
+  if(c >= 10 - early && (c - (10 - early)) % 5 === 0) return SPELLS[3];
+  return SPELLS.find(s => s.at - early === c) || null;
+}
+function comboShout(text, color){
+  const f = $('comboFrame'), b = $('comboBig');
+  f.style.setProperty('--cc', color); b.style.setProperty('--cc', color);
+  b.textContent = text;
+  f.classList.remove('on'); b.classList.remove('on');
+  void f.offsetWidth;
+  f.classList.add('on'); b.classList.add('on');
+}
+function comboAura(c){
+  const f = F();
+  f.classList.remove('aura1','aura2','aura3');
+  if(c >= 10) f.classList.add('aura3');
+  else if(c >= 6) f.classList.add('aura2');
+  else if(c >= 3) f.classList.add('aura1');
+}
+/* ── 主動技能（2026-08-23）──
+   兩顆按鈕、各自冷卻、跟著等級解鎖。兩種模式都能用：
+   練習模式在等答題的空檔按，娛樂模式就是連段的一部分。 */
+/* 印記引爆連段（2026-08-23，跟 Gemini 討論過）：
+   破魂突刺先打上「破綻」印記，接著放旋風斬引爆會有大額外傷害。
+   跟《傳說對決》那種「先放這個、再接那個」同一個精神，但改成單體版本
+   ——我們戰鬥畫面永遠只有一隻怪，沒有天堂/楓之谷那種一群小怪可以聚。 */
+let mobMarkedUntil = 0;
+const MARK_MULT = 1.9;              // 破綻沒被引爆時，旋風斬命中會自動觸發
+const SKILLS = [
+  {key:'mark',  name:'破魂突刺', icon:'💢', lv:4,  cd:7000,  color:'#ff8a8a',
+   fx:{key:'whirl', size:280, hue:-70, sat:1.6}, mult:1.1, markMs:4500, desc:'打上破綻，接旋風斬爆傷'},
+  {key:'whirl', name:'旋風斬', icon:'🌀', lv:3,  cd:9000,  color:'#7fe6ff',
+   fx:{key:'whirl', size:460, bright:1.35, sat:1.3}, mult:2.4, desc:'一圈掃過去的大傷害'},
+  {key:'heal',  name:'治療術', icon:'💚', lv:6,  cd:22000, color:'#8affc4',
+   fx:{key:'heal', size:340, dy:14, bright:1.25}, heal:0.3, desc:'回一大口血'}
+];
+const skillState = {};              // key → 可以再用的時間點
+function paintSkills(){
+  const box = $('skills');
+  if(!box.children.length){
+    box.innerHTML = SKILLS.map(s =>
+      '<button class="skill" data-k="' + s.key + '">' +
+        '<b>' + s.icon + ' ' + s.name + '</b><small>' + s.desc + '</small>' +
+        '<i></i><em></em></button>').join('');
+    box.onclick = (e) => {
+      const b = e.target.closest('.skill'); if(!b) return;
+      useSkill(b.dataset.k);
+    };
+  }
+  [...box.children].forEach(b => {
+    const sk = SKILLS.find(x => x.key === b.dataset.k);
+    const locked = Save.d.lv < sk.lv;
+    const left = Math.max(0, (skillState[sk.key] || 0) - performance.now());
+    b.classList.toggle('locked', locked);
+    b.disabled = locked || left > 0 || !running || locked;
+    b.querySelector('em').textContent = locked ? ('Lv' + sk.lv + ' 解鎖')
+                                      : (left > 0 ? Math.ceil(left/1000) + ' 秒' : '');
+  });
+}
+function useSkill(key){
+  if(paused) return;
+  const sk = SKILLS.find(x => x.key === key);
+  if(!sk || !running || Save.d.lv < sk.lv) return;
+  if((skillState[key] || 0) > performance.now()) return;
+  skillState[key] = performance.now() + sk.cd * (HERO.cdMul || 1) * (1 - (P.cdr || 0) / 100);
+
+  const f = F();
+  f.style.setProperty('--sc', sk.color + '99');
+  comboShout(sk.name + '！', sk.color);
+  Sfx.next();
+
+  if(sk.heal){
+    const back = Math.round(maxHp * sk.heal);
+    heroHp = Math.min(maxHp, heroHp + back);
+    paintHeroBar();
+    playFx(sk.fx.key, heroCenter(), sk.fx);
+    dmgText('+' + back, true);
+  }else{
+    heroSwing(() => {
+      /* 先讓招式看得見，再結算傷害：同一格同時噴命中火花會把技能特效蓋掉 */
+      playFx(sk.fx.key, mobCenter(), sk.fx);
+      setTimeout(() => {
+        if(!running) return;
+        /* 連段：旋風斬打中有破綻印記的目標會引爆，傷害大幅提高並消耗印記 */
+        const combo = key === 'whirl' && mobMarkedUntil > performance.now();
+        const dmg = Math.round(P.atk * sk.mult * (combo ? MARK_MULT : 1) * (P.spell || 1) + 8);
+        if(combo){
+          mobMarkedUntil = 0;
+          comboShout('引爆連段！', '#ffe066');
+          ring(mobCenter(), 'dring', 200);
+        }
+        if(sk.markMs) mobMarkedUntil = performance.now() + sk.markMs;
+        if(applyHit(dmg, true, combo)) killMob();
+      }, 150);
+    });
+  }
+  paintSkills();
+}
+
+/* 施法：魔法陣 → 投射物飛過去 → 命中 */
+function castSpell(sp){
+  return new Promise(resolve => {
+    const f = F(), sprite = $('spell'), circ = $('circle');
+    f.style.setProperty('--sc', sp.color + '99');
+    f.classList.add('casting');
+    comboShout(sp.word, sp.color);
+
+    if(ready[SPELL_IMG.holy]) circ.src = SPELL_IMG.holy;
+    circ.style.setProperty('--sc', sp.color + '99');
+    circ.classList.remove('on'); void circ.offsetWidth; circ.classList.add('on');
+    Sfx.next();
+
+    setTimeout(()=>{
+      if(ready[SPELL_IMG[sp.key]]) sprite.src = SPELL_IMG[sp.key];
+      sprite.style.setProperty('--sc', sp.color + '99');
+      sprite.classList.remove('fly','drop'); void sprite.offsetWidth;
+      sprite.classList.add(sp.mode === 'drop' ? 'drop' : 'fly');
+      // 施法音：往上爬的和弦
+      [523,659,784].forEach((hz,i)=>setTimeout(()=>beep(hz,.14,'sine',.09), i*70));
+    }, 260);
+
+    setTimeout(()=>{
+      const dmg = Math.round(P.atk * sp.mult * (P.spell || 1) + 6);
+      mobHp = Math.max(0, mobHp - dmg);
+      totalDmg += dmg;
+      hitEffect(true, true, mobHp <= 0);
+      const fx = SPELL_FX[sp.key];
+      if(fx) playFx(fx.key, mobCenter(), fx);
+      camPush(true);
+      dmgText(sp.name + ' -' + dmg, true);
+      setHp('mobHp', mobHp / mob.hp);
+      $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
+      if(sp.heal){
+        heroHp = Math.min(maxHp, heroHp + sp.heal);
+        paintHeroBar();
+        dmgText('+' + sp.heal + ' 回血', false);
+      }
+      f.classList.remove('casting');
+      Char.react(true, true, sp.name + '！');
+      Char.cat(true);
+      resolve(mobHp <= 0);
+    }, 700);
+  });
+}
+
+/* ---------- 出題 ---------- */
+function newQ(){
+  if(arcade) return newTurn();
+  QQ = makeQ(mob.weak);                       // 題型（乘法／加法／減法／注音／字母）是大廳與這裡都能選的
+  qa = QQ.a; qb = QQ.b; ans = QQ.ans;
+  const box = $('qbox');
+  if(QQ.sym){
+    /* 聽發音的題目：答案不能寫在畫面上，只給一顆耳朵 */
+    $('q').innerHTML = '👂 <em>聽聽看</em>';
+    $('q').classList.add('listen');
+  }else{
+    $('q').innerHTML = QQ.a + ' <em>' + QQ.op + '</em> ' + QQ.b + ' <em>=</em> ?';
+    $('q').classList.remove('listen');
+  }
+  /* 喇叭：符號題一定要有；數學題只有「全部唸」那一段才需要 */
+  box.classList.toggle('hasvoice', QQ.sym || Voice.get() === 'all');
+  $('weakTip').textContent = QQ.weak
+    ? '⚡ 這題打中 ' + mob.name + ' 的弱點，傷害兩倍' : '';
+  box.classList.remove('in'); void box.offsetWidth; box.classList.add('in');
+
+  const list = makeOptions(QQ, 4);
+  const box2 = $('ans');
+  box2.classList.toggle('sym', !!QQ.sym);
+  box2.innerHTML = '';
+  for(const v of list){
+    const b = document.createElement('button');
+    b.textContent = v;
+    b.onclick = () => answer(v, b);
+    box2.appendChild(b);
+  }
+  Voice.say(QQ);
+  qStart = performance.now();
+  turnTime = ANSWER_TIME * (mob.fast || 1);      // 衝鋒型出手比較快，思考時間就比較短
+  telegraphed = false;
+  mobTimer = turnTime;
+  locked = false;
+}
+/* 打中敵人之後的共同處理：扣血、特效、鏡頭、必殺充能。回傳「有沒有打死」 */
+function applyHit(dmg, isCrit, isWeak, label){
+  if(mob.armor) dmg = Math.max(1, Math.round(dmg * mob.armor));   // 石像守衛那種有護甲的
+  if(shield > 0){                                                 // 先吃護盾，本體不掉血
+    shield = Math.max(0, shield - dmg);
+    dmgText('護盾 -' + dmg, false);
+    hitEffect(false, false, false);
+    if(shield === 0){
+      $('mobWrap').classList.remove('shielded');
+      dmgText('護盾破了！', true);
+      ring(mobCenter(), 'dring', 170);
+    }
+    $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
+    return false;
+  }
+  mobHp = Math.max(0, mobHp - dmg);
+  totalDmg += dmg;
+  hitEffect(isCrit, isWeak, mobHp <= 0);
+  camPush(isCrit || mobHp <= 0);
+  dmgText((label || (isCrit ? '爆擊 ' : '')) + '-' + dmg, isWeak || isCrit);
+  setHp('mobHp', mobHp / mob.hp);
+  $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
+  ult = Math.min(100, ult + P.ult + (isCrit ? (HERO.critBack || 0) : 0));   // 疾風獵手爆擊多回一點
+  paintUlt();
+  return mobHp <= 0;
+}
+
+/* ── 娛樂模式：不出題，自己按攻擊與閃避 ──
+   樂趣來源換成「在敵人出手前塞進幾下、抓準時機閃掉那一擊」，
+   連續命中不被打到一樣會累積連擊、照樣自動放魔法。 */
+function newTurn(){
+  turnTime = D().time * (mob.boss ? 1.15 : 1) * (mob.fast || 1);
+  mobTimer = turnTime;
+  telegraphed = false;
+  locked = false;
+}
+function cool(btn, ms, doneFlag){
+  const bar = btn.querySelector('i') || btn.appendChild(document.createElement('i'));
+  btn.disabled = true;
+  bar.classList.remove('cool'); bar.style.width = '0';
+  void bar.offsetWidth;
+  bar.style.transition = 'width ' + ms + 'ms linear';
+  bar.style.width = '100%';
+  setTimeout(() => { btn.disabled = false; bar.style.transition = 'none'; bar.style.width = '0'; doneFlag(); }, ms);
+}
+/* 破綻時機（2026-08-23，Steve：娛樂模式只是一直點滑鼠太無趣）——
+   怪物身上會隨機亮起金色破綻圈，抓那個時機按攻擊是必定爆擊＋額外加成。
+   不看畫面亂點打不到破綻，這才是「有操作空間」而不是無腦連點的關鍵。 */
+let weakOpenUntil = 0;
+function scheduleWeakSpot(){
+  clearTimeout(weakSpotTimer);
+  if(!arcade || !running) return;
+  weakSpotTimer = setTimeout(() => {
+    if(!running || locked) return;
+    weakOpenUntil = performance.now() + 900;      // 破綻開 0.9 秒
+    $('mobWrap').classList.add('weakopen');
+    setTimeout(() => {
+      $('mobWrap').classList.remove('weakopen');
+      scheduleWeakSpot();                          // 不管有沒有打中，下一個破綻繼續排
+    }, 900);
+  }, 2600 + Math.random()*2200);                    // 每 2.6~4.8 秒一次
+}
+let weakSpotTimer = null;
+
+/* 連擊會衰退：太久沒出手連擊會斷掉，逼人維持節奏，不能點一下放著慢慢滑手機 */
+let comboDecayTimer = null;
+function armComboDecay(){
+  clearTimeout(comboDecayTimer);
+  if(combo <= 0) return;
+  comboDecayTimer = setTimeout(() => {
+    if(combo > 0){ combo = 0; comboAura(0); comboShout('連擊中斷', '#a894c4'); }
+  }, 3000);
+}
+
+function playerAttack(){
+  if(!running || paused || !arcade || locked || !atkReady) return;
+  atkReady = false;
+  cool($('actAtk'), D().cd, () => atkReady = true);
+  hits++;
+  combo++;
+  armComboDecay();
+  const weakHit = performance.now() < weakOpenUntil;
+  if(weakHit){
+    weakOpenUntil = 0; $('mobWrap').classList.remove('weakopen');
+    clearTimeout(weakSpotTimer); scheduleWeakSpot();
+  }
+  const isCrit = weakHit || Math.random()*100 < P.crit;
+  const counter = counterReady; counterReady = false;   // 完美閃避後的下一擊是反擊，用掉就沒了
+  const dmg = Math.round(P.atk * 0.62 * (1 + Math.min(combo,10)*0.05)
+              * (isCrit ? 1.8 : 1) * (weakHit ? 1.6 : 1) * (counter ? 1.8 : 1));
+  Sfx.ok(combo);
+  camPull();
+  heroSwing(() => {
+    if(applyHit(dmg, isCrit, false, weakHit ? '破綻 ' : (counter ? '反擊 ' : ''))) return killMob();
+    comboAura(combo);
+    const sp = spellFor(combo);
+    if(sp) setTimeout(async () => { if(await castSpell(sp)) killMob(); }, 320);
+  });
+}
+/* 完美閃避（2026-08-23，跟 Gemini 討論的「Parry」）：
+   隨便按都躲得掉，這樣不算操作。但是**在怪物出手前那半秒內**按，
+   才會觸發完美閃避——多回必殺、進慢動作、下一下攻擊變成「反擊」加成傷害。
+   這一段剛好接在既有的出手預告（warnMob，剩 1.2 秒開始亮警告）上，不用加新 UI。 */
+let counterReady = false;           // 完美閃避後，下一下攻擊是反擊
+function dodge(){
+  if(!running || paused || !arcade || !dodgeReady) return;
+  dodgeReady = false;
+  cool($('actDodge'), 2400, () => dodgeReady = true);
+  invuln = performance.now() + 700;
+  const perfect = telegraphed && mobTimer <= 0.6 && mobTimer > 0;
+  const h = $('hero2');
+  h.classList.add('evade');
+  h.animate([{transform:'translateX(0)'}, {offset:.35, transform:'translateX(-46px)'},
+             {transform:'translateX(0)'}], {duration:620, easing:'ease-out'});
+  setTimeout(() => h.classList.remove('evade'), 700);
+  if(perfect){
+    counterReady = true;
+    ult = Math.min(100, ult + 15); paintUlt();     // 比普通閃過(+8)多回一點
+    comboShout('完美閃避！', '#8fd8ff');
+    F().classList.add('slowmo'); slowmoField(500, .55);
+    setTimeout(() => F().classList.remove('slowmo'), 500);
+  }
+}
+
+function answer(v, btn){
+  if(locked || !running) return;
+  locked = true;
+  const took = (performance.now() - qStart)/1000;
+  [...$('ans').children].forEach(b => b.disabled = true);
+
+  if(v === ans){
+    right++;
+    if(fastest === null || took < fastest) fastest = took;
+    combo++; Stats.mark(QQ.key, true);
+    btn.classList.add('right');
+    const isWeak = QQ.weak;
+    const speed = Math.max(1, Math.round((ANSWER_TIME - took) * 0.9));
+    const isCrit = Math.random()*100 < P.crit;
+    let dmg = Math.round((P.atk*0.7 + speed) * (isWeak ? 2 : 1) * (1 + Math.min(combo,8)*0.06) * (isCrit ? 1.8 : 1));
+    Sfx.ok(combo);
+    camPull();
+    heroSwing(()=>{
+      if(applyHit(dmg, isCrit, isWeak)) return killMob();
+      comboAura(combo);
+      const sp = spellFor(combo);
+      if(sp){
+        setTimeout(async ()=>{
+          const dead = await castSpell(sp);
+          if(dead) return killMob();
+          setTimeout(newQ, 420);
+        }, 380);
+      }else{
+        setTimeout(newQ, 460);
+      }
+    });
+  }else{
+    wrong++; combo = 0;
+    comboAura(0);
+    Stats.mark(QQ.key, false);
+    btn.classList.add('wrong');
+    /* 符號題的答案是字串，不能用 +b.textContent 轉數字去比 */
+    [...$('ans').children].forEach(b => {
+      const same = QQ.sym ? (b.textContent === ans) : (+b.textContent === ans);
+      if(same) b.classList.add('right');
+    });
+    Sfx.bad();
+    Voice.sayAns(QQ);      // 答錯就把正解再唸一次，學注音最重要的就是這一下
+    setTimeout(mobAttack, 420);
+  }
+}
+/* 怪物打中角色的那一下：原本只有紅閃，看不太出來被攻擊，補一朵爆散＋碎片＋圓環 */
+function heroCenter(){
+  const f = W().getBoundingClientRect(), h = $('hero2').getBoundingClientRect();
+  const sc = f.width / W().offsetWidth || 1;
+  return {x: (h.left - f.left + h.width*0.62) / sc, y: (h.top - f.top + h.height*0.46) / sc};
+}
+/* 三道爪痕劃過角色：怪物出手要有「打到什麼」的痕跡，不能只有紅閃 */
+function clawFx(pt){
+  const c = document.createElement('div');
+  c.className = 'claw';
+  c.style.left = pt.x + 'px'; c.style.top = pt.y + 'px';
+  W().appendChild(c);
+  setTimeout(() => c.remove(), 420);
+}
+function mobHitFx(){
+  const pt = heroCenter();
+  clawFx(pt);
+  playFx('fire', pt, {size:190, fps:30, hue:-28, sat:1.5});   // 轉紅＝被打，跟自己放火球分得開
+  ring(pt, 'dring', 110);
+  shards(pt, 10, false, -1);
+}
+/* 怪物出手：有逐幀就播自己的攻擊動作，命中點對到牠真的撲到／噴到的那一格 */
+const MOB_ATK = {
+  slime:  {from:4, to:24, fps:32, hit:.46, back:34,  rush:-150},
+  dragon: {from:0, to:27, fps:24, hit:.34, back:22,  rush:-56}   /* Boss 噴火，人不用衝那麼近 */
+};
+/* 遠程型：不撲過來，改成噴一發投射物；打中之前有一段飛行時間，看得到才躲得掉 */
+function shotAtHero(){
+  const from = mobCenter(), to = heroCenter();
+  const el = document.createElement('div');
+  el.className = 'mobshot';
+  el.style.left = from.x + 'px'; el.style.top = from.y + 'px';
+  W().appendChild(el);
+  el.animate([{transform:'translate(-50%,-50%)'},
+              {transform:'translate(' + (to.x - from.x - 10) + 'px,' + (to.y - from.y) + 'px) scale(1.15)'}],
+             {duration:420, easing:'linear', fill:'forwards'});
+  setTimeout(()=>el.remove(), 460);
+}
+/* 召喚型：叫出護盾擋在前面，玩家要先把護盾打掉才傷得到本體 */
+let shield = 0, shieldMax = 0;
+function summonGuards(){
+  shieldMax = Math.round(mob.hp * 0.22);
+  shield = shieldMax;
+  const w = $('mobWrap');
+  w.classList.add('shielded');
+  dmgText('召喚護衛！', true);
+  ring(mobCenter(), 'dring', 150);
+  $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
+}
+function mobAttack(){
+  if(!running) return;
+  const el = $('mob');
+  if(mob.summon && shield <= 0){          // 護盾被打光才會再召，不然一直疊很煩
+    summonGuards();
+    setTimeout(newQ, 900);
+    return;
+  }
+  const key = mob.spr && SPR[mob.spr + '_atk'] ? mob.spr : null;
+  let hitDelay = 260;
+  if(mob.ranged){
+    el.classList.remove('attack'); void el.offsetWidth; el.classList.add('attack');
+    shotAtHero();
+    hitDelay = 420;
+  }else
+  if(key){
+    const a = MOB_ATK[key];
+    const total = Math.round((a.to - a.from) / a.fps * 1000);
+    hitDelay = Math.round(total * a.hit);
+    Spr.play(el, key + '_atk', {from:a.from, to:a.to, fps:a.fps,
+      done:() => IDLE_SPRITE() ? Spr.play(el, key + '_idle', {loop:true}) : Spr.off(el, mob.img)});
+    // 逐幀只在自己那格裡動，不會真的靠近角色，位移另外補一條時間軸
+    el.animate([
+      {offset:0,          transform:'translateX(0)'},
+      {offset:a.hit*0.55, transform:'translateX(' + (a.back || 34) + 'px)'},   // 蓄力往後
+      {offset:a.hit,      transform:'translateX(' + (a.rush || -120) + 'px)'}, // 撲到面前
+      {offset:Math.min(1, a.hit + .18), transform:'translateX(' + ((a.rush || -120)*0.55) + 'px)'},
+      {offset:1,          transform:'translateX(0)'}
+    ], {duration:total, easing:'ease-in-out', fill:'none'});
+  }else{
+    el.classList.remove('attack'); void el.offsetWidth; el.classList.add('attack');
+  }
+  setTimeout(()=>{
+    if(arcade && performance.now() < invuln){        // 閃過了：不扣血
+      // 完美閃避的必殺／慢動作已經在按下的當下給過了，這裡只補一般閃過的獎勵，不重複算
+      dmgText(counterReady ? '完美閃避！' : '閃過！', true);
+      if(!counterReady){ ult = Math.min(100, ult + 8); paintUlt(); }
+      Sfx.next();
+      setTimeout(newQ, 520);
+      return;
+    }
+    taken++;
+    mobHitFx();
+    heroHurtAnim();
+    const raw = mob.atk * (arcade ? D().dmg : 1) * (1 - (HERO.reduce || 0));
+    heroHp = Math.max(0, heroHp - Math.max(1, Math.round(raw)));
+    if(HERO.hitUlt){ ult = Math.min(100, ult + HERO.hitUlt); paintUlt(); }   // 鐵壁衛士被打會回必殺
+    if(arcade) { combo = 0; comboAura(0); }
+    paintHeroBar();
+    Sfx.hurt();
+    F().classList.remove('hurt'); void F().offsetWidth; F().classList.add('hurt');
+    F().classList.remove('cam2'); void F().offsetWidth; F().classList.add('cam2');
+    setTimeout(()=>F().classList.remove('cam2'), 420);
+    Char.react(false);
+    if(heroHp <= 0) return over(false);
+    setTimeout(newQ, 700);
+  }, 260);
+}
+
+/* 掉寶演出：從怪物身上噴出來，轉一圈飛進右上角的背包，落點閃一下。
+   稀有度用顏色分，越好的噴得越誇張 */
+function lootFly(item){
+  const bag = $('bagBtn').getBoundingClientRect();
+  const from = $('mob').getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'loot';
+  el.textContent = item.icon || '⭐';
+  el.style.color = item.color || '#ffe9a8';
+  el.style.setProperty('--gl', item.color || '#ffe9a8');
+  el.style.left = (from.left + from.width*0.45) + 'px';
+  el.style.top  = (from.top + from.height*0.4) + 'px';
+  document.body.appendChild(el);
+  const dx = bag.left + bag.width/2 - (from.left + from.width*0.45);
+  const dy = bag.top + bag.height/2 - (from.top + from.height*0.4);
+  el.animate([
+    {transform:'translate(-50%,-50%) scale(.4) rotate(0)', opacity:0},
+    {offset:.16, transform:'translate(-50%,-50%) translate(' + (dx*0.1) + 'px,-70px) scale(1.5) rotate(-25deg)', opacity:1},
+    {offset:.52, transform:'translate(-50%,-50%) translate(' + (dx*0.45) + 'px,' + (dy*0.25 - 40) + 'px) scale(1.25) rotate(20deg)', opacity:1},
+    {transform:'translate(-50%,-50%) translate(' + dx + 'px,' + dy + 'px) scale(.5) rotate(0)', opacity:.2}
+  ], {duration:1150, easing:'cubic-bezier(.35,.9,.3,1)'});
+  setTimeout(() => {
+    el.remove();
+    const b = $('bagBtn');
+    b.classList.remove('gotloot'); void b.offsetWidth; b.classList.add('gotloot');
+  }, 1120);
+}
+
+/* ---------- 打倒敵人：經驗、金幣、掉裝備 ---------- */
+function showDrop(html){
+  const d = $('drop');
+  d.innerHTML = html;
+  d.classList.remove('on'); void d.offsetWidth; d.classList.add('on');
+  setTimeout(()=>d.classList.remove('on'), 1600);
+}
+function killMob(){
+  Sfx.win();
+  kills++;
+  Save.d.totalKill++;
+  const gold = Math.round((18 + wave*8 + (mob.boss ? 70 : 0)) * Math.pow(1.10, round - 1)
+                          * (1 + (HERO.gold || 0)));
+  const exp  = Math.round(mob.exp * Math.pow(1.15, round - 1));   // 經驗成長比血量快，見 setMob 的說明
+  Save.d.gold += gold;
+  earnGold += gold; earnExp += exp;
+  const ups = Save.addExp(exp);
+
+  deathBurst();
+  mobDieAt = Date.now();
+  $('mob').classList.add('die');
+  $('shMob').classList.remove('hit'); $('shMob').classList.add('gone');
+  F().classList.add('slowmo');
+  slowmoField(700, .38);
+  setTimeout(()=>F().classList.remove('slowmo'), 700);
+  Char.react(true, true, mob.boss ? '把 Boss 打倒了！' : '打倒一隻！');
+  Char.cat(true);
+  dmgText('+' + fmtN(gold) + ' 金幣', true);
+
+  // 掉卷軸照天堂的精神：**稀有**（Steve 2026-08-23：原本三成太高）。
+  // 小怪 2%、Boss 25% 掉 1 張。打到才會開心，日常補給靠商店買（金幣的用途）
+  const rate = mob.boss ? 0.25 : 0.02;
+  const scrolls = Math.random() < rate * (1 + (HERO.scrollLuck || 0)) ? 1 : 0;
+  if(scrolls){
+    Save.d.scroll = (Save.d.scroll || 0) + scrolls;
+    dmgText('📜 卷軸 +' + scrolls, true);
+  }
+
+  // 掉裝備：打越後面越容易出好貨
+  let dropped = null;
+  if(Math.random() < dropChance(mob)){
+    dropped = rollGear(Save.d.lv, (round-1)*0.25 + (mob.boss ? 0.6 : 0));
+    Save.d.bag.push(dropped);
+    drops.push(dropped);
+    lootFly(dropped);            // 打到寶要看得到它飛進背包，不能只跳一行字
+  }
+  Save.put();
+
+  setTimeout(()=>{
+    if(ups > 0){
+      P = Save.power();
+      const before = maxHp; maxHp = P.hp;
+      heroHp = Math.min(maxHp, heroHp + (maxHp - before) + 25);   // 升級順便回一點血
+      paintHeroBar();
+      showDrop('<b style="color:var(--gold)">升級！Lv ' + Save.d.lv + '</b>' +
+               '<small>攻擊與血量提升，回復 25 點血</small>');
+      Sfx.win();
+    }else if(dropped){
+      showDrop('<b style="color:' + dropped.color + '">' + dropped.icon + ' ' + dropped.name +
+               ' <span class="rar">' + dropped.rarity + '</span></b>' +
+               '<small>' + gearLine(dropped) + '</small>');
+    }
+    paintTop();
+  }, 500);
+
+  setTimeout(()=>{
+    $('mob').classList.remove('die','hit');
+    $('shMob').classList.remove('gone','hit');
+    wave++;
+    if(wave >= MOBS.length){ round++; wave = 0; }
+    Save.d.round = round; Save.d.wave = wave; Save.put();
+    if(mob.boss){ return over(true); }
+    nextMob();
+  }, 1400);
+}
+/* 名字後面標出特性，玩家才知道為什麼這隻不一樣 */
+function mobLabel(){
+  return mob.name + (mob.armor ? ' 🛡' : '') + (mob.fast ? ' ⚡' : '')
+       + (mob.ranged ? ' 🎯' : '') + (mob.summon ? ' 🐝' : '')
+       + (shield > 0 ? ' 護盾 ' + shield : '');
+}
+/* 怪物圖片沒有任何錯誤處理：CDN 一個瞬間的載入失誤、或部署後短暫的快取不同步，
+   圖片載入失敗時瀏覽器就是「什麼都不畫」（alt=""），玩家看到的就是空氣裡在打怪。
+   Steve 2026-08-23 截圖回報過。修法：載入失敗先重試一次，還是不行就換成半透明剪影，
+   絕對不讓怪物整個消失不見。 */
+let mobImgRetried = false;
+$('mob').addEventListener('error', () => {
+  const el = $('mob');
+  if(el.dataset.spr) return;               // 逐幀模式的 src 本來就是透明像素，不算失敗
+  if(!mobImgRetried){
+    mobImgRetried = true;
+    setTimeout(() => { el.src = el.src.split('?')[0] + '?retry=' + Date.now(); }, 400);
+  }else{
+    el.classList.add('imgfail');           // 兩次都失敗才顯示替代剪影，避免正常過場閃一下
+    $('mobWrap').classList.add('imgfail'); // 圖片壞掉時連容器也要給明確尺寸，不然 absolute 定位撐不出寬度
+    if(!document.getElementById('mobImgWarn')){
+      const w = document.createElement('div');
+      w.id = 'mobImgWarn'; w.className = 'imgfail-warn'; w.textContent = '⚠';
+      $('mobWrap').appendChild(w);
+    }
+  }
+});
+function setMob(){
+  mob = {...MOBS[wave]};
+  /* 關卡成長：**血量／攻擊跟經驗刻意脫鉤**。
+     玩家的戰力大致是線性成長（等級＋裝備），怪物血量若也用 1.15 指數，
+     第 60 輪會變成幾十萬血、玩家打不動；但經驗需要指數才追得上 200 級的需求。
+     所以血量走 1.06、經驗走 1.15——高關卡＝經驗效率高，不是變成肉山。 */
+  mob.hp  = Math.round(mob.hp  * Math.pow(1.06, round - 1));
+  mob.atk = Math.round(mob.atk * Math.pow(1.05, round - 1));
+  mobHp = mob.hp;
+  shield = 0; shieldMax = 0;
+  mobMarkedUntil = 0;         // 換怪破綻歸零，不能留到下一隻
+  weakOpenUntil = 0; $('mobWrap').classList.remove('weakopen');
+  $('mobWrap').classList.remove('shielded');
+  const mel = $('mob');
+  /* 2026-08-24 修「空戰鬥畫面」：`mobDie` 是 forwards 動畫，最後一格 opacity:0。
+     原本只靠打倒之後那個 setTimeout 把 .die 拿掉——手機切到背景、中途暫停或重開時
+     那個 timer 會被延後甚至來不及跑，新的一隻怪就頂著上一隻的死亡動畫出場，
+     玩家看到的就是「只有血條、沒有怪物」。換怪時一律先把演出用的 class 全部清乾淨。 */
+  mel.classList.remove('die','hit','attack','blink');
+  $('shMob').classList.remove('gone','hit');
+  mobImgRetried = false; mel.classList.remove('imgfail');   // 換怪就重新給圖片一次機會
+  $('mobWrap').classList.remove('imgfail');
+  const warn = document.getElementById('mobImgWarn'); if(warn) warn.remove();
+  if(mob.spr && SPR[mob.spr + '_idle'] && IDLE_SPRITE()) Spr.play(mel, mob.spr + '_idle', {loop:true});
+  else Spr.off(mel, mob.img);    // 圖是漸進載的，直接指定就好，瀏覽器沒載好會自己補
+  preloadNearby();               // 順手把下一隻先抓起來
+  setHp('mobHp', 1);
+  $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
+  applyScene();
+  paintTop();
+}
+/* 換下一隻：Boss 先播登場過場，播完才出題 */
+async function nextMob(){
+  setMob();
+  if(mob.boss) await bossIntro();
+  newQ();
+}
+function paintUlt(){
+  $('ultBar').style.width = ult + '%';
+  const btn = $('ultBtn');
+  btn.disabled = ult < 100 || !running;
+  btn.classList.toggle('ready', ult >= 100 && running);
+}
+function useUlt(){
+  if(paused) return;
+  if(ult < 100 || !running || !mob) return;
+  ult = 0; paintUlt(); locked = true;
+  $('ultfx').classList.add('on');
+  Sfx.win();
+  catRush();
+  setTimeout(()=>{
+    const dmg = Math.round(mob.hp * 0.3 + P.atk * 2.2);
+    mobHp = Math.max(0, mobHp - dmg);
+    totalDmg += dmg;
+    hitEffect(true, true, mobHp <= 0);
+    playFx('fire', mobCenter(), {size:380, fps:24});
+    dmgText('-' + dmg, true);
+    setHp('mobHp', mobHp / mob.hp);
+    $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
+    shake();
+    $('ultfx').classList.remove('on');
+    if(mobHp <= 0) return killMob();
+    setTimeout(newQ, 500);
+  }, 900);
+}
+let mobDieAt = 0;                    // 上一次播死亡動畫的時間，看門狗用
+function tick(){
+  paintSkills();                     // 技能冷卻倒數跟著這個 100ms 的計時器跑
+  /* 看門狗：死亡動畫最長 0.9 秒，加上掉寶演出也不該超過 2.5 秒還掛著 .die。
+     真的掛著就代表換怪的 timer 出事了，直接清掉，寧可少一段演出也不要對著空氣打怪 */
+  if(mobDieAt && Date.now() - mobDieAt > 2500){
+    mobDieAt = 0;
+    $('mob').classList.remove('die');
+    $('shMob').classList.remove('gone');
+  }
+  $('mobWrap').classList.toggle('marked', mobMarkedUntil > performance.now());
+  if(!running || locked){ paintTimer(); return; }
+  mobTimer = Math.max(0, mobTimer - 0.1);
+  paintTimer();
+  /* 出手前 1.2 秒給預告：怪物繃緊＋頭上驚嘆號。
+     沒有預告的攻擊只會讓人覺得被偷打，有預告才有「看懂就躲得掉」的感覺 */
+  if(mobTimer <= 1.2 && !telegraphed){
+    telegraphed = true;
+    warnMob();
+  }
+  if(mobTimer <= 0){
+    locked = true;
+    wrong++; combo = 0;
+    if(!arcade){
+      Stats.mark(QQ.key, false);
+      [...$('ans').children].forEach(b => { b.disabled = true; if(+b.textContent === ans) b.classList.add('right'); });
+    }
+    mobAttack();
+  }
+}
+function warnMob(){
+  const w = $('mobWrap');
+  w.classList.remove('warn'); void w.offsetWidth; w.classList.add('warn');
+  const m = document.createElement('div');
+  m.className = 'warnMark'; m.textContent = '!';
+  w.appendChild(m);
+  setTimeout(() => { m.remove(); w.classList.remove('warn'); }, 1250);
+  Sfx.tick && Sfx.tick();
+}
+const paintTimer = () => $('mobTimer').style.transform = 'scaleX(' + (mobTimer/turnTime) + ')';
+
+function start(){
+  arcade = Mode.isArcade();
+  document.body.classList.toggle('arcade', arcade);
+  document.body.classList.add('playing');
+  atkReady = true; dodgeReady = true; invuln = 0; hits = 0; taken = 0;
+  turnTime = arcade ? D().time : ANSWER_TIME;
+  HERO = heroOf(Save.d.hero);
+  heroFrame('ready');
+  P = Save.power();
+  maxHp = P.hp; heroHp = P.hp;
+  running = true; locked = true;
+  ult = 0; combo = 0;
+  kills = 0; totalDmg = 0; right = 0; wrong = 0; fastest = null;
+  earnGold = 0; earnExp = 0; drops = [];
+  Save.d.playCount++; Save.put();
+  $('over').classList.remove('on');
+  $('mob').classList.remove('die','hit');
+  $('shMob').classList.remove('gone','hit');
+  paintHeroBar();
+  paintUlt(); paintSkills(); nextMob(); idleBreak();
+  weakOpenUntil = 0; $('mobWrap').classList.remove('weakopen');
+  if(arcade) scheduleWeakSpot(); else clearTimeout(weakSpotTimer);
+  paused = false;
+  document.body.classList.remove('paused');
+  $('pausewin').classList.remove('on');
+  clearInterval(loop); loop = setInterval(tick, 100);
+  Fx.recheck();                 // 開打才是真正吃效能的時候，這時再量一次
+  Sfx.next();
+  $('start').textContent = '重 新 開 始';
+}
+function over(win){
+  running = false; paused = false; clearInterval(loop); loop = null;
+  Voice.stop();
+  document.body.classList.remove('paused');
+  $('pausewin').classList.remove('on');
+  clearTimeout(weakSpotTimer); clearTimeout(comboDecayTimer);
+  document.body.classList.remove('playing');
+  Save.put();
+  $('ovTitle').textContent = win ? '全部打倒了！' : '這次沒過關';
+  $('ovBig').textContent = win ? '🏆 第 ' + round + ' 輪' : round + '-' + (wave+1);
+  $('ovKill').textContent = kills + ' 隻';
+  $('ovDmg').textContent = fmtN(totalDmg);
+  $('ovQAline').firstChild.textContent = arcade ? '出手／被打 ' : '答對／答錯 ';
+  $('ovQA').textContent = arcade ? (hits + ' 下 / ' + taken + ' 下') : (right + ' / ' + wrong);
+  $('ovFast').textContent = fastest === null ? '—' : fastest.toFixed(2) + ' 秒';
+  $('ovGold').textContent = fmtN(earnGold) + ' 金幣　經驗 +' + fmtN(earnExp) +
+    (drops.length ? '　裝備 ×' + drops.length : '');
+  $('ovWeak').innerHTML = Stats.weakHTML(6);
+  setTimeout(()=>$('over').classList.add('on'), 700);
+}
+
+$('start').onclick = start;
+$('again').onclick = start;
+$('ultBtn').onclick = useUlt;
+$('actAtk').onclick = playerAttack;
+$('actDodge').onclick = dodge;
+document.addEventListener('keydown', e => {
+  if(e.repeat) return;
+  if(arcade && running){
+    if(e.key === 'a' || e.key === 'A' || e.key === 'Enter'){ playerAttack(); return; }
+    if(e.key === 's' || e.key === 'S' || e.key === 'Shift'){ dodge(); return; }
+  }
+  const n = +e.key;
+  if(n >= 1 && n <= 4){ const b = $('ans').children[n-1]; b && b.click(); }
+  if(e.key === ' ') useUlt();
+});
+
+/* ---------- 右上角「？」的玩法說明（原本是畫面底下那張大文字卡片） ---------- */
+$('helpBody').append($('tipPractice'), $('tipArcade'));
+$('tipwrap').remove();
+function paintTip(){
+  const arc = Mode.isArcade();
+  $('tipPractice').style.display = arc ? 'none' : 'block';
+  $('tipArcade').style.display   = arc ? 'block' : 'none';
+  $('helpKeys').innerHTML = arc
+    ? '<span><b>A</b> 攻擊</span><span><b>S</b> 閃避</span><span><b>空白鍵</b> 必殺技</span>'
+    : '<span><b>1</b>～<b>4</b> 選答案</span><span><b>空白鍵</b> 必殺技</span>';
+}
+const openModal = id => $(id).classList.add('on');
+const closeModal = id => $(id).classList.remove('on');
+$('helpBtn').onclick  = () => { paintTip(); openModal('helpwin'); };
+$('helpClose').onclick = $('helpOk').onclick = () => closeModal('helpwin');
+$('helpwin').onclick = e => { if(e.target === $('helpwin')) closeModal('helpwin'); };
+
+/* ---------- 暫停 ----------
+   把 tick 停掉、戰場上的動畫一起凍住；沒有正在打就不理它 */
+function setPause(on){
+  if(!running) return;
+  if(paused === on) return;
+  paused = on;
+  document.body.classList.toggle('paused', on);
+  $('pausewin').classList.toggle('on', on);
+  if(on){
+    clearInterval(loop); loop = null;
+    Voice.stop();                       // 暫停時把還在唸的題目也停掉
+    try{ fieldAnims().forEach(a => a.pause()); }catch(e){}
+  }else{
+    try{ fieldAnims().forEach(a => a.play()); }catch(e){}
+    clearInterval(loop); loop = setInterval(tick, 100);
+  }
+}
+$('pauseBtn').onclick  = () => setPause(true);
+$('resumeBtn').onclick = () => setPause(false);
+$('quitBtn').onclick   = () => { setPause(false); over(false); };
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape'){
+    if($('helpwin').classList.contains('on')) closeModal('helpwin');
+    else if(running) setPause(!paused);
+  }
+});
+Mode.readonly($('modebar'));
+function paintRangeVis(){ $('rangewrap').style.display = Topic.needsRange() ? '' : 'none'; }
+Topic.bar($('topicbar'), () => paintRangeVis());
+Range.bar($('rangebar'), () => Topic.bar($('topicbar'), () => paintRangeVis()));
+paintRangeVis();
+Voice.bar($('voicebar'));
+/* 喇叭：再唸一次，不扣分也不重算時間 */
+$('spkBtn').onclick = (e) => {
+  e.stopPropagation();
+  if(!QQ) return;
+  const b = $('spkBtn');
+  b.classList.remove('on'); void b.offsetWidth; b.classList.add('on');
+  Voice.say(QQ, true);
+};
+$('difbar').onclick = (e) => {
+  const d = e.target.closest('.lv'); if(!d) return;
+  try{ localStorage.setItem(DIFF_KEY, d.dataset.d); }catch(err){}
+  [...$('difbar').children].forEach(x => x.classList.toggle('on', x === d));
+};
+[...$('difbar').children].forEach(x => x.classList.toggle('on', x.dataset.d === difKey()));
+document.body.classList.toggle('arcade', Mode.isArcade());
+paintTip(); modeBadge();
+
+paintSkills();
+versionBar('battle.html');
+startCoins();
+setTimeout(()=>heroFrame('ready'), 300);
+paintGear();
+setMob(); paintTimer(); paintUlt();
+maxHp = P.hp; heroHp = P.hp;
+paintHeroBar();
+
+</script>
+<script src="assets/audio.js"></script>
+<script src="assets/lock.js"></script>
+</body>
+</html>

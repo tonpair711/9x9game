@@ -765,8 +765,9 @@ async function createChar(n, heroKey, name){
   });
   try{ localStorage.setItem(SAVE_KEY + '_s' + n, JSON.stringify(d)); }catch(e){}
   setSlot(n);
-  /* 建好角色就直接帶到「玩什麼」（現在是第 5 步，index 4）——角色這一步已經完成了，不要再退回去 */
-  try{ sessionStorage.setItem('mul99_step', '4'); }catch(e){}
+  /* 建好角色就直接帶到「玩什麼」（現在是第 5 步，index 4）——角色這一步已經完成了，不要再退回去。
+     一次性旗標，下一次進站的 goStep 讀完就清掉，不會變成殘留狀態 */
+  try{ sessionStorage.setItem('mul99_jump', '4'); }catch(e){}
   if(Cloud.logged()){ try{ await Cloud.push(n); }catch(e){} }
   location.reload();
 }
@@ -976,16 +977,15 @@ paintUser();
 paintPlay(); modeBadge();
 paintPlayer(); paintSlots(); paintGames(); paintStats();
 
-/* 一個角色都還沒建過就直接停在「選角色」那一步（不然按下一步也沒得選，現在是第 4 步 index 3）；
-   其餘照上次停的地方，離開再回來不用重走 */
-let first = 0;
-try{ first = +(sessionStorage.getItem('mul99_step') || 0) || 0; }catch(e){}
+/* 2026-08-29 Steve：每次進大廳一律從第一步（首頁）開始，不要殘留上次停在哪一步。
+   唯一例外：剛建立角色那個 reload，是同一個操作的延續，不是「殘留」——
+   用一次性的旗標接住，讀到就立刻清掉，不會留到下一次真的重新進站。
+   沒有角色時還是照舊卡在「角色」那一步（不然按下一步也沒得選）。 */
+let jump = 0;
+try{ jump = +(sessionStorage.getItem('mul99_jump') || 0) || 0; sessionStorage.removeItem('mul99_jump'); }catch(e){}
 let anyChar = false;
 for(let i = 1; i <= SLOT_MAX; i++){ if(Save.peek(i)){ anyChar = true; break; } }
-goStep(anyChar ? first : 3);
-/* 每走一步就記起來 */
-const _goStep = goStep;
-goStep = function(k){ _goStep(k); try{ sessionStorage.setItem('mul99_step', String(step)); }catch(e){} };
+goStep(jump || (anyChar ? 0 : 3));
 </script>
 <script src="assets/audio.js"></script>
 <script src="assets/lock.js"></script>

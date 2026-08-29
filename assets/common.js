@@ -420,6 +420,28 @@ const Sfx = {
   }
 };
 
+/* 真人取樣打擊音（Kenney CC0 音效包），疊在上面 Sfx 的合成音效之上補真實感：
+   人物攻擊出手＝揮劍聲、怪物攻擊出手＝重拳聲。clone 節點是因為連續出手時
+   上一段可能還沒播完，共用同一個 Audio 物件會互相打斷 */
+const SampleSfx = (() => {
+  const cache = {};
+  function get(src){
+    if(!cache[src]){ const a = new Audio(src); a.preload = 'auto'; cache[src] = a; }
+    return cache[src];
+  }
+  function play(src, vol){
+    try{
+      const a = get(src).cloneNode();
+      a.volume = Math.max(0, Math.min(1, (vol == null ? 1 : vol) * sfxGain()));
+      a.play().catch(()=>{});
+    }catch(e){}
+  }
+  return {
+    heroAttack: () => play('assets/sfx/hero_attack.mp3', .8),
+    mobAttack:  () => play('assets/sfx/mob_attack.mp3', .8)
+  };
+})();
+
 /* ---------- 角色演出 ---------- */
 const CHEER = ['答對了！','好快！','就是這個！','再來一題！','厲害～','保持下去！'];
 const OOPS  = ['再看清楚一點','沒關係，再試一次','慢慢來就好'];
@@ -920,6 +942,26 @@ addEventListener('DOMContentLoaded', () => {
     }else location.reload();
   });
   document.body.appendChild(box);
+
+  /* 品牌角標（只在大廳）：這份 index.html 同時發布到兩個網站
+     （tonpair711 帳號 → game.tonpair.com；hunglun2026 帳號 → 9x9game-71q.pages.dev），
+     兩邊要各自掛自己的 logo＋連結，靠現場判斷 hostname 決定，不用為此讓 publish.ps1
+     分兩份內容。CSS（.brandBadge）只寫在 index.html 自己的 <style> 裡，別頁不需要 */
+  if(isLobby){
+    const isTonpair = /tonpair/.test(location.hostname);
+    const a = document.createElement('a');
+    a.className = 'brandBadge';
+    a.target = '_blank'; a.rel = 'noopener';
+    a.href = isTonpair ? 'https://tonpair.com' : 'https://www.hunglun.com';
+    a.title = isTonpair ? '對頻設計 tonpair' : '鴻綸科技';
+    a.innerHTML = '<img src="' + (isTonpair ? 'assets/brand-tonpair.svg' : 'assets/brand-hunglun.webp')
+      + '" alt="' + (isTonpair ? '對頻設計' : '鴻綸科技') + '">';
+    const row = document.createElement('div');
+    row.className = 'brandRow';
+    row.appendChild(a);
+    const bar = document.getElementById('stepbar');
+    if(bar) bar.parentNode.insertBefore(row, bar); else document.body.insertBefore(row, document.body.firstChild);
+  }
 });
 
 /* ---------- 雲端帳號（2026-08-23 Steve：帳號密碼不能放前端，一定要後端） ----------

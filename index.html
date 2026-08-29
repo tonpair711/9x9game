@@ -72,6 +72,21 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{opacity:.35;pointer-events:none}
 .zoomlock{bottom:calc(var(--tabh) + 20px + env(safe-area-inset-bottom,0px)) !important}
 .zoomtip{bottom:calc(var(--tabh) + 28px + env(safe-area-inset-bottom,0px)) !important}
 
+/* 品牌角標：右上角一個小小的可點 logo，連回發布這個網站的官網。
+   兩個發布目標（tonpair711／hunglun2026）共用同一份 index.html，
+   靠 location.hostname 現場判斷要顯示哪個品牌，publish.ps1 不用為此再分兩份內容 */
+/* 品牌角標：試過疊在 #stepbar 右邊（fixed 或 absolute），
+   跟五步圓點＋每一步自己的文字標籤都會在窄螢幕上疊到——那排本來就快佔滿寬度。
+   改成獨立一條窄窄的列，擺在 stepbar 正上方、佔自己的版面，保證不疊到任何東西 */
+.brandRow{display:flex;justify-content:flex-end;padding:0 0 6px}
+.brandBadge{
+  padding:4px 8px;display:flex;align-items:center;border-radius:999px;
+  background:#1d1230cc;border:1px solid var(--line);backdrop-filter:blur(4px);
+  box-shadow:0 4px 12px #0006;text-decoration:none;
+}
+.brandBadge img{height:16px;width:auto;display:block;opacity:.92}
+.brandBadge:active{transform:translateY(1px)}
+
 /* ---------- 第一步：歡迎畫面 ---------- */
 .welcome{text-align:center;padding:4px 0 2px;position:relative}
 .welcome .big{

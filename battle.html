@@ -1716,6 +1716,7 @@ function hitEffect(crit, weak, lethal){
   shake(power);                       // 畫面震動
   knockback(power);                   // 怪物微幅後退
   Sfx.hit(crit || lethal);
+  SampleSfx.heroAttack();
 }
 function dmgText(text, crit){
   const d = document.createElement('div');
@@ -2390,6 +2391,7 @@ function summonGuards(){
 }
 function mobAttack(){
   if(!running) return;
+  SampleSfx.mobAttack();
   const el = $('mob');
   if(mob.summon && shield <= 0){          // 護盾被打光才會再召，不然一直疊很煩
     summonGuards();

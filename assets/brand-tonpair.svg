@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 268 64" fill="none" role="img" aria-label="對頻設計 tonpair（反白）">
+
+  <!-- 2026-08-27 改版：雙視窗交疊（tone+pair＝兩個畫面對上同一個點）
+       單色、等粗、無漸層無金點 → 可單色鋼印、黑白印刷，30px 頭像仍讀得出來。
+       兩框水平＋垂直都要錯開，完全對齊會讓上下邊重合、看起來只剩一個框加一條線。
+       後框穿過前框的地方用 mask 切一道縫隙，才讀得出前後層次。 -->
+  <mask id="tp-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+    <rect width="64" height="64" fill="#fff"/>
+    <rect x="26" y="22" width="27" height="27" rx="5" stroke="#000" stroke-width="8" fill="#000"/>
+  </mask>
+  <rect x="11" y="15" width="27" height="27" rx="5" stroke="#FBFAF7" stroke-width="4.5" fill="none" mask="url(#tp-cut)"/>
+  <rect x="26" y="22" width="27" height="27" rx="5" stroke="#FBFAF7" stroke-width="4.5" fill="none"/>
+  <circle cx="39.5" cy="35.5" r="4" fill="#FBFAF7"/>
+
+  <text x="74" y="37" font-family="'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif" font-size="27" font-weight="700" fill="#FBFAF7">對頻設計</text>
+  <text x="76" y="55" font-family="'Outfit','Noto Sans TC',sans-serif" font-size="11" font-weight="600" letter-spacing="9" fill="#9CC3E5">TONPAIR</text>
+</svg>

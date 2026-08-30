@@ -701,26 +701,44 @@ const Topic = {
   lang: false,
   get(){ try{ const t = localStorage.getItem(TOPIC_KEY); return TOPICS[t] ? t : 'mul'; }catch(e){ return 'mul'; } },
   set(t){ try{ localStorage.setItem(TOPIC_KEY, t); }catch(e){} },
+  /* 2026-08-30 Steve：不要偷偷預設九九乘法，要玩家自己點過才算數。
+     `get()` 還是保留 fallback（別的地方直接拿去出題，不能回傳空的），這裡另外開一個
+     「玩家真的點過嗎」的判斷——單純看 localStorage 裡有沒有東西，跟 get() 的邏輯分開，
+     不會互相影響。 */
+  chosen(){ try{ return !!TOPICS[localStorage.getItem(TOPIC_KEY)]; }catch(e){ return false; } },
   name(){ return TOPICS[this.get()].n; },
   isMul(){ return this.get() === 'mul'; },
   /* 語文題（注音／字母）：答案是符號不是數字，數字範圍與怪物弱點都用不到 */
   isLang(t){ return TOPICS[t || this.get()].g === 'lang'; },
   needsRange(){ const t = this.get(); return t !== 'mul' && !this.isLang(t); },
-  /* 畫出題型選單；onChange 回傳新題型。題型多了以後分「數學／語文」兩組，不然手機上擠成一團 */
+  /* 畫出題型選單（2026-08-30 改成分頁 tab）：Steve 回報數學／語文兩組疊在一起用不好，
+     改成「數學」「語文」兩顆分頁籤，點哪個才顯示哪組的題目按鈕，不再兩組一起攤開。
+     沒點過（chosen()===false）時整組都不亮 .on，逼玩家自己選一個，不再偷偷預設九九乘法。 */
   bar(el, onChange){
     if(!el) return;
     el.className = 'topicbar grouped';
+    const groups = TOPIC_GROUPS.filter(g => Topic.lang || g.k !== 'lang');
+    let curG = groups.find(g => g.k === TOPICS[Topic.get()].g) ? TOPICS[Topic.get()].g : groups[0].k;
     const paint = () => {
-      el.innerHTML = TOPIC_GROUPS.filter(g => Topic.lang || g.k !== 'lang').map(g =>
-        '<div class="tgname">' + g.n + '</div><div class="tgrow">' +
-        Object.keys(TOPICS).filter(k => TOPICS[k].g === g.k).map(k =>
+      const tabs = groups.length > 1
+        ? '<div class="topictabs">' + groups.map(g =>
+            '<button data-g="' + g.k + '" class="' + (g.k === curG ? 'on' : '') + '">' + g.n + '</button>'
+          ).join('') + '</div>'
+        : '';
+      const rows = '<div class="tgrow">' +
+        Object.keys(TOPICS).filter(k => TOPICS[k].g === curG).map(k =>
           '<button data-t="' + k + '">' + TOPICS[k].n + '<b>' +
           TOPICS[k].d.replace('{r}', Range.get()) + '</b></button>').join('') +
-        '</div>').join('');
-      [...el.querySelectorAll('button')].forEach(b => b.classList.toggle('on', b.dataset.t === Topic.get()));
+        '</div>';
+      el.innerHTML = tabs + rows;
+      const has = Topic.chosen();
+      [...el.querySelectorAll('.tgrow button')].forEach(b =>
+        b.classList.toggle('on', has && b.dataset.t === Topic.get()));
     };
     el.onclick = (e) => {
-      const b = e.target.closest('button'); if(!b) return;
+      const tab = e.target.closest('.topictabs button');
+      if(tab){ curG = tab.dataset.g; paint(); return; }
+      const b = e.target.closest('.tgrow button'); if(!b) return;
       Topic.set(b.dataset.t); paint(); onChange && onChange(Topic.get());
     };
     paint();

@@ -48,13 +48,19 @@ body.thinStep .wrap{min-height:calc(100dvh - 190px);justify-content:center}
 }
 .acctHead b{display:block;font-size:15px;color:var(--gold2);letter-spacing:1px}
 .acctHead small{display:block;font-size:11px;color:var(--dim);margin-top:2px}
-.acctrow3{display:flex;gap:10px}
+.acctrow3{display:flex;gap:10px;align-items:stretch}
 .acctrow3 .btn{
-  flex:1;height:64px;font-size:14px;letter-spacing:1px;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:3px;padding:0 4px;
+  flex:1;min-height:72px;font-size:14px;letter-spacing:1px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:3px;padding:8px 6px;position:relative;
 }
-.acctrow3 .btn small{font-size:10px;font-weight:600;letter-spacing:.5px;opacity:.85}
+.acctrow3 .btn small{font-size:9.5px;font-weight:600;letter-spacing:.3px;opacity:.85;line-height:1.35;text-align:center}
 .acctrow3 .btn.ghost small{color:var(--dim)}
+/* 「推薦」小標籤：貼在創建帳號按鈕右上角，一眼看出這是主打選項 */
+.acctRec{
+  position:absolute;top:-8px;right:-6px;background:var(--ok);color:#08331b;
+  font-size:9px;font-weight:900;padding:2px 7px;border-radius:999px;letter-spacing:1px;
+  box-shadow:0 2px 6px #0006;
+}
 .acctnote{font-size:11px;color:var(--dim);text-align:center;line-height:1.6;padding:0 4px}
 
 /* 角色步驟：一個角色都還沒有時的引導文字（Steve 2026-08-29 回報：空格子沒人看得懂要幹嘛） */
@@ -119,13 +125,14 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{opacity:.35;pointer-events:none}
 /* 品牌角標：試過疊在 #stepbar 右邊（fixed 或 absolute），
    跟五步圓點＋每一步自己的文字標籤都會在窄螢幕上疊到——那排本來就快佔滿寬度。
    改成獨立一條窄窄的列，擺在 stepbar 正上方、佔自己的版面，保證不疊到任何東西 */
-.brandRow{display:flex;justify-content:flex-end;padding:0 0 6px}
+/* 2026-08-30（第三次）Steve：logo 還是太小，加大一輪（16px→30px 圖示、加寬 padding） */
+.brandRow{display:flex;justify-content:flex-end;padding:0 0 8px}
 .brandBadge{
-  padding:4px 8px;display:flex;align-items:center;border-radius:999px;
+  padding:8px 16px;display:flex;align-items:center;border-radius:999px;
   background:#1d1230cc;border:1px solid var(--line);backdrop-filter:blur(4px);
   box-shadow:0 4px 12px #0006;text-decoration:none;
 }
-.brandBadge img{height:16px;width:auto;display:block;opacity:.92}
+.brandBadge img{height:30px;width:auto;display:block;opacity:1}
 .brandBadge:active{transform:translateY(1px)}
 
 /* ---------- 第一步：歡迎畫面 ---------- */
@@ -382,6 +389,12 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{opacity:.35;pointer-events:none}
   content:"新";position:absolute;top:-6px;right:-6px;background:var(--bad);color:#fff;
   font-size:9px;font-weight:800;padding:2px 7px;border-radius:99px;box-shadow:0 3px 8px #0009;
 }
+/* 2026-08-30：外部連結的遊戲（學之谷）還在測試，先標出來別讓人以為壞掉 */
+.game.beta .ic::after{
+  content:"測試中";position:absolute;top:-6px;right:-10px;background:#8a63c9;color:#fff;
+  font-size:9px;font-weight:800;padding:2px 7px;border-radius:99px;box-shadow:0 3px 8px #0009;
+  white-space:nowrap;
+}
 
 /* ---------- ⑤ 數據統計 ---------- */
 .nums{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
@@ -506,6 +519,7 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{opacity:.35;pointer-events:none}
   <section class="step" id="s2">
     <div id="topicwrap">
       <div class="sec"><h2>要練哪一種題目</h2><i></i></div>
+      <div class="charhint" id="topicHint">👉 先點一個題型才能繼續（登入帳號可以跳過這步）</div>
       <div id="topicbar"></div>
     </div>
     <div id="rangewrap">
@@ -541,6 +555,7 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{opacity:.35;pointer-events:none}
       <button class="danger" id="delBtn">刪除角色</button>
     </div>
 
+    <div id="curPlayerBox">
     <div class="sec"><h2>目前出戰</h2><i></i></div>
     <div class="player" id="playerCard">
       <div class="face">
@@ -555,6 +570,7 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{opacity:.35;pointer-events:none}
         <div class="gearrow" id="pgear"></div>
       </div>
       <div class="gold"><b>金幣</b><span id="pgold">0</span></div>
+    </div>
     </div>
   </section>
 
@@ -618,7 +634,7 @@ const GAMES = [
    rec:() => Save.d.totalKill > 0
      ? '打到第 ' + Save.d.round + '-' + (Save.d.wave+1) + ' 關　打倒 ' + Save.d.totalKill + ' 隻'
      : null},
-  {f:'https://xuegu.pages.dev/games/xuegu/', n:'學之谷', ac:'#63c169', icon:'🌿', main:true,
+  {f:'https://xuegu.pages.dev/games/xuegu/', n:'學之谷', ac:'#63c169', icon:'🌿', main:true, beta:true,
    d:'橫向捲軸的動作冒險：打怪、撿寶、升等級，還會學到衝刺與招式。這一關不出題，是純玩的。',
    da:'橫向捲軸的動作冒險：打怪、撿寶、升等級。方向鍵加攻擊鍵就能出招，手機有搖桿與技能鈕。',
    rec:() => null},
@@ -650,7 +666,7 @@ const GAMES = [
 
 function gameCard(g){
   const a = document.createElement('a');
-  a.className = 'game' + (g.isNew ? ' new' : '');
+  a.className = 'game' + (g.isNew ? ' new' : '') + (g.beta ? ' beta' : '');
   a.href = g.f;
   a.style.setProperty('--ac', g.ac);
 
@@ -735,15 +751,18 @@ function goStep(k){
 /* 左上角「返回上一層」在大廳的意思是「上一步」，不是瀏覽器上一頁（見 common.js pagectrl） */
 window.appBack = () => { if(step > 0){ goStep(step - 1); Sfx.ok(1); } };
 $('navBack').onclick = () => { goStep(step - 1); Sfx.ok(1); };
+function blockStep(){
+  const w = document.querySelector('.wrap');
+  w.classList.add('shakeIt');
+  setTimeout(() => w.classList.remove('shakeIt'), 400);
+  Sfx.bad();
+}
 $('navNext').onclick = () => {
   /* 角色這一步沒建過角色不准往下走——跟登入一樣，沒有帳號就是進不去，不做「快速略過」 */
-  if(STEPS[step] === 's4' && !hasAnyChar()){
-    const w = document.querySelector('.wrap');
-    w.classList.add('shakeIt');
-    setTimeout(() => w.classList.remove('shakeIt'), 400);
-    Sfx.bad();
-    return;
-  }
+  if(STEPS[step] === 's4' && !hasAnyChar()){ blockStep(); return; }
+  /* 2026-08-30 Steve：題型不准偷偷預設九九乘法，練習模式一定要自己點過一個題型才能往下走；
+     已登入帳號的人放行（信任已經是熟客，不用每次逼著重選）。娛樂模式沒有題型可選，不受影響。 */
+  if(STEPS[step] === 's2' && !Mode.isArcade() && !Topic.chosen() && !Cloud.logged()){ blockStep(); return; }
   if(step < STEPS.length - 1){ goStep(step + 1); Sfx.ok(2); }
   else location.href = 'battle.html';
 };
@@ -766,18 +785,18 @@ function paintUser(){
     };
   }else{
     /* 2026-08-30 Steve：照天堂那種線上遊戲的登入頁，第一頁要三顆選擇明顯擺出來，
-       不要只有一顆小小的「登入／註冊」躲在角落。「直接遊戲」＝略過登入，用本機存檔，
+       不要只有一顆小小的「登入／註冊」躲在角落。「直接遊戲」＝略過登入，本機瀏覽器暫存，
        之後隨時可以在這一頁補登入，不會弄丟進度（角色格 Save 都在，Cloud.push 補上去就好）。
-       2026-08-30（第二次）Steve 回報畫面太空、三顆大小不一致：改成三顆併排等寬，
-       「直接遊戲」保留金色（用起來最常用、最推薦），另外兩顆維持外框風格但同高同大小，
-       不再刻意縮小。上面補一個小標題區塊，不然一整片深紫背景配三顆按鈕看起來太空。 */
+       2026-08-30（第三次）Steve：「直接遊戲」不該包裝成安全的本機存檔，要增加創帳號的
+       動力——拿掉「用本機存檔」這種聽起來很保險的字樣，改成提醒換裝置/清瀏覽器資料會不見；
+       主色金換給「創建帳號」當推薦主打，直接遊戲跟登入帳號都改外框風格降低視覺份量。 */
     el.innerHTML =
       '<div class="acctHead"><span class="acctIcon">🐯</span><div><b>選擇你的冒險方式</b>' +
-      '<small>三種都能玩，隨時可以在這一頁補登入</small></div></div>' +
+      '<small>推薦先創建帳號，進度才不會不見</small></div></div>' +
       '<div class="acctrow acctrow3">' +
-        '<button class="btn" id="guestBtn">🎮 直接遊戲<small>用本機存檔</small></button>' +
+        '<button class="btn ghost" id="guestBtn">🎮 直接遊戲<small>存在這台裝置，換手機/清資料會不見</small></button>' +
         '<button class="btn ghost" id="loginBtn">🔑 登入帳號<small>接回雲端進度</small></button>' +
-        '<button class="btn ghost" id="regBtn">✨ 創建帳號<small>開一組新的</small></button>' +
+        '<button class="btn" id="regBtn">✨ 創建帳號<span class="acctRec">推薦</span><small>進度存雲端、換裝置也接得回來</small></button>' +
       '</div>' +
       '<div class="acctnote">跟「小綸出題小幫手」同一組帳號，登入後進度會存到雲端，換手機也接得回來</div>';
     const afterAuth = async () => {
@@ -856,9 +875,11 @@ async function createChar(n, heroKey, name){
   });
   try{ localStorage.setItem(SAVE_KEY + '_s' + n, JSON.stringify(d)); }catch(e){}
   setSlot(n);
-  /* 建好角色就直接帶到「玩什麼」（現在是第 5 步，index 4）——角色這一步已經完成了，不要再退回去。
+  /* 建好角色跳到「玩法」（index 2）——角色這一步已經完成了不要再退回去，但**不能**直接跳到
+     「玩什麼」（index 4），2026-08-30 加了「設定」那一步沒選題型不准往下走的規則，
+     跳太遠會直接繞過那個規則，沒登入的新玩家就完全沒被強制選過題型。
      一次性旗標，下一次進站的 goStep 讀完就清掉，不會變成殘留狀態 */
-  try{ sessionStorage.setItem('mul99_jump', '4'); }catch(e){}
+  try{ sessionStorage.setItem('mul99_jump', '2'); }catch(e){}
   if(Cloud.logged()){ try{ await Cloud.push(n); }catch(e){} }
   location.reload();
 }
@@ -966,6 +987,12 @@ $('delBtn').onclick = () => {
 
 /* ---------- 出戰角色卡 ---------- */
 function paintPlayer(){
+  /* 2026-08-30 Steve 回報：都還沒建角色，「目前出戰」卡片卻已經有東西——
+     因為 Save.d 沒角色時會 fallback 到 DEFAULT_SAVE（王者 Lv1），不是真的沒資料。
+     沒有任何角色時整塊隱藏，不要顯示假資料騙玩家以為已經有角色了。 */
+  const box = $('curPlayerBox');
+  if(box) box.style.display = hasAnyChar() ? '' : 'none';
+  if(!hasAnyChar()) return;
   const d = Save.d, h = heroOf(d.hero);
   $('plv').textContent = 'Lv ' + d.lv;
   const face = $('pface');
@@ -1033,10 +1060,15 @@ function paintPlay(){
   $('voicewrap').style.display  = arc ? 'none' : '';   // 娛樂模式不出題，也就沒有題目要唸
   if(typeof paintNav === 'function') paintNav();
 }
+function paintTopicHint(){
+  const hint = $('topicHint');
+  if(hint) hint.style.display = (!Topic.chosen() && !Cloud.logged()) ? 'block' : 'none';
+}
 Mode.bar($('modebar'), () => { paintPlay(); paintGames(); modeBadge(); });
-Topic.bar($('topicbar'), () => { paintPlay(); });
-Range.bar($('rangebar'), () => { Topic.bar($('topicbar'), () => { paintPlay(); }); });   // 換範圍要重畫題型按鈕上的數字
+Topic.bar($('topicbar'), () => { paintPlay(); paintTopicHint(); });
+Range.bar($('rangebar'), () => { Topic.bar($('topicbar'), () => { paintPlay(); paintTopicHint(); }); });   // 換範圍要重畫題型按鈕上的數字
 Voice.bar($('voicebar'));
+paintTopicHint();
 
 function paintGames(){
   const main = $('gamesMain'), sub = $('gamesSub');

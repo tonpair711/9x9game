@@ -780,6 +780,46 @@ body.lowfx .shard{animation-duration:.35s}
 .field.aura2{box-shadow:0 16px 46px #000a,inset 0 0 60px #0008,inset 0 0 60px #6ea8ff66}
 .field.aura3{box-shadow:0 16px 46px #000a,inset 0 0 60px #0008,inset 0 0 80px #f87171aa}
 
+/* ===== 連續答對里程碑（10/20/…100，2026-08-30）=====
+   跟 comboFrame/comboBig（那個是每一下連擊的施法字）分開一組元素，
+   時間上錯開才不會兩段字疊在一起看不清楚，見 JS 的 showMilestone()。
+   --t 是強度 1~10（對應 10~100 連擊），越大字越大、光越強、停留越久，一個變數同時驅動好幾個屬性。 */
+.msFlash{
+  position:absolute;inset:0;z-index:6;pointer-events:none;opacity:0;border-radius:20px;
+  background:radial-gradient(circle,var(--mc,#ffd76a)55 0%,transparent 70%);
+}
+.msFlash.on{animation:msFlash calc(.5s + var(--t,1)*.06s) ease-out}
+@keyframes msFlash{0%{opacity:0}18%{opacity:.85}100%{opacity:0}}
+.msBig{
+  position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);z-index:9;pointer-events:none;
+  text-align:center;opacity:0;white-space:nowrap;
+}
+.msBig small{
+  display:block;font-size:calc(12px + var(--t,1)*.6px);letter-spacing:3px;color:var(--mc,#ffd76a);
+  font-weight:700;margin-bottom:2px;
+}
+.msBig b{
+  display:block;font-size:calc(24px + var(--t,1)*3px);font-weight:900;color:#fff;letter-spacing:2px;
+  text-shadow:0 3px 0 #3a1a00,0 0 calc(14px + var(--t,1)*3px) var(--mc,#ffd76a);
+}
+.msBig.on{animation:msBig calc(.9s + var(--t,1)*.12s) cubic-bezier(.2,1.6,.4,1)}
+@keyframes msBig{
+  0%  {opacity:0;transform:translate(-50%,-40%) scale(.5) rotate(-6deg)}
+  22% {opacity:1;transform:translate(-50%,-56%) scale(1.15) rotate(1deg)}
+  70% {opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-58%) scale(.97)}
+}
+.msSparks{position:absolute;inset:0;z-index:7;pointer-events:none;overflow:hidden;border-radius:20px}
+.msSparks i{
+  position:absolute;left:50%;top:46%;width:6px;height:6px;border-radius:50%;background:var(--mc,#ffd76a);
+  opacity:0;box-shadow:0 0 8px var(--mc,#ffd76a);
+  animation:msSpark .8s ease-out forwards;
+}
+@keyframes msSpark{
+  0%{opacity:1;transform:translate(0,0) scale(1)}
+  100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.3)}
+}
+
 .tip{font-size:12px;color:var(--dim);text-align:center;line-height:1.7}
 .tip b{color:var(--gold2)}
 
@@ -954,6 +994,9 @@ body.playing #pauseBtn{display:flex}
     <img class="spell" id="spell" src="assets/fx_fire.webp" alt="">
     <div class="comboFrame" id="comboFrame"></div>
     <div class="comboBig" id="comboBig"></div>
+    <div class="msFlash" id="msFlash"></div>
+    <div class="msBig" id="msBig"><small></small><b></b></div>
+    <div class="msSparks" id="msSparks"></div>
     <div class="impact" id="impact"></div>
     <div class="curtain" id="curtain"></div>
     </div><!-- /#world -->
@@ -1097,12 +1140,15 @@ body.playing #pauseBtn{display:flex}
 <script src="assets/common.js"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
+/* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
+   這裡不能直接查 SPR 有沒有 key，見 preloadNearby() 那邊的說明） */
+const ATK_ONLY_SPR = new Set(['raccoon', 'bat', 'mush', 'rock']);
 /* ---------- 敵人：每隻怕不同的乘法表，打弱點兩倍傷害 ---------- */
 const MOBS = [
   {img:'assets/mob_slime.webp',  name:'黏黏怪',   hp:110, atk:10, weak:[2,3],   exp:24, drop:0.40, spr:'slime'},
-  {img:'assets/mob_bat.webp',    name:'小蝙蝠',   hp:135, atk:12, weak:[4,5],   exp:30, drop:0.45},
-  {img:'assets/mob_mush.webp',   name:'香菇怪',   hp:165, atk:13, weak:[6],     exp:36, drop:0.50},
-  {img:'assets/mob_rock.webp',   name:'石頭怪',   hp:195, atk:15, weak:[7],     exp:42, drop:0.55},
+  {img:'assets/mob_bat.webp',    name:'小蝙蝠',   hp:135, atk:12, weak:[4,5],   exp:30, drop:0.45, spr:'bat'},
+  {img:'assets/mob_mush.webp',   name:'香菇怪',   hp:165, atk:13, weak:[6],     exp:36, drop:0.50, spr:'mush'},
+  {img:'assets/mob_rock.webp',   name:'石頭怪',   hp:195, atk:15, weak:[7],     exp:42, drop:0.55, spr:'rock'},
   {img:'assets/mob_ghost.webp',  name:'幽靈球',   hp:225, atk:16, weak:[8],     exp:48, drop:0.55},
   {img:'assets/mob_cactus.webp', name:'仙人掌',   hp:255, atk:17, weak:[9],     exp:54, drop:0.60, ranged:true},
   {img:'assets/mob_ice.webp',    name:'冰晶怪',   hp:290, atk:18, weak:[6,7],   exp:62, drop:0.62},
@@ -1122,7 +1168,7 @@ const MOBS = [
   {img:'assets/mob_thorn.webp', name:'荊棘藤蔓怪', hp:612, atk:28, weak:[3, 6], exp:163, drop:0.67, summon:true},
   {img:'assets/mob_owlmage.webp', name:'貓頭鷹法師', hp:635, atk:28, weak:[4], exp:168, drop:0.68, ranged:true},
   {img:'assets/mob_hedgehog.webp', name:'刺蝟滾滾', hp:658, atk:29, weak:[3, 7], exp:173, drop:0.68, fast:0.8},
-  {img:'assets/mob_raccoon.webp', name:'浣熊小偷', hp:680, atk:29, weak:[3, 6], exp:178, drop:0.69, fast:0.8},
+  {img:'assets/mob_raccoon.webp', name:'浣熊小偷', hp:680, atk:29, weak:[3, 6], exp:178, drop:0.69, fast:0.8, spr:'raccoon'},
   {img:'assets/mob_scorpion.webp', name:'沙塵蠍', hp:702, atk:30, weak:[2], exp:183, drop:0.70},
   {img:'assets/mob_camel.webp', name:'骸骨駱駝', hp:725, atk:30, weak:[3], exp:188, drop:0.71, armor:0.75},
   {img:'assets/mob_lizard.webp', name:'沙丘蜥蜴', hp:748, atk:31, weak:[5], exp:193, drop:0.72},
@@ -1181,6 +1227,12 @@ function dropChance(m){
 }
 
 const ANSWER_TIME = 9;
+/* 連擊越高、答題秒數越短（2026-08-30，跟 Gemini A 討論出的曲線）：
+   下限 3.5 秒（低於這個小朋友只能用猜的，看不完題目），前期幾乎沒感覺，
+   連擊衝到 100 才真的逼近極限，只套在「勇者出擊」練習模式，不影響娛樂模式（D() 那一套）。 */
+function timeForCombo(c){
+  return Math.max(3.5, ANSWER_TIME - 5.5 * Math.pow(Math.min(c, 100) / 100, 0.75));
+}
 
 let P = Save.power();                 // 目前能力（基礎＋裝備）
 let maxHp = P.hp, heroHp = P.hp;
@@ -1247,9 +1299,17 @@ let HERO = heroOf(Save.d.hero);
 function preloadNearby(){
   const i = Math.min(MOBS.length - 1, (Save.d.wave || 0));
   preload([MOBS[i] && MOBS[i].img, MOBS[i+1] && MOBS[i+1].img]);
-  /* 有逐幀素材的怪，雪碧圖也要一起先抓（巨龍那兩張加起來 740KB，臨時抓會閃一下） */
+  /* 有逐幀素材的怪，雪碧圖也要一起先抓（巨龍那兩張加起來 740KB，臨時抓會閃一下）。
+     2026-08-30 新補的四隻只有 _atk 沒有 _idle（待機本來就走靜圖，不需要）。
+     ⚠ 這裡不能查 SPR 有沒有這個 key——`preloadNearby()` 在這一行就被呼叫了
+     （下面 `preloadNearby();`），比 `const SPR = {...}` 那行還早執行，會是
+     TDZ 錯誤（ReferenceError: Cannot access 'SPR' before initialization），
+     整份 script 直接中斷。改用一個獨立的名單，不依賴 SPR 是否已經宣告完。 */
   for(const m of [MOBS[i], MOBS[i+1]]){
-    if(m && m.spr) preload(['assets/spr_' + m.spr + '_idle.webp', 'assets/spr_' + m.spr + '_atk.webp']);
+    if(!m || !m.spr) continue;
+    const list = ['assets/spr_' + m.spr + '_atk.webp'];
+    if(!ATK_ONLY_SPR.has(m.spr)) list.push('assets/spr_' + m.spr + '_idle.webp');
+    preload(list);
   }
 }
 preload([...Object.values(HERO_FRAMES), 'assets/fx_cat_attack.webp', HERO.img]);
@@ -1487,7 +1547,14 @@ const SPR = {
   slime_idle:  {img:'assets/spr_slime_idle.webp',  cols:5, rows:4, n:16, ar:224/125, fps:8},
   slime_atk:   {img:'assets/spr_slime_atk.webp',   cols:6, rows:5, n:29, ar:224/125, fps:20},
   dragon_idle: {img:'assets/spr_dragon_idle.webp', cols:6, rows:4, n:24, ar:224/211, fps:10},
-  dragon_atk:  {img:'assets/spr_dragon_atk.webp',  cols:6, rows:5, n:30, ar:224/211, fps:14}
+  dragon_atk:  {img:'assets/spr_dragon_atk.webp',  cols:6, rows:5, n:30, ar:224/211, fps:14},
+  /* 2026-08-30：Gemini Vids 生的攻擊動畫，只有攻擊沒有待機（IDLE_SPRITE() 平常是關的，
+     待機本來就是靜圖，這四隻不需要 _idle）。cw:224 ch:126 是整支影片沒裁切直接縮，
+     跟原始 1920x1080 幾乎同比例，所以四隻 ar 都一樣 */
+  raccoon_atk: {img:'assets/spr_raccoon_atk.webp', cols:6, rows:7, n:38, ar:224/126, fps:15},
+  bat_atk:     {img:'assets/spr_bat_atk.webp',     cols:6, rows:4, n:24, ar:224/126, fps:15},
+  mush_atk:    {img:'assets/spr_mush_atk.webp',    cols:7, rows:7, n:48, ar:224/126, fps:15},
+  rock_atk:    {img:'assets/spr_rock_atk.webp',    cols:7, rows:8, n:53, ar:224/126, fps:15}
 };
 /* ---------- 待機不跑逐幀（2026-08-23 效能量測結論） ----------
    量出來（CPU 節流 6 倍模擬中階手機，看主執行緒每秒被吃掉多少毫秒）：
@@ -1987,6 +2054,59 @@ function comboAura(c){
   else if(c >= 6) f.classList.add('aura2');
   else if(c >= 3) f.classList.add('aura1');
 }
+
+/* ===== 連續答對里程碑：10/20/…/100（2026-08-30，Steve 交辦，跟 Gemini A 討論過視覺／音效方向）=====
+   跟 SPELLS 那套「連擊自動放魔法」是分開的兩件事：SPELLS 影響傷害（10 連擊後每 +5 連擊
+   重放一次聖光審判，這是既有的戰鬥機制，沒有動），這裡純粹是「答對到整數關卡」的慶祝特效，
+   疊加上去而已。逾時／答錯 combo 會歸零（見 tick()／answer() 既有邏輯），所以這是真的連續不中斷。
+   超過 100 連擊之後，每 +10 連擊照樣觸發，重複播第 10 關（乘法神話）那個最高等級的效果。 */
+const COMBO_MILESTONES = [
+  {c:10,  name:'熱血覺醒', color:'#ff6a5c'},
+  {c:20,  name:'疾風狂斬', color:'#5cc8ff'},
+  {c:30,  name:'幻影無雙', color:'#b98bff'},
+  {c:40,  name:'隕石衝擊', color:'#ff8a3d'},
+  {c:50,  name:'王者降臨', color:'#ffd76a'},
+  {c:60,  name:'龍王破空', color:'#ff9d5c'},
+  {c:70,  name:'時空崩裂', color:'#5cf0ff'},
+  {c:80,  name:'宇宙極光', color:'#c893ff'},
+  {c:90,  name:'超越限界', color:'#ffffff'},
+  {c:100, name:'乘法神話', color:'#ffe066'}
+];
+function milestoneFor(combo){
+  if(combo < 10 || combo % 10 !== 0) return null;
+  const n = Math.min(Math.floor(combo / 10), COMBO_MILESTONES.length);
+  return {n, combo, ...COMBO_MILESTONES[n - 1]};
+}
+/* 跟 comboShout()（施法字）錯開 750ms 才出現，不然兩段大字疊在一起看不清楚是誰在說什麼 */
+function showMilestone(m){
+  setTimeout(() => {
+    const flash = $('msFlash'), big = $('msBig'), sparks = $('msSparks');
+    [flash, big, sparks].forEach(el => el.style.setProperty('--t', m.n));
+    [flash, big].forEach(el => el.style.setProperty('--mc', m.color));
+    big.querySelector('small').textContent = m.combo + ' 連擊';
+    big.querySelector('b').textContent = m.name;
+
+    flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on');
+    big.classList.remove('on'); void big.offsetWidth; big.classList.add('on');
+    shake(m.n >= 8 ? 3 : m.n >= 4 ? 2 : 1);
+    Sfx.milestone(m.n);
+
+    if(m.n >= 4 && !Fx.low()){
+      sparks.innerHTML = '';
+      const count = Math.min(8 + m.n * 2, 28);
+      for(let i = 0; i < count; i++){
+        const s = document.createElement('i');
+        const ang = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+        const dist = 60 + Math.random() * 70 + m.n * 3;
+        s.style.setProperty('--dx', Math.cos(ang) * dist + 'px');
+        s.style.setProperty('--dy', Math.sin(ang) * dist + 'px');
+        s.style.animationDelay = (Math.random() * 0.12) + 's';
+        s.addEventListener('animationend', () => s.remove());
+        sparks.appendChild(s);
+      }
+    }
+  }, 750);
+}
 /* ── 主動技能（2026-08-23）──
    兩顆按鈕、各自冷卻、跟著等級解鎖。兩種模式都能用：
    練習模式在等答題的空檔按，娛樂模式就是連段的一部分。 */
@@ -2165,7 +2285,7 @@ function newQ(){
   }
   Voice.say(QQ);
   qStart = performance.now();
-  turnTime = ANSWER_TIME * (mob.fast || 1);      // 衝鋒型出手比較快，思考時間就比較短
+  turnTime = timeForCombo(combo) * (mob.fast || 1);   // 連擊越高秒數越短；衝鋒型怪物再乘上去更短
   telegraphed = false;
   mobTimer = turnTime;
   locked = false;
@@ -2304,6 +2424,8 @@ function answer(v, btn){
     right++; stageAdvance();
     if(fastest === null || took < fastest) fastest = took;
     combo++; Stats.mark(QQ.key, true);
+    const ms = milestoneFor(combo);
+    if(ms) showMilestone(ms);
     btn.classList.add('right');
     const isWeak = QQ.weak;
     const speed = Math.max(1, Math.round((ANSWER_TIME - took) * 0.9));
@@ -2363,8 +2485,15 @@ function mobHitFx(){
 }
 /* 怪物出手：有逐幀就播自己的攻擊動作，命中點對到牠真的撲到／噴到的那一格 */
 const MOB_ATK = {
-  slime:  {from:4, to:24, fps:32, hit:.46, back:34,  rush:-150},
-  dragon: {from:0, to:27, fps:24, hit:.34, back:22,  rush:-56}   /* Boss 噴火，人不用衝那麼近 */
+  slime:   {from:4,  to:24, fps:32, hit:.46, back:34, rush:-150},
+  dragon:  {from:0,  to:27, fps:24, hit:.34, back:22, rush:-56},   /* Boss 噴火，人不用衝那麼近 */
+  /* 2026-08-30：新補的四隻。to 用整張雪碧圖的最後一格（幀數-1），fps 是播放速度不是
+     抽幀時的 fps，兩者沒有關係——調快慢改這裡就好，不用重新抽幀。hit/back/rush 目測抓的，
+     跟 Spr.play() 播放速度沒有精算對齊，之後看畫面覺得不順再調 */
+  raccoon: {from:0, to:37, fps:28, hit:.50, back:30, rush:-90},    /* 爪擊，中距離撲上去 */
+  bat:     {from:0, to:23, fps:24, hit:.50, back:20, rush:-70},    /* 咬擊，小幅飛撲 */
+  mush:    {from:0, to:47, fps:32, hit:.55, back:26, rush:-130},   /* 衝撞頭槌，跟黏黏怪一樣是全力衝刺 */
+  rock:    {from:0, to:52, fps:30, hit:.55, back:24, rush:-70}     /* 重拳＋爆炸，手臂打過去不用整隻衝過去 */
 };
 /* 遠程型：不撲過來，改成噴一發投射物；打中之前有一段飛行時間，看得到才躲得掉 */
 function shotAtHero(){

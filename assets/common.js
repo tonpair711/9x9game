@@ -377,6 +377,19 @@ const Sfx = {
   win:  () => { [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.22,'sine',.09), i*110)); },
   lose: () => { beep(392,.2,'sine',.09); setTimeout(()=>beep(294,.32,'sine',.09), 190); },
   tick: () => beep(300,.05,'square',.05),
+  /* 連續答對里程碑音效（2026-08-30，跟 Gemini A 討論的方向）：n 是強度 1~10（對應 10~100 連擊）。
+     音高隨 n 指數上升、音色隨 n 變厚（sine→triangle→sawtooth）、音符數也隨 n 變多，
+     疊起來就是「越級越華麗」的琶音，不用外部音檔，純 WebAudio 合成。 */
+  milestone: (n) => {
+    n = Math.max(1, Math.min(10, n || 1));
+    const base = 220 * Math.pow(2, (n - 1) / 9 * 3);       // 220Hz(10連擊) ~ 1760Hz(100連擊)
+    const type = n <= 3 ? 'sine' : n <= 6 ? 'triangle' : 'sawtooth';
+    const notes = n <= 3 ? 3 : n <= 6 ? 4 : 5;
+    for(let i = 0; i < notes; i++){
+      setTimeout(() => beep(base * Math.pow(1.2, i), .16 + n * .01, type, .09 + Math.min(n,10) * .006),
+        i * 70);
+    }
+  },
   /* 打擊音：低頻悶響＋高頻碎裂，兩層疊起來才有份量 */
   hit: (crit) => {
     try{
@@ -1067,7 +1080,7 @@ const Cloud = {
 addEventListener('pagehide', () => Cloud.flush());
 
 /* ---------- 登入視窗（大廳用） ---------- */
-function loginBox(onDone){
+function loginBox(onDone, startMode){
   const box = document.createElement('div');
   box.className = 'pwwrap';
   box.innerHTML =
@@ -1133,6 +1146,8 @@ function loginBox(onDone){
     }
   };
   $$('lgCancel').onclick = close;
+  /* 「創建帳號」按鈕直接開在註冊畫面，不用先開登入再手動點「還沒有帳號？」 */
+  if(startMode === 'reg') $$('lgSwap').click();
   box.onclick = (e) => { if(e.target === box) close(); };
   [$$('lgName'), $$('lgPw'), $$('lgPw2')].forEach(el =>
     el.onkeydown = (e) => { if(e.key === 'Enter') $$('lgGo').click(); });

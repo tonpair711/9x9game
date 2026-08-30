@@ -28,6 +28,32 @@ body.thinStep .wrap{min-height:calc(100dvh - 190px);justify-content:center}
 .step.on{display:flex}
 @keyframes pgIn{from{opacity:0;transform:translateY(8px)}}
 
+/* 帳號步驟：沒登入時三顆選擇（Steve 2026-08-30：照天堂那種線上遊戲，第一頁要三顆選擇明顯擺出來） */
+.userbar.guest{flex-direction:column;align-items:stretch;gap:10px;padding:16px}
+.acctgo{
+  height:56px;border:none;border-radius:16px;cursor:pointer;font-size:17px;font-weight:800;
+  letter-spacing:2px;color:#3a2400;background:linear-gradient(180deg,#fff0c4,var(--gold));
+  box-shadow:0 5px 0 #a97a12,0 10px 26px #0008;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;font-family:inherit;
+}
+.acctgo:active{transform:translateY(4px);box-shadow:0 1px 0 #a97a12}
+.acctgo small{font-size:11px;font-weight:600;letter-spacing:1px;color:#5a4200}
+.acctrow{display:flex;gap:10px}
+.acctrow .btn{flex:1;height:46px;font-size:15px;letter-spacing:1px}
+.acctnote{font-size:11px;color:var(--dim);text-align:center;line-height:1.6;padding:0 4px}
+
+/* 角色步驟：一個角色都還沒有時的引導文字（Steve 2026-08-29 回報：空格子沒人看得懂要幹嘛） */
+.charhint{
+  display:none;background:#2a1a42;border:1px solid var(--line);border-radius:14px;
+  padding:12px 16px;font-size:14px;line-height:1.6;color:var(--gold2);
+}
+.charhint b{color:var(--gold)}
+body.needChar .charhint{display:block}
+body.needChar .slots{animation:slotsPulse 1.6s ease-in-out infinite}
+@keyframes slotsPulse{0%,100%{filter:none}50%{filter:drop-shadow(0 0 14px #f6c45355)}}
+.wrap.shakeIt{animation:wrapShake .4s}
+@keyframes wrapShake{20%{transform:translateX(-8px)}45%{transform:translateX(7px)}70%{transform:translateX(-4px)}100%{transform:none}}
+
 /* 第一步已經是大廳最上層，左上角返回鍵在這裡沒有更上一層可回，變暗表示按了沒反應 */
 body.atRoot .pagectrl .pcbtn[data-act="back"]{opacity:.35;pointer-events:none}
 
@@ -447,7 +473,7 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{opacity:.35;pointer-events:none}
 <div class="wrap">
   <div class="stepbar" id="stepbar"></div>
 
-  <!-- 第一步：歡迎 ＋ 選玩法 -->
+  <!-- s1：歡迎 ＋ 選玩法（現在排第 3 步，DOM 沒搬動，實際順序看 STEPS 陣列） -->
   <section class="step" id="s1">
     <div class="welcome">
       <div class="big">歡迎來到「邊玩邊變強」</div>
@@ -461,7 +487,7 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{opacity:.35;pointer-events:none}
     <div class="modepanel"><div id="modebar"></div></div>
   </section>
 
-  <!-- 第二步：出題設定（練習模式才要選；娛樂模式改看說明） -->
+  <!-- s2：出題設定（練習模式才要選；娛樂模式改看說明）現在排第 4 步 -->
   <section class="step" id="s2">
     <div id="topicwrap">
       <div class="sec"><h2>要練哪一種題目</h2><i></i></div>
@@ -483,15 +509,16 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{opacity:.35;pointer-events:none}
     </div>
   </section>
 
-  <!-- 第三步：帳號 -->
+  <!-- s3：帳號，現在排第 1 步——照「天堂」的登入流程，先登入才進角色選擇 -->
   <section class="step" id="s3">
     <div class="sec"><h2>帳號</h2><i></i></div>
     <div id="userbar" class="userbar"></div>
   </section>
 
-  <!-- 第四步：選角色 -->
+  <!-- s4：選角色，現在排第 2 步——登入後立刻選／建角色，沒角色不准往下走 -->
   <section class="step" id="s4">
     <div class="sec"><h2>誰要出戰？（一個帳號最多 4 個）</h2><i></i></div>
+    <div class="charhint" id="charHint">👋 <b>第一次來嗎？</b>先點下面「＋ 建立角色」，挑一個職業、取個名字，就能開始冒險了。</div>
     <div class="slots" id="slots"></div>
     <div class="slotacts">
       <button id="renameBtn">改名字</button>
@@ -516,7 +543,7 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{opacity:.35;pointer-events:none}
     </div>
   </section>
 
-  <!-- 第五步：玩哪一個 -->
+  <!-- s5：玩哪一個，還是最後一步——選好角色後才進遊戲世界 -->
   <section class="step" id="s5">
     <div class="sec"><h2>主線冒險</h2><i></i></div>
     <div class="games" id="gamesMain"></div>
@@ -655,8 +682,12 @@ function gameCard(g){
    原本①把「歡迎＋選玩法＋題型＋範圍＋語音＋帳號」全塞同一步，要滑很久，字看起來擠成一團，
    這次拆成三步，一步只問一件事。跟底部分頁不一樣：分頁是「隨時亂跳」，流程是「一步一步走」，
    對小學生直觀得多。2026-08-24 Steve：拿掉「快速開始」，就是要每個人都走完，不留跳過引導的後門。 */
-const STEPS = ['s1','s2','s3','s4','s5'];
-const STEP_NAME = ['玩法', '設定', '帳號', '角色', '玩什麼'];
+/* 2026-08-29（第三次）Steve：要照「天堂」那種線上遊戲的登入方式——
+   帳號登入 → 選角色／創角，這兩步是進遊戲世界前一定要先做完的事，
+   玩法／出題設定是「進遊戲之後」才調的東西，不該排在創角前面擋路。
+   不動 HTML 區塊順序（改動風險較大），只換這個索引對照表就重排了整個流程。 */
+const STEPS = ['s3','s4','s1','s2','s5'];
+const STEP_NAME = ['帳號', '角色', '玩法', '設定', '玩什麼'];
 let step = 0;
 
 function paintStepBar(){
@@ -690,6 +721,14 @@ function goStep(k){
 window.appBack = () => { if(step > 0){ goStep(step - 1); Sfx.ok(1); } };
 $('navBack').onclick = () => { goStep(step - 1); Sfx.ok(1); };
 $('navNext').onclick = () => {
+  /* 角色這一步沒建過角色不准往下走——跟登入一樣，沒有帳號就是進不去，不做「快速略過」 */
+  if(STEPS[step] === 's4' && !hasAnyChar()){
+    const w = document.querySelector('.wrap');
+    w.classList.add('shakeIt');
+    setTimeout(() => w.classList.remove('shakeIt'), 400);
+    Sfx.bad();
+    return;
+  }
   if(step < STEPS.length - 1){ goStep(step + 1); Sfx.ok(2); }
   else location.href = 'battle.html';
 };
@@ -702,6 +741,7 @@ $('statwin').onclick = e => { if(e.target === $('statwin')) $('statwin').classLi
 /* ---------- 帳號狀態列：沒登入就是一顆登入鈕，登入了顯示名字與登出 ---------- */
 function paintUser(){
   const el = $('userbar');
+  el.classList.toggle('guest', !Cloud.logged());
   if(Cloud.logged()){
     el.innerHTML = '<b>👤 ' + Cloud.user() + '</b><span>進度會存到雲端</span>' +
                    '<button id="logoutBtn">登出</button>';
@@ -710,9 +750,17 @@ function paintUser(){
       paintUser();
     };
   }else{
-    el.innerHTML = '<b>👤 尚未登入</b><span>目前只存在這台裝置</span>' +
-                   '<button id="loginBtn">登入／註冊</button>';
-    el.querySelector('#loginBtn').onclick = () => loginBox(async () => {
+    /* 2026-08-30 Steve：照天堂那種線上遊戲的登入頁，第一頁要三顆選擇明顯擺出來，
+       不要只有一顆小小的「登入／註冊」躲在角落。「直接遊戲」＝略過登入，用本機存檔，
+       之後隨時可以在這一頁補登入，不會弄丟進度（角色格 Save 都在，Cloud.push 補上去就好）。 */
+    el.innerHTML =
+      '<button class="acctgo" id="guestBtn">🎮 直接遊戲<small>用本機存檔，之後也能補登入</small></button>' +
+      '<div class="acctrow">' +
+        '<button class="btn ghost" id="loginBtn">登入帳號</button>' +
+        '<button class="btn ghost" id="regBtn">創建帳號</button>' +
+      '</div>' +
+      '<div class="acctnote">跟「小綸出題小幫手」同一組帳號，登入後進度會存到雲端，換手機也接得回來</div>';
+    const afterAuth = async () => {
       paintUser();
       /* 登入後先把雲端這一格拉下來；雲端沒有就把本機的推上去，不會互相蓋掉 */
       try{
@@ -720,7 +768,10 @@ function paintUser(){
         if(had){ location.reload(); }
         else { await Cloud.push(curSlot()); }
       }catch(e){}
-    });
+    };
+    el.querySelector('#guestBtn').onclick = () => { goStep(step + 1); Sfx.ok(2); };
+    el.querySelector('#loginBtn').onclick = () => loginBox(afterAuth, 'login');
+    el.querySelector('#regBtn').onclick = () => loginBox(afterAuth, 'reg');
   }
 }
 
@@ -765,6 +816,11 @@ function paintSlots(){
   for(let n = 1; n <= SLOT_MAX; n++) box.appendChild(slotCard(n));
   const has = !!Save.peek(curSlot());
   ['renameBtn','reclassBtn','delBtn'].forEach(k => $(k).disabled = !has);
+  document.body.classList.toggle('needChar', !hasAnyChar());
+}
+function hasAnyChar(){
+  for(let i = 1; i <= SLOT_MAX; i++){ if(Save.peek(i)) return true; }
+  return false;
 }
 /* 換人出戰：存檔位換掉之後整頁重讀最單純——Save／Stats／Best 都是開頁時就讀好的 */
 async function switchSlot(n){
@@ -995,12 +1051,13 @@ paintPlayer(); paintSlots(); paintGames(); paintStats();
 /* 2026-08-29 Steve：每次進大廳一律從第一步（首頁）開始，不要殘留上次停在哪一步。
    唯一例外：剛建立角色那個 reload，是同一個操作的延續，不是「殘留」——
    用一次性的旗標接住，讀到就立刻清掉，不會留到下一次真的重新進站。
-   沒有角色時還是照舊卡在「角色」那一步（不然按下一步也沒得選）。 */
+   2026-08-29（第二次）Steve 回報：完全沒有角色時直接空降到「角色」那一步（第 4 步），
+   跳過①玩法②設定③帳號，畫面上只有四個空格子，沒有任何引導文字，像被丟進遊戲中間。
+   改成一律從第一步開始，跟真正的線上遊戲登入流程一樣照順序走；
+   卡不卡在角色那一步交給 navNext 的守門邏輯（沒建角色不准往下走），不用在這裡特別跳過去。 */
 let jump = 0;
 try{ jump = +(sessionStorage.getItem('mul99_jump') || 0) || 0; sessionStorage.removeItem('mul99_jump'); }catch(e){}
-let anyChar = false;
-for(let i = 1; i <= SLOT_MAX; i++){ if(Save.peek(i)){ anyChar = true; break; } }
-goStep(jump || (anyChar ? 0 : 3));
+goStep(jump || 0);
 </script>
 <script src="assets/audio.js"></script>
 <script src="assets/lock.js"></script>

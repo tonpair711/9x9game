@@ -966,12 +966,31 @@ addEventListener('DOMContentLoaded', () => {
   const isLobby = /(^|\/)index\.html$/.test(location.pathname) || /\/$/.test(location.pathname);
   box.innerHTML =
     '<button type="button" class="pcbtn" data-act="back" aria-label="返回上一層" title="返回上一層">←</button>' +
-    '<button type="button" class="pcbtn" data-act="reload" aria-label="重新整理" title="重新整理">⟳</button>';
-  box.addEventListener('click', e => {
+    '<button type="button" class="pcbtn" data-act="reload" aria-label="重新整理" title="重新整理">⟳</button>' +
+    '<button type="button" class="pcbtn" data-act="clearcache" aria-label="清除快取，抓最新版本" title="畫面跑版／怪怪的？點這裡清快取重載">🧹</button>';
+  box.addEventListener('click', async e => {
     const b = e.target.closest('.pcbtn'); if(!b) return;
     if(b.dataset.act === 'back'){
       if(typeof window.appBack === 'function') window.appBack();
       else if(!isLobby) location.href = 'index.html';   // 子頁面沒定義就回大廳
+    }else if(b.dataset.act === 'clearcache'){
+      /* 2026-08-30 Steve：畫面出現「HTML 新版、CSS/JS 還是舊快取」對不上的情況
+         （常見症狀：版面跑掉、按鈕不見、樣式跟截圖對不上），一般玩家不會用 Ctrl+Shift+R，
+         給一顆按鈕自己清。存檔資料（localStorage）不動，只清瀏覽器的網路快取層。 */
+      b.textContent = '⏳';
+      try{
+        if('caches' in window){
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+      }catch(err){}
+      try{
+        if(navigator.serviceWorker){
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.unregister()));
+        }
+      }catch(err){}
+      location.href = location.pathname + '?cb=' + Date.now();
     }else location.reload();
   });
   document.body.appendChild(box);

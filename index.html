@@ -76,7 +76,8 @@ body.needChar .slots{animation:slotsPulse 1.6s ease-in-out infinite}
 @keyframes wrapShake{20%{transform:translateX(-8px)}45%{transform:translateX(7px)}70%{transform:translateX(-4px)}100%{transform:none}}
 
 /* 第一步已經是大廳最上層，左上角返回鍵在這裡沒有更上一層可回，變暗表示按了沒反應 */
-body.atRoot .pagectrl .pcbtn[data-act="back"]{opacity:.35;pointer-events:none}
+/* 2026-08-30（第五次）Steve：第一步沒有更上一層可回，變暗但還在很奇怪，直接藏起來 */
+body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
 
 /* 上面的進度：現在走到第幾步、還有幾步 */
 .stepbar{display:flex;align-items:center;gap:6px;justify-content:center;margin:2px 0 2px}
@@ -501,16 +502,10 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{opacity:.35;pointer-events:none}
 <div class="wrap">
   <div class="stepbar" id="stepbar"></div>
 
-  <!-- s1：歡迎 ＋ 選玩法（現在排第 3 步，DOM 沒搬動，實際順序看 STEPS 陣列） -->
+  <!-- s1：選玩法（現在排第 3 步，DOM 沒搬動，實際順序看 STEPS 陣列。
+       2026-08-30（第五次）Steve：第一頁太空、沒有歡迎詞，歡迎區塊搬到 s3（帳號，現在的
+       第 1 步）去補那邊的空版面，這裡不用重複歡迎一次 -->
   <section class="step" id="s1">
-    <div class="welcome">
-      <div class="big">歡迎來到「邊玩邊變強」</div>
-      <div class="sub">九九乘法・加減法・注音・英文字母</div>
-      <div class="portal">
-        <img id="wimg" src="assets/fx_hero_ready.webp" alt="">
-      </div>
-    </div>
-
     <div class="sec"><h2>要怎麼玩</h2><i></i></div>
     <div class="modepanel"><div id="modebar"></div></div>
   </section>
@@ -538,8 +533,18 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{opacity:.35;pointer-events:none}
     </div>
   </section>
 
-  <!-- s3：帳號，現在排第 1 步——照「天堂」的登入流程，先登入才進角色選擇 -->
+  <!-- s3：帳號，現在排第 1 步——照「天堂」的登入流程，先登入才進角色選擇。
+       2026-08-30（第五次）Steve：整個遊戲第一眼看到的畫面太空、沒有歡迎詞，把原本在
+       s1 的歡迎區塊搬過來，開場就有品牌感，不是一進來就看到一片空白配帳號按鈕 -->
   <section class="step" id="s3">
+    <div class="welcome">
+      <div class="big">歡迎來到「邊玩邊變強」</div>
+      <div class="sub">九九乘法・加減法・注音・英文字母</div>
+      <div class="portal">
+        <img id="wimg" src="assets/fx_hero_ready.webp" alt="">
+      </div>
+    </div>
+
     <div class="sec"><h2>帳號</h2><i></i></div>
     <div id="userbar" class="userbar"></div>
   </section>
@@ -744,7 +749,9 @@ function goStep(k){
   step = Math.max(0, Math.min(STEPS.length - 1, k));
   STEPS.forEach((id, n) => $(id).classList.toggle('on', n === step));
   document.body.classList.toggle('atRoot', step === 0);   // 第一步已經是最上層，左上角返回鍵要跟著變暗
-  document.body.classList.toggle('thinStep', STEPS[step] === 's3');   // 帳號那一步內容很少，置中比較好看
+  /* 2026-08-30（第五次）：s3 加了歡迎區塊之後內容不算少了，拿掉「內容少置中」那套特殊處理，
+     跟其他步驟一樣頂對齊，不然大片留白會跑到內容上面去，看起來更空 */
+  document.body.classList.toggle('thinStep', false);
   paintStepBar(); paintNav();
   window.scrollTo({top:0, behavior:'instant'});
 }

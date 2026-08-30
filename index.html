@@ -50,16 +50,18 @@ body.thinStep .wrap{min-height:calc(100dvh - 190px);justify-content:center}
 .acctHead small{display:block;font-size:11px;color:var(--dim);margin-top:2px}
 .acctrow3{display:flex;gap:10px;align-items:stretch}
 .acctrow3 .btn{
-  flex:1;min-height:72px;font-size:14px;letter-spacing:1px;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:3px;padding:8px 6px;position:relative;
+  flex:1;min-height:84px;font-size:14px;letter-spacing:1px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;padding:10px 6px;position:relative;
 }
-.acctrow3 .btn small{font-size:9.5px;font-weight:600;letter-spacing:.3px;opacity:.85;line-height:1.35;text-align:center}
+.acctrow3 .btn .acctLbl{white-space:nowrap;font-size:14px;letter-spacing:.5px}
+.acctrow3 .btn small{font-size:10.5px;font-weight:600;letter-spacing:.2px;opacity:.9;line-height:1.35;text-align:center}
 .acctrow3 .btn.ghost small{color:var(--dim)}
-/* 「推薦」小標籤：貼在創建帳號按鈕右上角，一眼看出這是主打選項 */
-.acctRec{
-  position:absolute;top:-8px;right:-6px;background:var(--ok);color:#08331b;
-  font-size:9px;font-weight:900;padding:2px 7px;border-radius:999px;letter-spacing:1px;
-  box-shadow:0 2px 6px #0006;
+/* 「推薦」小標籤：之前用 position:absolute 頂到按鈕右上角外，被 .btn 的 overflow:hidden
+   ＋圓角裁成一片綠葉；改成按鈕內正常排版的第一行小膠囊，配色也從刺眼的亮綠改成
+   深紫底金字，跟整體紫金色系一致。 */
+.acctrow3 .btn .recTag{
+  display:inline-block;background:#2c1b42;color:var(--gold2);border:1px solid #ffffff33;
+  font-size:9px;font-weight:900;padding:2px 9px;border-radius:999px;letter-spacing:1.5px;
 }
 .acctnote{font-size:11px;color:var(--dim);text-align:center;line-height:1.6;padding:0 4px}
 
@@ -91,11 +93,12 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
 .stepbar b.done{background:#3a2456;color:var(--gold2);border-color:#8a63c9}
 .stepbar i{flex:0 1 34px;height:2px;background:#2e1c47;border-radius:2px}
 .stepbar i.done{background:#8a63c9}
-/* 2026-08-24 Steve 回報：這個字太小、顏色又暗，飄過的背景金幣一蓋過去就看不清是中文字。
-   加個底色小標籤，不管金幣飄到哪都還是看得清楚現在是哪一步。 */
-.stepbar span{
-  font-size:12px;color:var(--gold2);font-weight:700;letter-spacing:1px;margin-left:4px;
-  padding:4px 10px;border-radius:999px;background:#2a1a40;border:1px solid var(--line);
+/* 現在走到第幾步的文字標籤：獨立一列置中，寫成「1 / 5 · 帳號」的進度句，
+   不再貼在圓點尾巴（會被誤看成第 6 步）。加底色小標籤，背景金幣飄過去也看得清楚。 */
+.stepnow{text-align:center;margin-top:-6px}
+.stepnow span{
+  display:inline-block;font-size:12px;color:var(--gold2);font-weight:700;letter-spacing:1px;
+  padding:4px 12px;border-radius:999px;background:#2a1a40;border:1px solid var(--line);
   position:relative;z-index:1;white-space:nowrap;
 }
 
@@ -472,6 +475,13 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
   .nums span{font-size:17px}
   .stepbar b{width:24px;height:24px;font-size:11px}
   .stepbar i{flex-basis:24px}
+  /* 三顆帳號按鈕併排在窄螢幕會擠——縮小內距與字級，標題整行不換行（不要斷成「創建帳\n號」） */
+  .userbar.guest{padding:14px}
+  .acctrow3{gap:8px}
+  .acctrow3 .btn{min-height:86px;padding:9px 4px}
+  .acctrow3 .btn .acctLbl{font-size:12.5px;letter-spacing:0}
+  .acctrow3 .btn small{font-size:9.5px}
+  .acctrow3 .btn .recTag{font-size:8px;padding:1px 7px;letter-spacing:1px}
   .navbar button{min-height:48px;font-size:15px}
   .navbar .back{flex:0 0 84px}
 }
@@ -479,6 +489,11 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
 /* ---------- 桌機 ---------- */
 @media (min-width:900px){
   .wrap{width:min(96vw,900px)}
+  /* 桌機視窗高、navbar 又是浮在底部的膠囊，第一步內容置中後底下會空一大塊。
+     把置中的可用高度拉到接近整個視窗，內容就會坐得比較中間，不會擠在上半部。 */
+  body.atRoot .wrap{min-height:calc(100dvh - 120px)}
+  .portal{width:270px;height:270px}
+  .welcome .sub{font-size:14px}
   .slots{grid-template-columns:repeat(4,1fr);gap:12px}
   .slot img{height:120px}
   .slot .ph,.slot.empty .plus{line-height:120px}
@@ -501,6 +516,7 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
 
 <div class="wrap">
   <div class="stepbar" id="stepbar"></div>
+  <div class="stepnow" id="stepnow"></div>
 
   <!-- s1：選玩法（現在排第 3 步，DOM 沒搬動，實際順序看 STEPS 陣列。
        2026-08-30（第五次）Steve：第一頁太空、沒有歡迎詞，歡迎區塊搬到 s3（帳號，現在的
@@ -730,7 +746,8 @@ function paintStepBar(){
   $('stepbar').innerHTML = STEPS.map((_, k) =>
     '<b class="' + (k === step ? 'on' : (k < step ? 'done' : '')) + '">' + (k+1) + '</b>' +
     (k < STEPS.length - 1 ? '<i class="' + (k < step ? 'done' : '') + '"></i>' : '')
-  ).join('') + '<span>' + STEP_NAME[step] + '</span>';
+  ).join('');
+  $('stepnow').innerHTML = '<span>' + (step+1) + ' / ' + STEPS.length + '　' + STEP_NAME[step] + '</span>';
 }
 function paintNav(){
   $('navBack').style.visibility = step === 0 ? 'hidden' : '';
@@ -803,9 +820,9 @@ function paintUser(){
       '<div class="acctHead"><span class="acctIcon">🐯</span><div><b>選擇你的冒險方式</b>' +
       '<small>推薦先創建帳號，進度才不會不見</small></div></div>' +
       '<div class="acctrow acctrow3">' +
-        '<button class="btn ghost" id="guestBtn">🎮 直接遊戲<small>換手機或電腦可能會消失</small></button>' +
-        '<button class="btn ghost" id="loginBtn">🔑 登入帳號<small>接回雲端進度</small></button>' +
-        '<button class="btn" id="regBtn">✨ 創建帳號<span class="acctRec">推薦</span><small>進度存雲端、換裝置也接得回來</small></button>' +
+        '<button class="btn ghost" id="guestBtn"><span class="acctLbl">🎮 直接遊戲</span><small>換裝置可能會不見</small></button>' +
+        '<button class="btn ghost" id="loginBtn"><span class="acctLbl">🔑 登入帳號</span><small>接回雲端進度</small></button>' +
+        '<button class="btn" id="regBtn"><span class="recTag">推薦</span><span class="acctLbl">✨ 創建帳號</span><small>換裝置也接得回來</small></button>' +
       '</div>';
     const afterAuth = async () => {
       paintUser();

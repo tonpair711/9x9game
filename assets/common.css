@@ -26,11 +26,12 @@ body::before{
     radial-gradient(circle at 20% 30%,#f6c45322,transparent 45%),
     radial-gradient(circle at 80% 20%,#a855f733,transparent 40%),
     radial-gradient(circle at 60% 90%,#22d3ee1a,transparent 45%);
-  will-change:transform;animation:drift 18s ease-in-out infinite alternate;
+  will-change:transform,opacity;animation:drift 18s ease-in-out infinite alternate;
 }
 /* ⚠ 這裡不要放 scale：整片是比視窗還大的一層，縮放會每一幀重新光柵化，
-   量出來單這一項就吃掉主執行緒 140ms/秒（CPU 節流 6 倍）。只留位移，看起來一樣。 */
-@keyframes drift{to{transform:translate3d(2%,-2%,0)}}
+   量出來單這一項就吃掉主執行緒 140ms/秒（CPU 節流 6 倍）。只留位移／透明度（opacity 是
+   合成層屬性，不用重繪）。2026-08-30 加呼吸感：只加 opacity 淡入淡出，沒有加別的屬性。 */
+@keyframes drift{0%{opacity:.82}50%{transform:translate3d(1%,-1%,0);opacity:1}100%{transform:translate3d(2%,-2%,0);opacity:.82}}
 
 h1{
   font-size:clamp(16px,2.4vw,22px);letter-spacing:3px;text-align:center;
@@ -111,13 +112,39 @@ h1{
 .timebar i{display:block;height:100%;border-radius:99px;
   background:linear-gradient(90deg,#4ade80,#f6c453 60%,#f87171);transition:width .25s linear}
 
+/* ---------- 金屬質感按鈕（2026-08-30，Steve：整個遊戲的大廳／登入要有質感）----------
+   跟 `2026-08-29/9x9game/企劃書_大廳UX大改版.md` 的 Phase 1「紫金金屬介面系統」同一份規格：
+   金屬漸層邊框、流光掃過（shimmer）、彈性回彈（放開時用 cubic-bezier(.34,1.56,.64,1) 彈回），
+   純 CSS 做、不吃額外素材，效能開銷極低（只動 transform／opacity，不觸發 layout）。
+   `.btn` 是共用元件（八頁都吃這份 common.css），改這裡等於整個遊戲一次到位。 */
 .btn{
-  height:52px;border:none;border-radius:16px;cursor:pointer;font-size:18px;font-weight:800;
-  letter-spacing:3px;color:#3a2400;background:linear-gradient(180deg,#fff0c4,var(--gold));
-  box-shadow:0 5px 0 #a97a12,0 10px 26px #0008;
+  position:relative;overflow:hidden;height:52px;border-radius:16px;cursor:pointer;
+  font-size:18px;font-weight:800;letter-spacing:3px;color:#3a2400;font-family:inherit;
+  background:linear-gradient(180deg,#fff8e0,var(--gold2) 30%,var(--gold) 70%,#c98a1e);
+  border:1px solid #ffe9a866;
+  box-shadow:0 5px 0 #8a5f0e,0 10px 26px #0008,inset 0 1px 0 #fff9,inset 0 -3px 6px #a06a0a55;
+  transition:transform .38s cubic-bezier(.34,1.56,.64,1),box-shadow .18s;
 }
-.btn:active{transform:translateY(4px);box-shadow:0 1px 0 #a97a12}
-.btn.ghost{background:#2a1a40;color:var(--gold2);border:1px solid var(--line);box-shadow:none;font-weight:700}
+.btn:active{
+  transform:scale(.94) translateY(3px);
+  box-shadow:0 1px 0 #8a5f0e,inset 0 2px 6px #0004;
+  transition:transform .06s ease-out,box-shadow .06s;
+}
+/* 流光掃過：一條斜向亮帶每隔幾秒掃過按鈕一次，金屬招牌質感的關鍵細節 */
+.btn::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(115deg,transparent 40%,#ffffffb0 50%,transparent 60%);
+  transform:translateX(-120%);animation:btnShimmer 3.6s ease-in-out infinite;
+}
+@keyframes btnShimmer{0%,60%{transform:translateX(-120%)}80%{transform:translateX(120%)}100%{transform:translateX(120%)}}
+.btn.ghost{
+  background:#2a1a40;color:var(--gold2);border:1px solid var(--line);
+  box-shadow:inset 0 1px 0 #ffffff14;font-weight:700;
+}
+.btn.ghost::after{display:none}
+.btn.ghost:active{box-shadow:inset 0 2px 6px #0006}
+.btn:disabled{filter:grayscale(.5) brightness(.7);cursor:default}
+.btn:disabled::after{display:none}
 
 /* 左上角固定小按鈕：返回上一頁／重新整理，八頁共用（見 common.js） */
 .pagectrl{

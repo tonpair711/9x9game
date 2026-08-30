@@ -28,18 +28,33 @@ body.thinStep .wrap{min-height:calc(100dvh - 190px);justify-content:center}
 .step.on{display:flex}
 @keyframes pgIn{from{opacity:0;transform:translateY(8px)}}
 
-/* 帳號步驟：沒登入時三顆選擇（Steve 2026-08-30：照天堂那種線上遊戲，第一頁要三顆選擇明顯擺出來） */
-.userbar.guest{flex-direction:column;align-items:stretch;gap:10px;padding:16px}
-.acctgo{
-  height:56px;border:none;border-radius:16px;cursor:pointer;font-size:17px;font-weight:800;
-  letter-spacing:2px;color:#3a2400;background:linear-gradient(180deg,#fff0c4,var(--gold));
-  box-shadow:0 5px 0 #a97a12,0 10px 26px #0008;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:2px;font-family:inherit;
+/* 帳號步驟：沒登入時三顆選擇（Steve 2026-08-30：照天堂那種線上遊戲，第一頁要三顆選擇明顯擺出來）
+   2026-08-30（第二次）Steve 回報「好醜、一點元素都沒有、直接遊戲不用特別大」：
+   - 原本「直接遊戲」自己一顆大的擺最上面、另外兩顆縮小擠下面，改成三顆併排等寬
+   - 整片深紫背景配幾顆按鈕看起來太空，加一個帶圖示的小標題區塊撐場面，
+     背景疊一層極淡的虎紋斜線紋理（純 CSS repeating-linear-gradient，不用額外圖檔） */
+.userbar.guest{
+  flex-direction:column;align-items:stretch;gap:14px;padding:18px;
+  background:
+    repeating-linear-gradient(135deg,#ffffff05 0 2px,transparent 2px 14px),
+    linear-gradient(160deg,#2d1a4a,#1d1230);
+  border:1px solid #6b4a9b55;
 }
-.acctgo:active{transform:translateY(4px);box-shadow:0 1px 0 #a97a12}
-.acctgo small{font-size:11px;font-weight:600;letter-spacing:1px;color:#5a4200}
-.acctrow{display:flex;gap:10px}
-.acctrow .btn{flex:1;height:46px;font-size:15px;letter-spacing:1px}
+.acctHead{display:flex;align-items:center;gap:12px;padding:0 2px}
+.acctIcon{
+  width:44px;height:44px;flex:none;border-radius:12px;display:flex;align-items:center;
+  justify-content:center;font-size:22px;background:linear-gradient(160deg,#523775,#2c1b42);
+  border:1px solid var(--line);box-shadow:inset 0 1px 0 #ffffff1a;
+}
+.acctHead b{display:block;font-size:15px;color:var(--gold2);letter-spacing:1px}
+.acctHead small{display:block;font-size:11px;color:var(--dim);margin-top:2px}
+.acctrow3{display:flex;gap:10px}
+.acctrow3 .btn{
+  flex:1;height:64px;font-size:14px;letter-spacing:1px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:3px;padding:0 4px;
+}
+.acctrow3 .btn small{font-size:10px;font-weight:600;letter-spacing:.5px;opacity:.85}
+.acctrow3 .btn.ghost small{color:var(--dim)}
 .acctnote{font-size:11px;color:var(--dim);text-align:center;line-height:1.6;padding:0 4px}
 
 /* 角色步驟：一個角色都還沒有時的引導文字（Steve 2026-08-29 回報：空格子沒人看得懂要幹嘛） */
@@ -752,12 +767,17 @@ function paintUser(){
   }else{
     /* 2026-08-30 Steve：照天堂那種線上遊戲的登入頁，第一頁要三顆選擇明顯擺出來，
        不要只有一顆小小的「登入／註冊」躲在角落。「直接遊戲」＝略過登入，用本機存檔，
-       之後隨時可以在這一頁補登入，不會弄丟進度（角色格 Save 都在，Cloud.push 補上去就好）。 */
+       之後隨時可以在這一頁補登入，不會弄丟進度（角色格 Save 都在，Cloud.push 補上去就好）。
+       2026-08-30（第二次）Steve 回報畫面太空、三顆大小不一致：改成三顆併排等寬，
+       「直接遊戲」保留金色（用起來最常用、最推薦），另外兩顆維持外框風格但同高同大小，
+       不再刻意縮小。上面補一個小標題區塊，不然一整片深紫背景配三顆按鈕看起來太空。 */
     el.innerHTML =
-      '<button class="acctgo" id="guestBtn">🎮 直接遊戲<small>用本機存檔，之後也能補登入</small></button>' +
-      '<div class="acctrow">' +
-        '<button class="btn ghost" id="loginBtn">登入帳號</button>' +
-        '<button class="btn ghost" id="regBtn">創建帳號</button>' +
+      '<div class="acctHead"><span class="acctIcon">🐯</span><div><b>選擇你的冒險方式</b>' +
+      '<small>三種都能玩，隨時可以在這一頁補登入</small></div></div>' +
+      '<div class="acctrow acctrow3">' +
+        '<button class="btn" id="guestBtn">🎮 直接遊戲<small>用本機存檔</small></button>' +
+        '<button class="btn ghost" id="loginBtn">🔑 登入帳號<small>接回雲端進度</small></button>' +
+        '<button class="btn ghost" id="regBtn">✨ 創建帳號<small>開一組新的</small></button>' +
       '</div>' +
       '<div class="acctnote">跟「小綸出題小幫手」同一組帳號，登入後進度會存到雲端，換手機也接得回來</div>';
     const afterAuth = async () => {

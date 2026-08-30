@@ -371,7 +371,9 @@ function beep(freq, dur, type, gain){
   }catch(e){}
 }
 const Sfx = {
-  ok:   n => beep(520 + Math.min(n||0,8)*70, .18, 'triangle', .10),
+  /* 2026-08-30：加隨機微幅音高變化（±14Hz），連續點按鈕（上一步/下一步那種）
+     不會每次都是同一個死板的音高，質感更像真的手感回饋而不是機器嗶聲 */
+  ok:   n => beep(520 + Math.min(n||0,8)*70 + (Math.random()*28 - 14), .18, 'triangle', .10),
   bad:  () => { beep(180,.22,'sawtooth',.09); setTimeout(()=>beep(120,.22,'sawtooth',.07), 70); },
   next: () => { beep(660,.12,'sine',.09); setTimeout(()=>beep(880,.16,'sine',.09), 110); },
   win:  () => { [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.22,'sine',.09), i*110)); },

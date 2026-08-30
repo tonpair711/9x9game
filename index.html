@@ -149,29 +149,23 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
 }
 .welcome .sub{font-size:13px;color:var(--dim);letter-spacing:2px;margin-top:6px;position:relative;z-index:2}
 
-/* 傳送門：角色站在會慢慢轉的金色符文環裡出場，呼應出擊頁戰場的拱門。
-   flex 置中，角色比環略大、稍微溢出上下緣（像從傳送門走出來），不要小小一個飄在大圈圈裡。 */
+/* 角色出場：只留一圈柔光把人物托出來，不要虛線繞圈（Steve 2026-08-31：那圈圈很醜）。 */
 .portal{
   position:relative;width:min(60vw,224px);height:min(60vw,224px);margin:12px auto 2px;
   display:flex;align-items:center;justify-content:center;
 }
 .portal::before{
-  content:"";position:absolute;inset:-8%;border-radius:50%;
-  background:radial-gradient(circle,#f6c4534d 0%,#a855f733 44%,transparent 72%);
-}
-.portal::after{
-  content:"";position:absolute;inset:0;border-radius:50%;border:2px dashed #f6c45359;
-  animation:portalspin 24s linear infinite;
+  content:"";position:absolute;inset:-14%;border-radius:50%;
+  background:radial-gradient(circle,#f6c45340 0%,#a855f72e 40%,transparent 68%);
 }
 .portal img{
   /* fx_hero_ready.webp：人物＋法杖佔畫布左側約 3/4，右側是空白。用 flex 置中的是整張圖，
-     人物就會偏左又偏低——往右 9%、往上 10px 把人物視覺重心拉回正中。
+     人物就會偏左又偏低——往右 11%、往上 10px 把人物視覺重心拉回正中。
      動畫 keyframe 要帶同一個 base transform，不然飄的時候會被拉回原位。 */
-  position:relative;z-index:2;width:110%;height:auto;display:block;
+  position:relative;z-index:2;width:112%;height:auto;display:block;
   transform:translate(11%,-10px);
   filter:drop-shadow(0 14px 26px #000b);animation:wfloat 3.4s ease-in-out infinite alternate;
 }
-@keyframes portalspin{to{transform:rotate(360deg)}}
 @keyframes wfloat{to{transform:translate(11%,-18px)}}
 .statlink{
   width:100%;height:44px;border-radius:12px;cursor:pointer;
@@ -841,7 +835,7 @@ function paintUser(){
       '<div class="acctHead"><span class="acctIcon">🐯</span><div><b>選擇你的冒險方式</b>' +
       '<small>推薦先創建帳號，進度才不會不見</small></div></div>' +
       '<div class="acctrow acctrow3">' +
-        '<button class="btn ghost" id="guestBtn"><span class="acctLbl">🎮 直接遊戲</span><small>換裝置可能會不見</small></button>' +
+        '<button class="btn ghost" id="guestBtn"><span class="acctLbl">🎮 直接遊戲</span><small>換裝置一定會不見</small></button>' +
         '<button class="btn ghost" id="loginBtn"><span class="acctLbl">🔑 登入帳號</span><small>接回雲端進度</small></button>' +
         '<button class="btn" id="regBtn"><span class="recTag">推薦</span><span class="acctLbl">✨ 創建帳號</span><small>換裝置也接得回來</small></button>' +
       '</div>';

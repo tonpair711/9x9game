@@ -53,9 +53,9 @@ body.thinStep .wrap{min-height:calc(100dvh - 190px);justify-content:center}
   flex:1;min-height:84px;font-size:14px;letter-spacing:1px;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:4px;padding:10px 6px;position:relative;
 }
-.acctrow3 .btn .acctLbl{white-space:nowrap;font-size:14px;letter-spacing:.5px}
-.acctrow3 .btn small{font-size:10.5px;font-weight:600;letter-spacing:.2px;opacity:.9;line-height:1.35;text-align:center}
-.acctrow3 .btn.ghost small{color:var(--dim)}
+.acctrow3 .btn .acctLbl{white-space:nowrap;font-size:14.5px;letter-spacing:.5px}
+.acctrow3 .btn small{font-size:11.5px;font-weight:600;letter-spacing:.2px;opacity:1;line-height:1.35;text-align:center}
+.acctrow3 .btn.ghost small{color:#d0c2ea}
 /* 「推薦」小標籤：之前用 position:absolute 頂到按鈕右上角外，被 .btn 的 overflow:hidden
    ＋圓角裁成一片綠葉；改成按鈕內正常排版的第一行小膠囊，配色也從刺眼的亮綠改成
    深紫底金字，跟整體紫金色系一致。 */
@@ -118,7 +118,7 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
 .navbar .next{flex:1;border:none;color:#3a2400;
   background:linear-gradient(180deg,#fff0c4,var(--gold));box-shadow:0 4px 0 #a97a12}
 .navbar .next:disabled{filter:grayscale(.7) brightness(.7);cursor:default;box-shadow:none}
-.navbar .next small{display:block;font-size:11px;font-weight:700;letter-spacing:1px;opacity:.72;margin-top:2px}
+.navbar .next small{display:block;font-size:11px;font-weight:700;letter-spacing:1px;opacity:.85;margin-top:2px}
 /* 縮放鎖那顆鈕本來貼在右下角，會被下面那條蓋住，往上抬 */
 .zoomlock{bottom:calc(var(--tabh) + 20px + env(safe-area-inset-bottom,0px)) !important}
 .zoomtip{bottom:calc(var(--tabh) + 28px + env(safe-area-inset-bottom,0px)) !important}
@@ -130,7 +130,9 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
    跟五步圓點＋每一步自己的文字標籤都會在窄螢幕上疊到——那排本來就快佔滿寬度。
    改成獨立一條窄窄的列，擺在 stepbar 正上方、佔自己的版面，保證不疊到任何東西 */
 /* 2026-08-30（第三次）Steve：logo 還是太小，加大一輪（16px→30px 圖示、加寬 padding） */
-.brandRow{display:flex;justify-content:flex-end;padding:0 0 8px}
+/* common.js 把這條插在 #stepbar 前面（在 .wrap 裡）。手機維持在流程裡（窄螢幕改成固定
+   會壓到步驟圓點）；桌機才拉出去固定在右上角，見下方 min-width:900 的規則。 */
+.brandRow{display:flex;justify-content:flex-end;padding:0 0 6px}
 .brandBadge{
   padding:8px 16px;display:flex;align-items:center;border-radius:999px;
   background:#1d1230cc;border:1px solid var(--line);backdrop-filter:blur(4px);
@@ -147,26 +149,30 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
 }
 .welcome .sub{font-size:13px;color:var(--dim);letter-spacing:2px;margin-top:6px;position:relative;z-index:2}
 
-/* 傳送門：角色站在會慢慢轉的金色符文環裡出場，呼應出擊頁戰場的拱門 */
-.portal{position:relative;width:min(56vw,210px);height:min(56vw,210px);margin:16px auto 0}
+/* 傳送門：角色站在會慢慢轉的金色符文環裡出場，呼應出擊頁戰場的拱門。
+   flex 置中，角色比環略大、稍微溢出上下緣（像從傳送門走出來），不要小小一個飄在大圈圈裡。 */
+.portal{
+  position:relative;width:min(60vw,224px);height:min(60vw,224px);margin:12px auto 2px;
+  display:flex;align-items:center;justify-content:center;
+}
 .portal::before{
-  content:"";position:absolute;inset:4%;border-radius:50%;
-  background:radial-gradient(circle,#f6c4532e 0%,#a855f724 52%,transparent 74%);
+  content:"";position:absolute;inset:-8%;border-radius:50%;
+  background:radial-gradient(circle,#f6c4534d 0%,#a855f733 44%,transparent 72%);
 }
 .portal::after{
   content:"";position:absolute;inset:0;border-radius:50%;border:2px dashed #f6c45359;
   animation:portalspin 24s linear infinite;
 }
 .portal img{
-  /* 角色圖都是「站左邊、武器往右揮」的構圖，實際畫的人物比圖片本身的畫布中心偏左約 20%——
-     用 margin:auto 置中的是整張圖（含右邊那塊空白），人物看起來就會偏左。往右position補回來。
-     量過現有兩個職業（王者、星辰術士）都差不多這個比例，新職業如果差很多要重量 */
-  position:relative;z-index:2;width:80%;height:auto;display:block;margin:10% auto 0;
-  transform:translateX(18%);
-  filter:drop-shadow(0 10px 22px #000a);animation:wfloat 3.4s ease-in-out infinite alternate;
+  /* fx_hero_ready.webp：人物＋法杖佔畫布左側約 3/4，右側是空白。用 flex 置中的是整張圖，
+     人物就會偏左又偏低——往右 9%、往上 10px 把人物視覺重心拉回正中。
+     動畫 keyframe 要帶同一個 base transform，不然飄的時候會被拉回原位。 */
+  position:relative;z-index:2;width:110%;height:auto;display:block;
+  transform:translate(11%,-10px);
+  filter:drop-shadow(0 14px 26px #000b);animation:wfloat 3.4s ease-in-out infinite alternate;
 }
 @keyframes portalspin{to{transform:rotate(360deg)}}
-@keyframes wfloat{to{transform:translateX(18%) translateY(-8px)}}
+@keyframes wfloat{to{transform:translate(11%,-18px)}}
 .statlink{
   width:100%;height:44px;border-radius:12px;cursor:pointer;
   background:#251739;border:1px solid var(--line);color:var(--dim);font-size:13px;font-weight:700;
@@ -488,12 +494,25 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
 
 /* ---------- 桌機 ---------- */
 @media (min-width:900px){
-  .wrap{width:min(96vw,900px)}
-  /* 桌機視窗高、navbar 又是浮在底部的膠囊，第一步內容置中後底下會空一大塊。
-     把置中的可用高度拉到接近整個視窗，內容就會坐得比較中間，不會擠在上半部。 */
-  body.atRoot .wrap{min-height:calc(100dvh - 120px)}
-  .portal{width:270px;height:270px}
-  .welcome .sub{font-size:14px}
+  .wrap{width:min(94vw,760px)}
+  /* 桌機視窗高、navbar 又是浮在底部的膠囊。第一步內容置中後上下都空一塊——
+     把歡迎標題、傳送門、帳號卡都放大，內容自己撐起版面，就不會像三顆按鈕飄在空紫幕上。 */
+  body.atRoot .wrap{min-height:calc(100dvh - 104px);gap:18px}
+  /* 品牌角標拉出內容流程，固定在右上角跟左上角圓鈕對稱，不再讓內容頂端空一條 */
+  .brandRow{position:fixed;top:10px;right:12px;z-index:30;padding:0}
+  /* 左下角那張立繪只是氣氛背景，桌機上太搶眼、又跟中間內容隔一大段空白，淡掉當背景 */
+  .hero{opacity:.32}
+  .welcome .big{font-size:43px;letter-spacing:8px}
+  .welcome .sub{font-size:15px;letter-spacing:3px;margin-top:9px}
+  .portal{width:230px;height:230px;margin-top:4px}
+  /* 帳號卡放大：桌機上按鈕高、字卻小又暗，看不清楚 */
+  .userbar.guest{padding:22px}
+  .acctrow3{gap:14px}
+  .acctrow3 .btn{min-height:96px;padding:14px 10px;gap:6px}
+  .acctrow3 .btn .acctLbl{font-size:17px;letter-spacing:1px}
+  .acctrow3 .btn small{font-size:12.5px}
+  .acctHead b{font-size:16px}
+  .acctHead small{font-size:12px}
   .slots{grid-template-columns:repeat(4,1fr);gap:12px}
   .slot img{height:120px}
   .slot .ph,.slot.empty .plus{line-height:120px}
@@ -503,9 +522,10 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
   .games.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
   .games.grid .game .txt small{-webkit-line-clamp:3}
   .navbar{
-    left:50%;right:auto;transform:translateX(-50%);bottom:14px;width:min(96vw,700px);
-    border-radius:20px;border:1px solid var(--line);
+    left:50%;right:auto;transform:translateX(-50%);bottom:16px;width:min(94vw,760px);
+    border-radius:20px;border:1px solid var(--line);padding:9px;gap:9px;
   }
+  .navbar .next{border-radius:14px}
 }
 /* 左下那張大立繪在 1080～1400 會壓到內容，超寬螢幕才放出來 */
 @media (max-width:1399px){ .hero{display:none} }
@@ -750,7 +770,8 @@ function paintStepBar(){
   $('stepnow').innerHTML = '<span>' + (step+1) + ' / ' + STEPS.length + '　' + STEP_NAME[step] + '</span>';
 }
 function paintNav(){
-  $('navBack').style.visibility = step === 0 ? 'hidden' : '';
+  /* 第一步沒有上一步——整顆收掉（不是留白），下一步才會填滿整條，不會左邊空一塊 */
+  $('navBack').style.display = step === 0 ? 'none' : '';
   const next = $('navNext');
   if(step < STEPS.length - 1){
     next.innerHTML = '下 一 步<small>' + STEP_NAME[step+1] + '</small>';

@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260831">
+<link rel="stylesheet" href="assets/common.css?v=20260831c">
 <style>
 /* ---------- 大廳改成底部五個分頁（2026-08-23 Steve：不要一頁滑到底，每一頁都要乾淨） ----------
    ① 開始（選模式＋登入帳號）② 玩什麼（練習就選題型／娛樂就看難度，再從這裡出擊）
@@ -26,10 +26,6 @@ body.thinStep .wrap{min-height:calc(100dvh - 190px);justify-content:center}
 /* 一步一頁：一次只顯示一步，不要全部擠在同一頁 */
 .step{display:none;flex-direction:column;gap:14px;animation:pgIn .22s ease-out}
 .step.on{display:flex}
-/* 2026-08-31 Steve 回報「要怎麼玩」（s1）內容只有兩張卡，下面空一大片：只讓這個
-   .step 自己置中（標題列、上下 nav 都在 .wrap 裡、不受影響，跟 body.thinStep
-   整塊置中會把標題也推下去不一樣） */
-#s1.on{min-height:calc(100dvh - 220px);justify-content:center}
 @keyframes pgIn{from{opacity:0;transform:translateY(8px)}}
 
 /* 帳號步驟：沒登入時三顆選擇（Steve 2026-08-30：照天堂那種線上遊戲，第一頁要三顆選擇明顯擺出來）
@@ -535,16 +531,13 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
   <div class="stepbar" id="stepbar"></div>
   <div class="stepnow" id="stepnow"></div>
 
-  <!-- s1：選玩法（現在排第 3 步，DOM 沒搬動，實際順序看 STEPS 陣列。
-       2026-08-30（第五次）Steve：第一頁太空、沒有歡迎詞，歡迎區塊搬到 s3（帳號，現在的
-       第 1 步）去補那邊的空版面，這裡不用重複歡迎一次 -->
-  <section class="step" id="s1">
+  <!-- s2：玩法＋出題設定，現在排第 3 步。
+       2026-08-31 Steve 回報單獨一頁「要怎麼玩」（原本的 s1）只有兩張卡，太空——
+       跟這頁合併，都是「開始遊戲前的設定」，性質相近；角色選擇（s4）不併，那是
+       身分不是設定。原本 s1 的 DOM 直接搬過來，STEPS 陣列拿掉 's1' 那格 -->
+  <section class="step" id="s2">
     <div class="sec"><h2>要怎麼玩</h2><i></i></div>
     <div class="modepanel"><div id="modebar"></div></div>
-  </section>
-
-  <!-- s2：出題設定（練習模式才要選；娛樂模式改看說明）現在排第 4 步 -->
-  <section class="step" id="s2">
     <div id="topicwrap">
       <div class="sec"><h2>要練哪一種題目</h2><i></i></div>
       <div class="charhint" id="topicHint">👉 先點一個題型才能繼續（登入帳號可以跳過這步）</div>
@@ -660,7 +653,7 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260831"></script>
+<script src="assets/common.js?v=20260831c"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 遊戲清單：要加新遊戲只改這一份，卡片與紀錄都會自己長出來 */
@@ -754,8 +747,8 @@ function gameCard(g){
    帳號登入 → 選角色／創角，這兩步是進遊戲世界前一定要先做完的事，
    玩法／出題設定是「進遊戲之後」才調的東西，不該排在創角前面擋路。
    不動 HTML 區塊順序（改動風險較大），只換這個索引對照表就重排了整個流程。 */
-const STEPS = ['s3','s4','s1','s2','s5'];
-const STEP_NAME = ['帳號', '角色', '玩法', '設定', '玩什麼'];
+const STEPS = ['s3','s4','s2','s5'];
+const STEP_NAME = ['帳號', '角色', '設定', '玩什麼'];
 let step = 0;
 
 function paintStepBar(){
@@ -785,10 +778,8 @@ function goStep(k){
   document.body.classList.toggle('atRoot', step === 0);   // 第一步已經是最上層，左上角返回鍵要跟著變暗
   /* 2026-08-30（第五次）：s3 加了歡迎區塊之後內容不算少了，拿掉「內容少置中」那套特殊處理，
      跟其他步驟一樣頂對齊，不然大片留白會跑到內容上面去，看起來更空。
-     2026-08-31 Steve 回報「要怎麼玩」那頁（s1，只有兩張模式卡）下面空一大片——不能重用
-     這顆 thinStep（它連 stepbar／navbar 那排標題都一起往下推，頭上反而多一塊空白，
-     跟當初拿掉的理由一樣）。改成只讓 #s1 自己這個 .step 置中，標題列留在原位不動，
-     見下面 `#s1.on` 那條 CSS。 */
+     2026-08-31（第二次）：「要怎麼玩」那頁原本獨立一步只有兩張模式卡，太空——已經跟
+     「設定」（s2）合併成同一步，不再需要單獨置中那套處理 */
   document.body.classList.toggle('thinStep', false);
   paintStepBar(); paintNav();
   window.scrollTo({top:0, behavior:'instant'});
@@ -921,10 +912,10 @@ async function createChar(n, heroKey, name){
   });
   try{ localStorage.setItem(SAVE_KEY + '_s' + n, JSON.stringify(d)); }catch(e){}
   setSlot(n);
-  /* 建好角色跳到「玩法」（index 2）——角色這一步已經完成了不要再退回去，但**不能**直接跳到
-     「玩什麼」（index 4），2026-08-30 加了「設定」那一步沒選題型不准往下走的規則，
-     跳太遠會直接繞過那個規則，沒登入的新玩家就完全沒被強制選過題型。
-     一次性旗標，下一次進站的 goStep 讀完就清掉，不會變成殘留狀態 */
+  /* 建好角色跳到「設定」（index 2，2026-08-31 起玩法卡也併進這一步了）——角色這一步
+     已經完成了不要再退回去，但**不能**直接跳到「玩什麼」（index 3），2026-08-30 加了
+     「設定」那一步沒選題型不准往下走的規則，跳太遠會直接繞過那個規則，沒登入的新玩家
+     就完全沒被強制選過題型。一次性旗標，下一次進站的 goStep 讀完就清掉，不會變成殘留狀態 */
   try{ sessionStorage.setItem('mul99_jump', '2'); }catch(e){}
   if(Cloud.logged()){ try{ await Cloud.push(n); }catch(e){} }
   location.reload();

@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260831e">
+<link rel="stylesheet" href="assets/common.css?v=20260831h">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -851,7 +851,18 @@ body.arcade .qbox,body.arcade #ans{display:none}
 .setlab{font-size:12px;color:var(--dim);letter-spacing:1px;margin-bottom:-2px}
 body.arcade #topicwrap{display:none}
 body.arcade #rangewrap{display:none}
+body.arcade #stagewrap{display:none}
 body:not(.arcade) #diffwrap{display:none}
+/* 每一關要答幾題：登入才能調（2026-08-31 Steve） */
+.stageqrow{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:6px}
+.stageqrow b{font-size:16px;min-width:96px;text-align:center;color:var(--ink,#fff)}
+.stageqbtn{width:40px;height:40px;border-radius:50%;border:1px solid #ffffff33;
+  background:#ffffff14;color:inherit;font-size:20px;cursor:pointer}
+.stageqbtn:disabled{opacity:.35;cursor:not-allowed}
+#stageqLoginHint{font-size:12px;color:var(--dim);margin-top:6px;text-align:center;display:none}
+body.stageqGuest #stageqLoginHint{display:block}
+body.stageqGuest .stageqbtn{display:none}
+body.stageqGuest #stageqVal{opacity:.6}
 body.playing .setup{display:none}
 /* 開打之後「開始冒險」就收起來，戰鬥畫面才乾淨；
    要重來走右上角暫停裡的「結束這一場」，或結算畫面的「再挑戰一次」 */
@@ -1018,9 +1029,16 @@ body.playing #pauseBtn{display:flex}
       <div class="setlab">加減法數字範圍</div>
       <div id="rangebar"></div>
     </div>
-    <div id="voicewrap">
-      <div class="setlab">題目要不要唸出來</div>
-      <div id="voicebar"></div>
+    <div id="stagewrap">
+      <div class="setlab">每 <b id="stagelabQ">10</b> 題答完要不要問繼續</div>
+      <div id="stagebar"></div>
+      <div class="setlab" style="margin-top:10px">每一關要答幾題（登入才能調整）</div>
+      <div class="stageqrow" id="stageqrow">
+        <button type="button" id="stageqMinus" class="stageqbtn">－</button>
+        <b id="stageqVal">10 題一關</b>
+        <button type="button" id="stageqPlus" class="stageqbtn">＋</button>
+      </div>
+      <div class="charhint" id="stageqLoginHint">👉 登入帳號才能調整關卡題數，目前固定 10 題一關</div>
     </div>
     <div id="diffwrap">
       <div class="setlab">娛樂模式的難度</div>
@@ -1128,16 +1146,23 @@ body.playing #pauseBtn{display:flex}
 <!-- 10 關全部練完：不是輸贏，是「今天的練習」做完了，讓小朋友自己決定要不要繼續 -->
 <div class="over" id="stageFinale">
   <div class="card">
-    <h2>🎉 今天的練習完成了！</h2>
-    <div class="big">10 關</div>
-    <div class="line">答對 <span id="sfRight">0</span></div>
-    <div class="line">答錯 <span id="sfWrong">0</span></div>
+    <h2 id="sfTitle">🎉 今天的練習完成了！</h2>
+    <div class="big" id="sfBig">10 關</div>
+    <div id="sfScoreBlock">
+      <div class="line">答對 <span id="sfRight">0</span></div>
+      <div class="line">答錯 <span id="sfWrong">0</span></div>
+      <div class="weak" id="sfWeakWrap"><h3>這一輪答錯的題目</h3><ul id="sfWeak"></ul></div>
+    </div>
+    <div id="sfLoginCta" style="display:none">
+      <div class="line" style="opacity:.85">登入帳號才能看到這一輪答對／答錯幾題，還有錯在哪裡</div>
+      <button class="btn ghost" id="sfLoginBtn">回 大 廳 登 入</button>
+    </div>
     <button class="btn" id="sfContinue">繼 續 闖 關</button>
     <button class="btn ghost" id="sfRest">先 休 息</button>
   </div>
 </div>
 
-<script src="assets/common.js?v=20260831e"></script>
+<script src="assets/common.js?v=20260831h"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -1250,8 +1275,11 @@ let arcade = false, QQ = null;
    跟原本打怪的血量／升等／掉裝備完全脫鉤：不管這一題有沒有打死誰，
    單純每答完 10 題（不論對錯）算過一關，10 關是一次「今天的練習」。
    純粹是練習節奏的里程碑，不是難度限制——怪物無限輪替、升等、掉寶都照舊在底下跑。 */
-const STAGE_Q = 10, STAGE_MAX = 10;
+let STAGE_Q = 10;             // 2026-08-31 Steve：每幾題一關可以讓玩家調整，開局時從 StageQ 設定重新讀一次
+const STAGE_MAX = 10;
 let stageNo = 1, stageQ = 0, stagePending = null;   // stagePending: null｜'clear'｜'finale'
+let pendingFinal = false;           // 這次跳出來的彈窗是不是「10 關全破」的真正完結
+let stageRight = 0, stageWrong = 0, stageWrongList = [];   // 這一輪（最多10題）自己的對錯，跟整場累計的 right/wrong 分開算
 const DIFF_KEY = 'mul99_diff';
 const DIFFS = {
   easy:   {time:6.6, dmg:0.70, cd:520, name:'悠閒'},
@@ -1281,7 +1309,8 @@ const HERO_FRAMES = {
 const ready = {};
 const SPELL_IMG = {
   fire:'assets/fx_fire.webp', ice:'assets/fx_ice.webp',
-  thunder:'assets/fx_thunder.webp', holy:'assets/fx_holy.webp', slash:'assets/fx_slash_big.webp'
+  thunder:'assets/fx_thunder.webp', holy:'assets/fx_holy.webp', slash:'assets/fx_slash_big.webp',
+  whirl:'assets/fx_whirl.webp', poison:'assets/fx_poison.webp'   // 2026-08-31：SPELLS 擴充招式借用的另外兩張
 };
 /* 一開始只載「馬上要用到的」：角色四格、貓、目前這隻怪與下一隻。
    魔法特效與後面的怪等閒下來再補，手機第一次進來才不用先吞掉一大包圖 */
@@ -1671,7 +1700,9 @@ const SPELL_FX = {
   fire:    {key:'fire',    size:300, dy:8},
   ice:     {key:'fire',    size:300, dy:8, hue:168, sat:1.7, bright:1.1},
   thunder: {key:'thunder', size:460, dy:-10},
-  holy:    {key:'holy',    size:360, dy:-6}
+  holy:    {key:'holy',    size:360, dy:-6},
+  whirl:   {key:'whirl',   size:420, dy:0},
+  poison:  {key:'poison',  size:320, dy:0, hue:-40, sat:1.6}
 };
 /* 待機小動作：隨機間隔播一次，兩邊錯開才不會像在跳同一支舞 */
 let idleTimer = null;
@@ -2027,17 +2058,37 @@ function paintHeroBar(){
     (Save.d.lv >= MAX_LV ? '（滿等）' : '') + '　' + fmtN(heroHp) + ' / ' + fmtN(maxHp);
 }
 
-/* ---------- 魔法：連續答對到門檻自動施放，越連越強 ---------- */
+/* ---------- 魔法：連續答對到門檻自動施放，越連越強 ----------
+   2026-08-31 Steve 二次回報：連續發動技能要多種一點，門檻改成 3/5/9/11/15/20/30/40/50~100
+   （不是等距 +5，中段刻意抓密一點讓小朋友常看到新招式，後段拉開跟 COMBO_MILESTONES 的
+   十位數節奏對齊）。100 連擊之後沿用最後一招、每 +10 連擊重播一次。
+   vk 借既有 6 種特效圖（火／冰＝火加藍色調／雷／光／旋風／毒霧）配不同 --sc 濾色做出
+   招式差異，沒有另外畫新素材，不用等 Gemini 額度 */
 const SPELLS = [
-  {at:3,  key:'fire',    name:'火球術',   color:'#ff8a3d', mult:1.6, mode:'fly',  word:'3 連擊！火球術'},
-  {at:5,  key:'ice',     name:'冰霜術',   color:'#6ea8ff', mult:2.2, mode:'fly',  word:'5 連擊！冰霜術'},
-  {at:7,  key:'thunder', name:'落雷術',   color:'#c4b5fd', mult:3.0, mode:'drop', word:'7 連擊！落雷術'},
-  {at:10, key:'holy',    name:'聖光審判', color:'#ffe9a8', mult:4.2, mode:'drop', word:'10 連擊！聖光審判', heal:20}
+  {at:3,   key:'s3',   vk:'fire',    name:'火球術',   color:'#ff8a3d', mult:1.6,  mode:'fly'},
+  {at:5,   key:'s5',   vk:'ice',     name:'冰霜術',   color:'#6ea8ff', mult:2.0,  mode:'fly'},
+  {at:9,   key:'s9',   vk:'thunder', name:'落雷術',   color:'#c4b5fd', mult:2.6,  mode:'drop'},
+  {at:11,  key:'s11',  vk:'whirl',   name:'破魂旋斬', color:'#7fe6ff', mult:3.2,  mode:'fly'},
+  {at:15,  key:'s15',  vk:'holy',    name:'聖光審判', color:'#ffe9a8', mult:3.8,  mode:'drop', heal:15},
+  {at:20,  key:'s20',  vk:'ice',     name:'疾風狂斬', color:'#5cc8ff', mult:4.4,  mode:'fly'},
+  {at:30,  key:'s30',  vk:'poison',  name:'幻影無雙', color:'#b98bff', mult:5.0,  mode:'drop'},
+  {at:40,  key:'s40',  vk:'thunder', name:'隕石衝擊', color:'#ff8a3d', mult:5.8,  mode:'drop'},
+  {at:50,  key:'s50',  vk:'holy',    name:'王者降臨', color:'#ffd76a', mult:6.6,  mode:'drop', heal:30},
+  {at:60,  key:'s60',  vk:'fire',    name:'龍王破空', color:'#ff9d5c', mult:7.4,  mode:'fly'},
+  {at:70,  key:'s70',  vk:'whirl',   name:'時空崩裂', color:'#5cf0ff', mult:8.2,  mode:'drop'},
+  {at:80,  key:'s80',  vk:'poison',  name:'宇宙極光', color:'#c893ff', mult:9.0,  mode:'fly'},
+  {at:90,  key:'s90',  vk:'ice',     name:'超越限界', color:'#ffffff', mult:9.8,  mode:'drop'},
+  {at:100, key:'s100', vk:'fire',    name:'乘法神話', color:'#ffe066', mult:11.0, mode:'drop', heal:40}
 ];
 function spellFor(c){
   const early = HERO.spellEarly || 0;          // 法師提早兩連就放
-  if(c >= 10 - early && (c - (10 - early)) % 5 === 0) return SPELLS[3];
-  return SPELLS.find(s => s.at - early === c) || null;
+  const ce = c + early;
+  if(ce < SPELLS[0].at) return null;
+  const last = SPELLS[SPELLS.length - 1];
+  const sp = (ce > last.at)
+    ? ((ce - last.at) % 10 === 0 ? last : null)   // 100 連擊後每 +10 重播最後一招
+    : SPELLS.find(s => s.at === ce);
+  return sp ? {...sp, word: ce + ' 連擊！' + sp.name} : null;
 }
 function comboShout(text, color){
   const f = $('comboFrame'), b = $('comboBig');
@@ -2200,8 +2251,9 @@ function castSpell(sp){
     circ.classList.remove('on'); void circ.offsetWidth; circ.classList.add('on');
     Sfx.next();
 
+    const imgKey = sp.vk || sp.key;   // 10連擊之後的招式沒畫新圖，借既有四張圖配不同顏色（見 SPELLS_ESCALATE）
     setTimeout(()=>{
-      if(ready[SPELL_IMG[sp.key]]) sprite.src = SPELL_IMG[sp.key];
+      if(ready[SPELL_IMG[imgKey]]) sprite.src = SPELL_IMG[imgKey];
       sprite.style.setProperty('--sc', sp.color + '99');
       sprite.classList.remove('fly','drop'); void sprite.offsetWidth;
       sprite.classList.add(sp.mode === 'drop' ? 'drop' : 'fly');
@@ -2214,7 +2266,7 @@ function castSpell(sp){
       mobHp = Math.max(0, mobHp - dmg);
       totalDmg += dmg;
       hitEffect(true, true, mobHp <= 0);
-      const fx = SPELL_FX[sp.key];
+      const fx = SPELL_FX[imgKey];
       if(fx) playFx(fx.key, mobCenter(), fx);
       camPush(true);
       dmgText(sp.name + ' -' + dmg, true);
@@ -2234,20 +2286,27 @@ function castSpell(sp){
 }
 
 /* ---------- 出題 ---------- */
-/* 答完（不論對錯）一題，往 10 題一關的進度走一步 */
-function stageAdvance(){
+/* 答完（不論對錯）一題，往 10 題一關的進度走一步。ok 為 undefined 表示逾時（不算對也不算錯，
+   但一樣往關卡進度走，逾時本來就會 combo=0 走到 wrong 分支之外的第三條路，見 tick()） */
+function stageAdvance(ok){
   if(arcade) return;                  // 娛樂模式沒有題目，不算關卡
+  if(ok === true) stageRight++;
+  else if(ok === false){ stageWrong++; if(QQ) stageWrongList.push(QQ.text + ' ＝ ' + QQ.ans); }
   stageQ++;
   if(stageQ >= STAGE_Q){
     stageQ = 0;
-    stagePending = (stageNo >= STAGE_MAX) ? 'finale' : 'clear';
+    pendingFinal = stageNo >= STAGE_MAX;
+    /* 2026-08-31 Steve：每 10 題要問一次要不要繼續，不是只顯示橫幅自動接下一題——
+       這個開關存在 Stage（common.js），關掉才回到舊行為（10題橫幅、100題才問） */
+    stagePending = (Stage.get() === 'ask' || pendingFinal) ? 'finale' : 'clear';
+    if(Cloud.logged()) History.add(stageRight, stageWrong);   // 沒登入不留這筆，跟結算彈窗的顯示邏輯一致
   }
   paintTop();
 }
 function newQ(){
   /* 過關／全破的提示插在「下一題出現之前」，不管是哪個分支（答對／答錯／逾時）呼叫進來的，
      一律在這裡攔下來，不用每個呼叫點都各自判斷一次 */
-  if(stagePending === 'finale'){ stagePending = null; stageFinale(); return; }
+  if(stagePending === 'finale'){ stagePending = null; stageFinale(pendingFinal); return; }
   if(stagePending === 'clear'){
     stagePending = null;
     comboShout('第 ' + stageNo + ' 關　過關！', '#ffd76a');
@@ -2421,7 +2480,7 @@ function answer(v, btn){
   [...$('ans').children].forEach(b => b.disabled = true);
 
   if(v === ans){
-    right++; stageAdvance();
+    right++; stageAdvance(true);
     if(fastest === null || took < fastest) fastest = took;
     combo++; Stats.mark(QQ.key, true);
     const ms = milestoneFor(combo);
@@ -2448,7 +2507,7 @@ function answer(v, btn){
       }
     });
   }else{
-    wrong++; combo = 0; stageAdvance();
+    wrong++; combo = 0; stageAdvance(false);
     comboAura(0);
     Stats.mark(QQ.key, false);
     btn.classList.add('wrong');
@@ -2805,7 +2864,7 @@ function tick(){
     if(!arcade){
       Stats.mark(QQ.key, false);
       [...$('ans').children].forEach(b => { b.disabled = true; if(+b.textContent === ans) b.classList.add('right'); });
-      stageAdvance();
+      stageAdvance(false);
     }
     mobAttack();
   }
@@ -2835,7 +2894,9 @@ function start(){
   ult = 0; combo = 0;
   kills = 0; totalDmg = 0; right = 0; wrong = 0; fastest = null;
   earnGold = 0; earnExp = 0; drops = [];
+  paintStageQ();               // 開局重讀一次，防止登入狀態在設定頁之後才改變
   stageNo = 1; stageQ = 0; stagePending = null;
+  stageRight = 0; stageWrong = 0; stageWrongList = [];
   Save.d.playCount++; Save.put();
   $('over').classList.remove('on');
   $('stageFinale').classList.remove('on');
@@ -2874,21 +2935,36 @@ function over(win){
   setTimeout(()=>$('over').classList.add('on'), 700);
 }
 
-/* 10 關（100 題）練完：不是輸贏判定，遊戲本身（打怪／升等）不中斷，只是彈出來問
-   「今天要不要繼續」。選繼續就把關卡數歸零重算，戰鬥狀態完全不動；選休息就回大廳。 */
-function stageFinale(){
+/* 每 10 題（1 關）或 10 關（100 題）練完，都彈出來問「要不要繼續」——不是輸贏判定，
+   遊戲本身（打怪／升等）不中斷。isFinal 才是真正 10 關全破，字樣跟一般過關不一樣；
+   選繼續：一般過關關卡數往上疊，全破才把關卡數歸零重算，戰鬥狀態都不受影響；選休息就回大廳。 */
+function stageFinale(isFinal){
   running = false;
-  $('sfRight').textContent = right;
-  $('sfWrong').textContent = wrong;
+  $('sfTitle').textContent = isFinal ? '🎉 今天的練習完成了！' : ('🎉 第 ' + stageNo + ' 關過關！');
+  $('sfBig').textContent = isFinal ? '10 關' : ('第 ' + stageNo + ' 關');
+  /* 2026-08-31 Steve：這一輪對錯幾題、錯在哪，登入才看得到——沒登入的話連數字都不顯示，
+     不是只藏錯題清單，逼玩家用帳號才能真的知道自己練得怎樣 */
+  const logged = Cloud.logged();
+  $('sfScoreBlock').style.display = logged ? '' : 'none';
+  $('sfLoginCta').style.display = logged ? 'none' : '';
+  if(logged){
+    $('sfRight').textContent = stageRight;
+    $('sfWrong').textContent = stageWrong;
+    $('sfWeakWrap').style.display = stageWrongList.length ? '' : 'none';
+    $('sfWeak').innerHTML = stageWrongList.map(t => '<li>' + t + '</li>').join('');
+  }
   $('stageFinale').classList.add('on');
 }
 $('sfContinue').onclick = () => {
   $('stageFinale').classList.remove('on');
-  stageNo = 1; stageQ = 0; stagePending = null;
+  if(pendingFinal) stageNo = 1; else stageNo++;
+  stageQ = 0; stagePending = null; pendingFinal = false;
+  stageRight = 0; stageWrong = 0; stageWrongList = [];
   running = true;
   newQ();
 };
 $('sfRest').onclick = () => { Save.put(); location.href = 'index.html'; };
+$('sfLoginBtn').onclick = () => { Save.put(); location.href = 'index.html'; };
 
 $('start').onclick = start;
 $('again').onclick = start;
@@ -2954,7 +3030,20 @@ function paintRangeVis(){ $('rangewrap').style.display = Topic.needsRange() ? ''
 Topic.bar($('topicbar'), () => paintRangeVis());
 Range.bar($('rangebar'), () => Topic.bar($('topicbar'), () => paintRangeVis()));
 paintRangeVis();
-Voice.bar($('voicebar'));
+Stage.bar($('stagebar'));
+/* 每一關要答幾題：登入才能調（10～100，10 一階）。沒登入固定 10 題，按鈕整排藏起來只留提示 */
+function paintStageQ(){
+  const logged = Cloud.logged();
+  document.body.classList.toggle('stageqGuest', !logged);
+  STAGE_Q = logged ? StageQ.get() : 10;
+  $('stageqVal').textContent = STAGE_Q + ' 題一關';
+  $('stagelabQ').textContent = STAGE_Q;
+  $('stageqMinus').disabled = STAGE_Q <= 10;
+  $('stageqPlus').disabled = STAGE_Q >= 100;
+}
+$('stageqMinus').onclick = () => { if(!Cloud.logged()) return; StageQ.set(StageQ.get() - 10); paintStageQ(); };
+$('stageqPlus').onclick  = () => { if(!Cloud.logged()) return; StageQ.set(StageQ.get() + 10); paintStageQ(); };
+paintStageQ();
 /* 喇叭：再唸一次，不扣分也不重算時間 */
 $('spkBtn').onclick = (e) => {
   e.stopPropagation();
@@ -2982,7 +3071,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260831e"></script>
-<script src="assets/lock.js?v=20260831e"></script>
+<script src="assets/audio.js?v=20260831h"></script>
+<script src="assets/lock.js?v=20260831h"></script>
 </body>
 </html>

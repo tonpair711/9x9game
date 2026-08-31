@@ -907,6 +907,69 @@ const Voice = {
   }
 };
 
+/* ---------- 每 10 題要不要跳出來問繼續（2026-08-31 Steve：要有節奏感，且要能關掉）----------
+   預設「ask」：每 10 題（1關）就跳出完整彈窗問要不要繼續。關掉（auto）就回到舊行為
+   ——10 題只顯示「過關」橫幅，自動接下一題，只有 10 關（100 題）全破才問。 */
+const STAGE_ASK_KEY = 'mul99_stageAsk';
+const STAGE_ASK_MODES = [
+  {k:'ask',  n:'每10題都問',   d:'答完就問要不要繼續'},
+  {k:'auto', n:'10題只提示', d:'顯示過關，自動接著寫'}
+];
+const Stage = {
+  get(){ try{ const v = localStorage.getItem(STAGE_ASK_KEY); return STAGE_ASK_MODES.some(m=>m.k===v) ? v : 'ask'; }catch(e){ return 'ask'; } },
+  set(v){ try{ localStorage.setItem(STAGE_ASK_KEY, v); }catch(e){} },
+  bar(el, onChange){
+    if(!el) return;
+    el.className = 'topicbar';
+    el.innerHTML = STAGE_ASK_MODES.map(m =>
+      '<button data-v="' + m.k + '">' + m.n + '<b>' + m.d + '</b></button>').join('');
+    const paint = () => [...el.children].forEach(b => b.classList.toggle('on', b.dataset.v === Stage.get()));
+    el.onclick = (e) => {
+      const b = e.target.closest('button'); if(!b) return;
+      Stage.set(b.dataset.v); paint(); onChange && onChange(Stage.get());
+    };
+    paint();
+  }
+};
+
+/* ---------- 每一關要答幾題（2026-08-31 Steve：登入帳號才能調，10～100 題自由調整）----------
+   跟下面的 History／錯題記錄同一組「登入才有的功能」，戰鬥頁自己判斷 Cloud.logged()
+   決定要不要讓這個設定生效，這裡只管存取，不管要不要顯示。 */
+const STAGE_QCOUNT_KEY = 'mul99_stageQCount';
+const StageQ = {
+  get(){
+    try{ const v = +localStorage.getItem(STAGE_QCOUNT_KEY); return (v >= 10 && v <= 100) ? Math.round(v/10)*10 : 10; }
+    catch(e){ return 10; }
+  },
+  set(v){
+    v = Math.min(100, Math.max(10, Math.round(v/10)*10));
+    try{ localStorage.setItem(STAGE_QCOUNT_KEY, v); }catch(e){}
+    return v;
+  }
+};
+
+/* ---------- 每 10 題一輪的成績記錄（2026-08-31 Steve：看能不能記錄成績）----------
+   只存最近 20 筆，每個角色各記各的（跟 Stats 一樣用 sk() 分格）。純粹給玩家／家長回顧
+   節奏用，不影響任何遊戲數值。 */
+const HISTORY_KEY = 'mul99_history';
+const History = {
+  data: (() => { try{ return JSON.parse(localStorage.getItem(sk(HISTORY_KEY))) || []; }catch(e){ return []; } })(),
+  add(right, wrong){
+    this.data.unshift({t: Date.now(), right, wrong});
+    if(this.data.length > 20) this.data.length = 20;
+    try{ localStorage.setItem(sk(HISTORY_KEY), JSON.stringify(this.data)); }catch(e){}
+  },
+  html(n){
+    if(!this.data.length) return '<li>還沒有練習紀錄</li>';
+    return this.data.slice(0, n || 10).map(r => {
+      const d = new Date(r.t);
+      const time = String(d.getMonth()+1) + '/' + d.getDate() + ' ' +
+        String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+      return '<li>' + time + '　✅ ' + r.right + '　❌ ' + r.wrong + '</li>';
+    }).join('');
+  }
+};
+
 /* ---------- 效能自動降級（2026-08-23 Steve：手機跟電腦玩起來都很卡） ----------
    每台機器的體質差很多，與其猜，不如量：連續掉幀就自己把吃效能的東西關掉。
    模式存 localStorage：auto（預設，會自己判斷）／high（全開）／low（一律精簡）。 */

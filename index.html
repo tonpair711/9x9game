@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260831c">
+<link rel="stylesheet" href="assets/common.css?v=20260831d">
 <style>
 /* ---------- 大廳改成底部五個分頁（2026-08-23 Steve：不要一頁滑到底，每一頁都要乾淨） ----------
    ① 開始（選模式＋登入帳號）② 玩什麼（練習就選題型／娛樂就看難度，再從這裡出擊）
@@ -27,6 +27,10 @@ body.thinStep .wrap{min-height:calc(100dvh - 190px);justify-content:center}
 .step{display:none;flex-direction:column;gap:14px;animation:pgIn .22s ease-out}
 .step.on{display:flex}
 @keyframes pgIn{from{opacity:0;transform:translateY(8px)}}
+/* 2026-08-31 Steve 回報桌機版「設定」頁（s2）感覺沒有置中——寬螢幕上四張卡片沒有
+   手機那麼高，頂對齊後下面空一截。跟之前 #s1 用過的同一招：只讓這個 .step 自己
+   置中，標題列跟 nav 都不受影響。手機上內容本來就比這個 min-height 高，不會有效果 */
+#s2.on{min-height:calc(100dvh - 220px);justify-content:center}
 
 /* 帳號步驟：沒登入時三顆選擇（Steve 2026-08-30：照天堂那種線上遊戲，第一頁要三顆選擇明顯擺出來）
    2026-08-30（第二次）Steve 回報「好醜、一點元素都沒有、直接遊戲不用特別大」：
@@ -119,9 +123,15 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
   background:linear-gradient(180deg,#fff0c4,var(--gold));box-shadow:0 4px 0 #a97a12}
 .navbar .next:disabled{filter:grayscale(.7) brightness(.7);cursor:default;box-shadow:none}
 .navbar .next small{display:block;font-size:11px;font-weight:700;letter-spacing:1px;opacity:.85;margin-top:2px}
-/* 縮放鎖那顆鈕本來貼在右下角，會被下面那條蓋住，往上抬 */
+/* 縮放鎖那顆鈕本來貼在右下角，會被下面那條蓋住，往上抬。
+   2026-08-31 Steve 回報右下角卡住了：量出來聲音鈕（audio.js 的 .audiobtn，
+   預設 bottom:62px）跟這顆縮放鎖幾乎疊在同一個高度、還蓋到 navbar——當初只調
+   了縮放鎖，聲音鈕忘了跟著往上抬。改成聲音鈕疊在縮放鎖正上方，兩顆鈕都在
+   navbar 之上、彼此不重疊 */
 .zoomlock{bottom:calc(var(--tabh) + 20px + env(safe-area-inset-bottom,0px)) !important}
 .zoomtip{bottom:calc(var(--tabh) + 28px + env(safe-area-inset-bottom,0px)) !important}
+.audiobtn{bottom:calc(var(--tabh) + 72px + env(safe-area-inset-bottom,0px)) !important}
+#audioPanel{bottom:calc(var(--tabh) + 122px + env(safe-area-inset-bottom,0px)) !important}
 
 /* 品牌角標：右上角一個小小的可點 logo，連回發布這個網站的官網。
    兩個發布目標（tonpair711／hunglun2026）共用同一份 index.html，
@@ -665,7 +675,7 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260831c"></script>
+<script src="assets/common.js?v=20260831d"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 遊戲清單：要加新遊戲只改這一份，卡片與紀錄都會自己長出來 */
@@ -1164,7 +1174,7 @@ let jump = 0;
 try{ jump = +(sessionStorage.getItem('mul99_jump') || 0) || 0; sessionStorage.removeItem('mul99_jump'); }catch(e){}
 goStep(jump || 0);
 </script>
-<script src="assets/audio.js"></script>
-<script src="assets/lock.js"></script>
+<script src="assets/audio.js?v=20260831d"></script>
+<script src="assets/lock.js?v=20260831d"></script>
 </body>
 </html>

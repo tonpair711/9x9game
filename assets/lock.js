@@ -77,6 +77,22 @@
     document.body.appendChild(btn);
     document.body.appendChild(tip);
     apply();
+
+    /* 2026-08-31 Steve 回報：手機上這顆鈕沒有說明是做什麼的——title/aria-label 只有
+       滑鼠長按才看得到，觸控螢幕根本用不到。第一次進站時自動彈一下說明，看過一次
+       就記住了不會再彈，跟已經在做的「點擊回饋」共用同一顆 tip，不用另外做元件 */
+    var SEEN_KEY = 'mul99_lockzoom_seen';
+    var seen = false;
+    try{ seen = localStorage.getItem(SEEN_KEY) === '1'; }catch(e){}
+    if(!seen){
+      setTimeout(function(){
+        tip.textContent = '這顆鈕可以鎖定/解鎖畫面縮放';
+        tip.classList.add('on');
+        clearTimeout(tip._t);
+        tip._t = setTimeout(function(){ tip.classList.remove('on'); }, 3200);
+        try{ localStorage.setItem(SEEN_KEY, '1'); }catch(e){}
+      }, 900);
+    }
   }
 
   setViewport();

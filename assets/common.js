@@ -1017,12 +1017,12 @@ addEventListener('DOMContentLoaded', () => {
 });
 
 /* ---------- 雲端帳號（2026-08-23 Steve：帳號密碼不能放前端，一定要後端） ----------
-   **帳號跟「小綸出題小幫手」(lunquiz) 共用同一套**（Steve 指定），
-   後端在 ClaudeOnly 的 `school/lunquiz/worker`，遊戲存檔存在它的 D1（表 game_saves）。
-   登入沿用它的 `/api/auth/*`，驗證走 `X-Session-Token` header。
+   2026-08-31 Steve：改成 9x9game 自己的一套，不再跟「小綸出題小幫手」共用。
+   後端在 ClaudeOnly 的 `games/9x9game/worker`（Cloudflare 帳號 tonpair711，儲存用 KV），
+   端點與回應格式跟舊的一樣（/api/auth/*、/api/game/save…），驗證走 `X-Session-Token` header。
    這支檔案裡**只會有 token**，密碼打完就送出去、不留在本機。 */
 const Cloud = {
-  API: 'https://linquiz-api.steve-edu711.workers.dev',
+  API: 'https://api.tonpair.com',
   GAME: 'mul99',
   TK: 'mul99_token', NM: 'mul99_user',
   token(){ try{ return localStorage.getItem(this.TK) || ''; }catch(e){ return ''; } },
@@ -1058,7 +1058,11 @@ const Cloud = {
     const j = await this.req('/api/auth/login', {method:'POST', body:{username:name, password}});
     this._set(j.token, (j.user && j.user.displayName) || name); return j;
   },
-  async logout(){ this._set(''); },        // lunquiz 的 session 是簽章 token，沒有伺服器端撤銷
+  async logout(){
+    // 先請伺服器把這個 token 從 KV 刪掉，再清本機（送不出去也無所謂，本機清掉就等於登出）
+    try{ await this.req('/api/auth/logout', {method:'POST'}); }catch(e){}
+    this._set('');
+  },
   slots(){ return this.req('/api/game/slots?game=' + this.GAME); },
   /* 把整包（進度＋答題統計＋各遊戲最佳成績）打成一份 */
   pack(){
@@ -1125,7 +1129,7 @@ function loginBox(onDone, startMode){
   box.innerHTML =
     '<div class="pwbox loginbox">' +
       '<h3 id="lgTitle">登入</h3>' +
-      '<p id="lgSub">跟「小綸出題小幫手」同一組帳號。登入後進度會存在雲端，換手機也接得回來</p>' +
+      '<p id="lgSub">登入後進度會存在雲端，換手機、換電腦都接得回來</p>' +
       '<input id="lgName" maxlength="16" placeholder="帳號（英文或數字）" autocomplete="username">' +
       '<input id="lgPw" type="password" maxlength="32" placeholder="密碼" autocomplete="current-password">' +
       // 註冊才出現：密碼要打兩次。打錯字自己看不出來（欄位是圓點），
@@ -1148,8 +1152,8 @@ function loginBox(onDone, startMode){
     mode = mode === 'login' ? 'reg' : 'login';
     $$('lgTitle').textContent = mode === 'login' ? '登入' : '註冊新帳號';
     $$('lgSub').textContent = mode === 'login'
-      ? '跟「小綸出題小幫手」同一組帳號。登入後進度會存在雲端，換手機也接得回來'
-      : '帳號請用英文或數字。這組帳號在「小綸出題小幫手」也能用，請不要用你其他重要網站的密碼';
+      ? '登入後進度會存在雲端，換手機、換電腦都接得回來'
+      : '帳號請用英文或數字（3～16 字）。密碼請不要跟你其他重要網站一樣';
     $$('lgGo').textContent = mode === 'login' ? '登 入' : '註 冊';
     $$('lgSwap').textContent = mode === 'login' ? '還沒有帳號？註冊一個' : '已經有帳號了，改成登入';
     $$('lgPw').autocomplete = mode === 'login' ? 'current-password' : 'new-password';

@@ -711,35 +711,32 @@ const Topic = {
   /* 語文題（注音／字母）：答案是符號不是數字，數字範圍與怪物弱點都用不到 */
   isLang(t){ return TOPICS[t || this.get()].g === 'lang'; },
   needsRange(){ const t = this.get(); return t !== 'mul' && !this.isLang(t); },
-  /* 畫出題型選單（2026-08-30 改成分頁 tab）：Steve 回報數學／語文兩組疊在一起用不好，
-     改成「數學」「語文」兩顆分頁籤，點哪個才顯示哪組的題目按鈕，不再兩組一起攤開。
-     沒點過（chosen()===false）時整組都不亮 .on，逼玩家自己選一個，不再偷偷預設九九乘法。 */
+  /* 畫出題型選單（2026-08-31 改成下拉選單）：Steve 回報「數學」「語文」分頁籤＋一整排
+     題型按鈕那頁太空泛、佔位置太多，改成一顆下拉選單，數學／語文用 optgroup 分組
+     （只有一組時不分組）。沒點過（chosen()===false）時放一個停用的「請選擇」當預設項，
+     逼玩家自己選一個，不再偷偷預設九九乘法——跟舊版按鈕那套規則一樣，只是換了個殼。 */
   bar(el, onChange){
     if(!el) return;
-    el.className = 'topicbar grouped';
+    el.className = 'topicsel';
     const groups = TOPIC_GROUPS.filter(g => Topic.lang || g.k !== 'lang');
-    let curG = groups.find(g => g.k === TOPICS[Topic.get()].g) ? TOPICS[Topic.get()].g : groups[0].k;
+    const optsFor = g => Object.keys(TOPICS).filter(k => TOPICS[k].g === g.k).map(k =>
+      '<option value="' + k + '">' + TOPICS[k].n + '（' + TOPICS[k].d.replace('{r}', Range.get()) + '）</option>'
+    ).join('');
     const paint = () => {
-      const tabs = groups.length > 1
-        ? '<div class="topictabs">' + groups.map(g =>
-            '<button data-g="' + g.k + '" class="' + (g.k === curG ? 'on' : '') + '">' + g.n + '</button>'
-          ).join('') + '</div>'
-        : '';
-      const rows = '<div class="tgrow">' +
-        Object.keys(TOPICS).filter(k => TOPICS[k].g === curG).map(k =>
-          '<button data-t="' + k + '">' + TOPICS[k].n + '<b>' +
-          TOPICS[k].d.replace('{r}', Range.get()) + '</b></button>').join('') +
-        '</div>';
-      el.innerHTML = tabs + rows;
       const has = Topic.chosen();
-      [...el.querySelectorAll('.tgrow button')].forEach(b =>
-        b.classList.toggle('on', has && b.dataset.t === Topic.get()));
+      const body = groups.length > 1
+        ? groups.map(g => '<optgroup label="' + g.n + '">' + optsFor(g) + '</optgroup>').join('')
+        : optsFor(groups[0]);
+      el.innerHTML =
+        '<select>' +
+        (has ? '' : '<option value="" disabled selected>請選擇要練的題目</option>') +
+        body +
+        '</select>';
+      if(has) el.querySelector('select').value = Topic.get();
     };
-    el.onclick = (e) => {
-      const tab = e.target.closest('.topictabs button');
-      if(tab){ curG = tab.dataset.g; paint(); return; }
-      const b = e.target.closest('.tgrow button'); if(!b) return;
-      Topic.set(b.dataset.t); paint(); onChange && onChange(Topic.get());
+    el.onchange = (e) => {
+      const v = e.target.value; if(!v) return;
+      Topic.set(v); paint(); onChange && onChange(Topic.get());
     };
     paint();
   }

@@ -26,6 +26,10 @@ body.thinStep .wrap{min-height:calc(100dvh - 190px);justify-content:center}
 /* 一步一頁：一次只顯示一步，不要全部擠在同一頁 */
 .step{display:none;flex-direction:column;gap:14px;animation:pgIn .22s ease-out}
 .step.on{display:flex}
+/* 2026-08-31 Steve 回報「要怎麼玩」（s1）內容只有兩張卡，下面空一大片：只讓這個
+   .step 自己置中（標題列、上下 nav 都在 .wrap 裡、不受影響，跟 body.thinStep
+   整塊置中會把標題也推下去不一樣） */
+#s1.on{min-height:calc(100dvh - 220px);justify-content:center}
 @keyframes pgIn{from{opacity:0;transform:translateY(8px)}}
 
 /* 帳號步驟：沒登入時三顆選擇（Steve 2026-08-30：照天堂那種線上遊戲，第一頁要三顆選擇明顯擺出來）
@@ -187,6 +191,7 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
 .sec{display:flex;align-items:center;gap:10px;margin:2px 2px -4px}
 .sec h2{font-size:14px;color:var(--gold);letter-spacing:2px;font-weight:800;white-space:nowrap}
 .sec i{flex:1;height:1px;background:linear-gradient(90deg,#573a7d,transparent)}
+.slotcap{font-size:11px;color:var(--dim);letter-spacing:1px;margin:-2px 2px 8px}
 .panel{
   padding:16px;border-radius:20px;background:linear-gradient(180deg,#2e1c47,#1a1029);
   border:1px solid var(--line);box-shadow:0 10px 28px #0007;
@@ -196,12 +201,10 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
 
 /* ---------- 玩家卡 ---------- */
 .player{
-  display:flex;gap:14px;align-items:center;padding:16px;border-radius:20px;cursor:pointer;
+  display:flex;gap:14px;align-items:center;padding:16px;border-radius:20px;
   background:linear-gradient(135deg,#41285e,#20132f 70%);border:1px solid var(--line);
   box-shadow:0 14px 36px #0009,inset 0 1px 0 #ffffff1a;position:relative;overflow:hidden;
-  transition:border-color .2s;
 }
-.player:hover{border-color:#8a63c9}
 .player::before{
   content:"";position:absolute;right:-30px;top:-40px;width:170px;height:170px;border-radius:50%;
   background:radial-gradient(circle,#f6c45326,transparent 68%);pointer-events:none;
@@ -581,11 +584,11 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
 
   <!-- s4：選角色，現在排第 2 步——登入後立刻選／建角色，沒角色不准往下走 -->
   <section class="step" id="s4">
-    <div class="sec"><h2>誰要出戰？（一個帳號最多 4 個）</h2><i></i></div>
+    <div class="sec"><h2>選擇你的角色</h2><i></i></div>
+    <div class="slotcap">最多可以建立 4 個角色</div>
     <div class="charhint" id="charHint">👋 <b>第一次來嗎？</b>先點下面「＋ 建立角色」，取個名字、挑一個職業，就能開始冒險了。</div>
     <div class="slots" id="slots"></div>
     <div class="slotacts">
-      <button id="renameBtn">改名字</button>
       <button class="danger" id="delBtn">刪除角色</button>
     </div>
 
@@ -649,7 +652,7 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
     <h2 id="hpTitle">建 立 角 色</h2>
     <div class="sub" id="hpSub">先幫他取名字，再挑一個職業</div>
     <div class="namerow" id="hpNameRow">
-      <label>角色名字（最多 8 個字，留白就用職業的名字）</label>
+      <label>角色名字（最多 8 個字，取好就不能再改，留白就用職業的名字）</label>
       <input id="hpName" maxlength="8" autocomplete="off">
     </div>
     <div class="heroes" id="heroes"></div>
@@ -781,7 +784,11 @@ function goStep(k){
   STEPS.forEach((id, n) => $(id).classList.toggle('on', n === step));
   document.body.classList.toggle('atRoot', step === 0);   // 第一步已經是最上層，左上角返回鍵要跟著變暗
   /* 2026-08-30（第五次）：s3 加了歡迎區塊之後內容不算少了，拿掉「內容少置中」那套特殊處理，
-     跟其他步驟一樣頂對齊，不然大片留白會跑到內容上面去，看起來更空 */
+     跟其他步驟一樣頂對齊，不然大片留白會跑到內容上面去，看起來更空。
+     2026-08-31 Steve 回報「要怎麼玩」那頁（s1，只有兩張模式卡）下面空一大片——不能重用
+     這顆 thinStep（它連 stepbar／navbar 那排標題都一起往下推，頭上反而多一塊空白，
+     跟當初拿掉的理由一樣）。改成只讓 #s1 自己這個 .step 置中，標題列留在原位不動，
+     見下面 `#s1.on` 那條 CSS。 */
   document.body.classList.toggle('thinStep', false);
   paintStepBar(); paintNav();
   window.scrollTo({top:0, behavior:'instant'});
@@ -893,7 +900,7 @@ function paintSlots(){
   box.innerHTML = '';
   for(let n = 1; n <= SLOT_MAX; n++) box.appendChild(slotCard(n));
   const has = !!Save.peek(curSlot());
-  ['renameBtn','delBtn'].forEach(k => $(k).disabled = !has);
+  $('delBtn').disabled = !has;
   document.body.classList.toggle('needChar', !hasAnyChar());
 }
 function hasAnyChar(){
@@ -1093,39 +1100,6 @@ function paintPlayer(){
               : '<span style="color:#6b578a">' + names[k] + '：無</span>';
   }).join('');
 }
-$('playerCard').onclick = askName;
-
-/* 自己取名字：存進 Save.d.pname，八頁都吃這個名字 */
-function askName(){
-  const box = document.createElement('div');
-  box.className = 'pwwrap';
-  box.innerHTML =
-    '<div class="pwbox">' +
-      '<h3>幫你的角色取名字</h3>' +
-      '<p>最多 8 個字，留白就用職業本來的名字</p>' +
-      '<input id="nmInput" maxlength="8" autocomplete="off" style="letter-spacing:2px;font-size:20px">' +
-      '<div class="pwmsg" id="nmMsg"></div>' +
-      '<div class="pwbtns"><button class="btn ghost" id="nmCancel">取 消</button>' +
-      '<button class="btn" id="nmOk">確 定</button></div>' +
-    '</div>';
-  document.body.appendChild(box);
-  const inp = box.querySelector('#nmInput');
-  inp.value = Save.d.pname || '';
-  setTimeout(() => { inp.focus(); inp.select(); }, 60);
-  const close = () => box.remove();
-  const ok = () => {
-    Save.d.pname = inp.value.trim().slice(0, 8);
-    Save.put();
-    close();
-    paintPlayer(); paintSlots();
-  };
-  box.querySelector('#nmOk').onclick = ok;
-  box.querySelector('#nmCancel').onclick = close;
-  inp.onkeydown = (e) => { if(e.key === 'Enter') ok(); };
-  box.onclick = (e) => { if(e.target === box) close(); };
-}
-$('renameBtn').onclick = askName;
-
 /* ---------- 玩法與題型 ---------- */
 function paintPlay(){
   const arc = Mode.isArcade();

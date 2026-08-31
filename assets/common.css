@@ -268,31 +268,28 @@ h1{
 /* 2026-08-24 Steve 回報：題型鈕在寬一點的螢幕會 5 顆硬擠一排，「減法」字幕比較長
    就被擠到換行、看起來亂。改用 grid＋固定最小寬度，塞不下就整顆換到下一排，
    不會有「同一排裡有的擠、有的鬆」的問題。 */
-.topicbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(116px,1fr));gap:8px;width:100%}
-/* 題型多了以後分「數學／語文」兩組（2026-08-27）：整排七顆在 390px 手機上會擠成一團
-   2026-08-30 改成分頁 tab（見 common.js 的 Topic.bar()）：兩組不再一起攤開，
-   點「數學」／「語文」才切換顯示哪一組 */
-.topicbar.grouped{display:block}
-.topictabs{display:flex;gap:8px;margin-bottom:10px}
-.topictabs button{
-  flex:1;min-height:40px;padding:6px 8px;border-radius:12px;cursor:pointer;
-  background:#2a1a40;border:1px solid var(--line);color:var(--dim);
-  font-size:13px;font-weight:800;letter-spacing:2px;
-}
-.topictabs button.on{
-  background:linear-gradient(180deg,#523775,#2c1b42);border-color:var(--gold);color:var(--gold2);
-  box-shadow:0 0 0 2px #f6c45333;
-}
-.topicbar.grouped .tgrow{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px}
+.topicbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;width:100%}
+/* 題型選單本身已改成下拉選單（見下面 .topicsel），這裡的 .topicbar 現在只剩
+   加減法數字範圍（Range.bar）跟題目要不要唸出來（Voice.bar）兩個按鈕列在用 */
 .topicbar button{
-  min-height:46px;padding:8px 8px;border-radius:12px;cursor:pointer;
+  min-height:50px;padding:10px 8px;border-radius:12px;cursor:pointer;
   background:#2a1a40;border:1px solid var(--line);color:var(--gold2);
   font-size:13px;font-weight:700;line-height:1.35;
 }
-.topicbar button b{display:block;font-size:10px;font-weight:500;color:var(--dim)}
+/* 2026-08-31 Steve 回報：字比較長的選項（例如「只唸注音字母」）換行後會頂到框邊——
+   minmax 116→130 讓每顆更寬、比較不容易換行；真的換行時 margin-top 也留出呼吸空間 */
+.topicbar button b{display:block;font-size:10px;font-weight:500;color:var(--dim);margin-top:3px}
 .topicbar button.on{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#3a2400;border-color:var(--gold)}
 .topicbar button.on b{color:#6b4a00}
+/* 2026-08-31 Steve 回報題型那頁太空泛：改成下拉選單（見 common.js Topic.bar()） */
+.topicsel select{
+  width:100%;min-height:50px;padding:10px 36px 10px 14px;border-radius:12px;cursor:pointer;
+  background:#2a1a40 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%23f6c453' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 14px center;
+  border:1px solid var(--line);color:var(--gold2);font-size:14px;font-weight:700;
+  appearance:none;-webkit-appearance:none;
+}
+.topicsel select:focus{border-color:var(--gold);outline:none}
+.topicsel select option{background:#241638;color:var(--gold2)}
 .setlab2{font-size:12px;color:var(--dim);letter-spacing:1px;width:min(96vw,560px);margin-bottom:-4px}
 #topicbar{width:min(96vw,560px)}
 /* 娛樂模式不出題，題型選單就沒有意義，收起來 */

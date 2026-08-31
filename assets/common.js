@@ -832,7 +832,8 @@ const Voice = {
   _cache: {},
   _cur: null,        // 目前正在播的那一串，換題時要能中斷
   _seq: 0,
-  get(){ try{ const v = localStorage.getItem(VOICE_KEY); return VOICE_MODES.some(m=>m.k===v) ? v : 'lang'; }catch(e){ return 'lang'; } },
+  /* 2026-08-31 Steve：預設要全部唸出來，不是只唸注音字母 */
+  get(){ try{ const v = localStorage.getItem(VOICE_KEY); return VOICE_MODES.some(m=>m.k===v) ? v : 'all'; }catch(e){ return 'all'; } },
   set(v){ try{ localStorage.setItem(VOICE_KEY, v); }catch(e){} },
   /* 這一題該不該唸。符號題只要沒關就唸，數學題只有「全部唸」才唸 */
   on(q){ const m = this.get(); return m !== 'off' && (m === 'all' || !!(q && q.sym)); },

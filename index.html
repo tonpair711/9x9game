@@ -435,7 +435,7 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
   position:absolute;right:10px;top:10px;width:32px;height:32px;border-radius:10px;cursor:pointer;
   border:1px solid var(--line);background:#20132f;color:var(--dim);font-size:15px;line-height:1;
 }
-.namerow{margin-top:14px}
+.namerow{margin:14px 0}
 .namerow label{display:block;font-size:12px;color:var(--dim);margin-bottom:6px;letter-spacing:1px}
 .namerow input{
   width:100%;height:48px;border-radius:13px;border:1px solid var(--line);background:#1b0f2c;
@@ -582,11 +582,10 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
   <!-- s4：選角色，現在排第 2 步——登入後立刻選／建角色，沒角色不准往下走 -->
   <section class="step" id="s4">
     <div class="sec"><h2>誰要出戰？（一個帳號最多 4 個）</h2><i></i></div>
-    <div class="charhint" id="charHint">👋 <b>第一次來嗎？</b>先點下面「＋ 建立角色」，挑一個職業、取個名字，就能開始冒險了。</div>
+    <div class="charhint" id="charHint">👋 <b>第一次來嗎？</b>先點下面「＋ 建立角色」，取個名字、挑一個職業，就能開始冒險了。</div>
     <div class="slots" id="slots"></div>
     <div class="slotacts">
       <button id="renameBtn">改名字</button>
-      <button id="reclassBtn">換職業</button>
       <button class="danger" id="delBtn">刪除角色</button>
     </div>
 
@@ -648,12 +647,12 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
   <div class="modalbox">
     <button class="xbtn" id="hpClose" aria-label="關閉">✕</button>
     <h2 id="hpTitle">建 立 角 色</h2>
-    <div class="sub" id="hpSub">先挑一個職業，再幫他取名字</div>
-    <div class="heroes" id="heroes"></div>
+    <div class="sub" id="hpSub">先幫他取名字，再挑一個職業</div>
     <div class="namerow" id="hpNameRow">
       <label>角色名字（最多 8 個字，留白就用職業的名字）</label>
       <input id="hpName" maxlength="8" autocomplete="off">
     </div>
+    <div class="heroes" id="heroes"></div>
     <button class="btn" id="hpOk">確 定</button>
   </div>
 </div>
@@ -894,7 +893,7 @@ function paintSlots(){
   box.innerHTML = '';
   for(let n = 1; n <= SLOT_MAX; n++) box.appendChild(slotCard(n));
   const has = !!Save.peek(curSlot());
-  ['renameBtn','reclassBtn','delBtn'].forEach(k => $(k).disabled = !has);
+  ['renameBtn','delBtn'].forEach(k => $(k).disabled = !has);
   document.body.classList.toggle('needChar', !hasAnyChar());
 }
 function hasAnyChar(){
@@ -926,12 +925,12 @@ async function createChar(n, heroKey, name){
 $('slots').addEventListener('click', e => {
   const c = e.target.closest('.slot'); if(!c) return;
   const n = +c.dataset.n;
-  if(c.classList.contains('empty')) openHeroPick('create', n);
+  if(c.classList.contains('empty')) openHeroPick(n);
   else switchSlot(n);
 });
 
-/* ---------- 選職業彈窗：建立角色與換職業共用 ---------- */
-let hpMode = 'create', hpSlot = 1, hpHero = HEROES[0].key;
+/* ---------- 選職業彈窗：只在建立角色時用（職業選了就不能換，只能多建角色） ---------- */
+let hpSlot = 1, hpHero = HEROES[0].key;
 function paintHeroes(){
   const box = $('heroes');
   box.innerHTML = '';
@@ -983,47 +982,84 @@ $('heroes').addEventListener('click', e => {
   paintHeroes();
   Sfx.ok(3);
 });
-function openHeroPick(mode, n){
-  hpMode = mode; hpSlot = n || curSlot();
-  const d = mode === 'create' ? null : Save.d;
-  hpHero = d ? d.hero : HEROES[0].key;
-  $('hpTitle').textContent = mode === 'create' ? '建 立 角 色' : '換 職 業';
-  $('hpSub').textContent = mode === 'create'
-    ? '第 ' + hpSlot + ' 位・先挑一個職業，再幫他取名字'
-    : '等級、裝備、金幣都會留著，只換職業';
-  $('hpNameRow').style.display = mode === 'create' ? '' : 'none';
+function openHeroPick(n){
+  hpSlot = n;
+  hpHero = HEROES[0].key;
+  $('hpSub').textContent = '第 ' + hpSlot + ' 位・先幫他取名字，再挑一個職業';
   $('hpName').value = '';
   paintHeroes();
   $('heropick').classList.add('on');
-  if(mode === 'create') setTimeout(() => $('hpName').focus(), 80);
+  setTimeout(() => $('hpName').focus(), 80);
 }
 const closeHeroPick = () => $('heropick').classList.remove('on');
 $('hpClose').onclick = closeHeroPick;
 $('heropick').onclick = e => { if(e.target === $('heropick')) closeHeroPick(); };
 $('hpOk').onclick = () => {
-  if(hpMode === 'create'){
-    createChar(hpSlot, hpHero, $('hpName').value.trim().slice(0, 8));
-  }else{
-    Save.d.hero = hpHero;
-    Save.put();
-    closeHeroPick();
-    paintPlayer(); paintSlots(); paintGames();
-    Sfx.ok(3);
-  }
+  createChar(hpSlot, hpHero, $('hpName').value.trim().slice(0, 8));
 };
-$('reclassBtn').onclick = () => openHeroPick('change');
 $('delBtn').onclick = () => {
   const n = curSlot(), d = Save.peek(n);
   if(!d) return;
   const nm = (d.pname || '').trim() || heroOf(d.hero).name;
-  if(!confirm('確定要刪除「' + nm + '」嗎？這個角色的等級、裝備、答題紀錄都會不見。')) return;
-  Save.wipe(n);
-  /* 刪掉的是正在用的那一格，就換到還有人的那一格；都沒有就留在第 1 格 */
-  let go = 1;
-  for(let i = 1; i <= SLOT_MAX; i++){ if(Save.peek(i)){ go = i; break; } }
-  setSlot(go);
-  location.reload();
+  const doDelete = () => {
+    Save.wipe(n);
+    /* 刪掉的是正在用的那一格，就換到還有人的那一格；都沒有就留在第 1 格 */
+    let go = 1;
+    for(let i = 1; i <= SLOT_MAX; i++){ if(Save.peek(i)){ go = i; break; } }
+    setSlot(go);
+    location.reload();
+  };
+  /* 有登入雲端帳號的話用密碼把關，避免手滑或別人碰到手機就刪掉存了很久的角色；
+     沒登入（純本機）沒有密碼可核對，維持原本的 confirm() 二次確認 */
+  if(Cloud.logged()) askDeletePassword(nm, doDelete);
+  else if(confirm('確定要刪除「' + nm + '」嗎？這個角色的等級、裝備、答題紀錄都會不見。')) doDelete();
 };
+/* 用登入密碼確認要刪除哪個角色：直接打 /api/auth/login 驗證這組密碼對不對，
+   對了才真的刪；密碼本身不留在前端也不用另外開後端 API。
+   ⚠ 這裡故意不透過 Cloud.login()／Cloud.req()——那條路徑收到 401 會當作
+   「token 過期」自動把本機登入狀態清掉（見 common.js req()）。刪角色只是打錯一次
+   密碼，不該連累把整個雲端帳號登出，所以改成獨立 fetch，驗證失敗只顯示錯誤、
+   不動 Cloud 的登入狀態。 */
+function askDeletePassword(nm, onOk){
+  const box = document.createElement('div');
+  box.className = 'pwwrap';
+  box.innerHTML =
+    '<div class="pwbox">' +
+      '<h3>刪除「' + nm + '」？</h3>' +
+      '<p>等級、裝備、答題紀錄都會不見，且無法復原。輸入登入密碼確認：</p>' +
+      '<input id="delPw" type="password" maxlength="32" placeholder="登入密碼" autocomplete="current-password">' +
+      '<div class="pwmsg" id="delMsg"></div>' +
+      '<div class="pwbtns"><button class="btn ghost" id="delCancel">取 消</button>' +
+      '<button class="btn" id="delOk">確定刪除</button></div>' +
+    '</div>';
+  document.body.appendChild(box);
+  const $$ = id => box.querySelector('#' + id);
+  const msg = (t, ok) => { const m = $$('delMsg'); m.textContent = t; m.style.color = ok ? 'var(--ok)' : 'var(--bad)'; };
+  const close = () => box.remove();
+  setTimeout(() => $$('delPw').focus(), 60);
+  $$('delCancel').onclick = close;
+  $$('delOk').onclick = async () => {
+    const pw = $$('delPw').value;
+    if(!pw) return msg('請輸入密碼');
+    $$('delOk').disabled = true;
+    msg('確認中…', true);
+    try{
+      const r = await fetch(Cloud.API + '/api/auth/login', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({username: Cloud.user(), password: pw})
+      });
+      const j = await r.json().catch(() => null);
+      if(!r.ok) throw new Error((j && j.error && j.error.message) || '密碼不對');
+      close();
+      onOk();
+    }catch(e){
+      msg(e.message || '密碼不對');
+      $$('delOk').disabled = false;
+    }
+  };
+  $$('delPw').onkeydown = e => { if(e.key === 'Enter') $$('delOk').click(); };
+  box.onclick = e => { if(e.target === box) close(); };
+}
 
 /* ---------- 出戰角色卡 ---------- */
 function paintPlayer(){
@@ -1057,7 +1093,7 @@ function paintPlayer(){
               : '<span style="color:#6b578a">' + names[k] + '：無</span>';
   }).join('');
 }
-$('playerCard').onclick = () => openHeroPick('change');
+$('playerCard').onclick = askName;
 
 /* 自己取名字：存進 Save.d.pname，八頁都吃這個名字 */
 function askName(){

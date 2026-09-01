@@ -1183,7 +1183,7 @@ body.playing #pauseBtn{display:flex}
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
    這裡不能直接查 SPR 有沒有 key，見 preloadNearby() 那邊的說明） */
-const ATK_ONLY_SPR = new Set(['raccoon', 'bat', 'mush', 'rock', 'ghost', 'cactus', 'ice', 'flame', 'robot', 'boar', 'bee', 'ninja', 'gargoyle']);
+const ATK_ONLY_SPR = new Set(['raccoon', 'bat', 'mush', 'rock', 'ghost', 'cactus', 'ice', 'flame', 'robot', 'boar', 'bee', 'ninja', 'gargoyle', 'bosstiger']);
 /* ---------- 敵人：每隻怕不同的乘法表，打弱點兩倍傷害 ---------- */
 const MOBS = [
   {img:'assets/mob_slime.webp',  name:'黏黏怪',   hp:110, atk:10, weak:[2,3],   exp:24, drop:0.40, spr:'slime'},
@@ -1200,7 +1200,7 @@ const MOBS = [
   {img:'assets/mob_bee.webp',      name:'蜂后',     hp:330, atk:18, weak:[5,6],   exp:84, drop:0.66, summon:true, spr:'bee'},
   {img:'assets/mob_ninja.webp',    name:'影武者貓', hp:340, atk:23, weak:[8,9],   exp:92, drop:0.70, fast:0.8, spr:'ninja'},
   {img:'assets/mob_gargoyle.webp', name:'石像守衛', hp:480, atk:24, weak:[6,7,9], exp:120, drop:0.9, armor:0.72, spr:'gargoyle'},
-  {img:'assets/mob_boss.webp',   name:'虎王石像', hp:430, atk:22, weak:[7,8,9], exp:110, drop:1, boss:true, flip:true},
+  {img:'assets/mob_boss.webp',   name:'虎王石像', hp:430, atk:22, weak:[7,8,9], exp:110, drop:1, boss:true, flip:true, spr:'bosstiger'},
   {img:'assets/mob_dragon.webp', name:'紫金巨龍', hp:560, atk:26, weak:[6,7,8,9], exp:150, drop:1, boss:true, spr:'dragon'},
   /* 2026-08-23 大量新增：37 隻普通怪＋8 隻 Boss（Steve：至少 50 種普通、10 種 Boss）。
      數值接續原本最後一隻（紫金巨龍 hp560/atk26/exp150）往上爬，
@@ -1653,7 +1653,11 @@ const SPR = {
      很小、四周都是黑」的構圖焼進去，模型才不會自己拉近。抽幀時額外用 `--crop` 只切
      角色所在的那一小塊（不然雪碧圖會有一大堆浪費掉的黑邊）。這個做法之後遇到同樣
      「怎麼生都被拉近特寫」的怪物可以直接照抄 */
-  gargoyle_atk:{img:'assets/spr_gargoyle_atk.webp',cols:6, rows:9, n:52, ar:1, fps:15}
+  gargoyle_atk:{img:'assets/spr_gargoyle_atk.webp',cols:6, rows:9, n:52, ar:1, fps:15},
+  /* 2026-09-01：虎王石像（第一隻 Boss）。這隻 `flip:true`——來源圖跟這支逐幀影片
+     都是「自然朝右」，不用先翻轉，遊戲既有的 `.mobflip{scaleX(-1)}` 包在 #mob 外面，
+     連逐幀模式的 background 一起鏡像，不用另外處理 */
+  bosstiger_atk:{img:'assets/spr_bosstiger_atk.webp',cols:6, rows:9, n:52, ar:1, fps:15}
 };
 /* ---------- 待機不跑逐幀（2026-08-23 效能量測結論） ----------
    量出來（CPU 節流 6 倍模擬中階手機，看主執行緒每秒被吃掉多少毫秒）：
@@ -2684,7 +2688,8 @@ const MOB_ATK = {
   boar:    {from:0, to:51, fps:28, hit:.50, back:28, rush:-110},   /* 助跑衝撞，跟黏黏怪/香菇同一類全力衝刺 */
   bee:     {from:0, to:51, fps:22, hit:.55, back:10, rush:-30},    /* 魔杖遠遠一揮，不用真的撲過來 */
   ninja:   {from:0, to:51, fps:30, hit:.45, back:20, rush:-80},    /* 快、丟飛鏢，跟浣熊同一類敏捷型 */
-  gargoyle:{from:0, to:51, fps:24, hit:.62, back:14, rush:-50}     /* 重甲盾牌怪，動作慢一點、位移小 */
+  gargoyle:{from:0, to:51, fps:24, hit:.62, back:14, rush:-50},    /* 重甲盾牌怪，動作慢一點、位移小 */
+  bosstiger:{from:0, to:51, fps:22, hit:.42, back:26, rush:-100}   /* Boss 撲擊，位移比小怪略大 */
 };
 /* 遠程型：不撲過來，改成噴一發投射物；打中之前有一段飛行時間，看得到才躲得掉 */
 function shotAtHero(){

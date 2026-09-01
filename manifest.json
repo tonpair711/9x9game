@@ -1,6 +1,7 @@
 {
   "name": "邊玩邊變強",
   "short_name": "邊玩邊變強",
+  "version": "1.0.0",
   "description": "九九乘法、加減法、注音符號與英文字母的答題闖關遊戲，一個大廳加七個小遊戲",
   "start_url": "./index.html",
   "scope": "./",

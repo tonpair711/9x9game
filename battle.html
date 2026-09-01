@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260901b">
+<link rel="stylesheet" href="assets/common.css?v=20260901c">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -1178,12 +1178,13 @@ body.playing #pauseBtn{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260901b"></script>
+<script src="assets/common.js?v=20260901c"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
    這裡不能直接查 SPR 有沒有 key，見 preloadNearby() 那邊的說明） */
-const ATK_ONLY_SPR = new Set(['raccoon', 'bat', 'mush', 'rock', 'ghost', 'cactus', 'ice', 'flame', 'robot', 'boar', 'bee', 'ninja', 'gargoyle', 'bosstiger']);
+const ATK_ONLY_SPR = new Set(['raccoon', 'bat', 'mush', 'rock', 'ghost', 'cactus', 'ice', 'flame', 'robot', 'boar', 'bee', 'ninja', 'gargoyle', 'bosstiger',
+  'firefly', 'thorn', 'owlmage', 'hedgehog']);
 /* ---------- 敵人：每隻怕不同的乘法表，打弱點兩倍傷害 ---------- */
 const MOBS = [
   {img:'assets/mob_slime.webp',  name:'黏黏怪',   hp:110, atk:10, weak:[2,3],   exp:24, drop:0.40, spr:'slime'},
@@ -1205,10 +1206,10 @@ const MOBS = [
   /* 2026-08-23 大量新增：37 隻普通怪＋8 隻 Boss（Steve：至少 50 種普通、10 種 Boss）。
      數值接續原本最後一隻（紫金巨龍 hp560/atk26/exp150）往上爬，
      怪物血量走 setMob() 的 1.06^關卡、經驗走 1.15^關卡（脫鉤那套邏輯），這裡只需要給基礎值。 */
-  {img:'assets/mob_firefly.webp', name:'螢火蟲精靈', hp:590, atk:27, weak:[2, 3], exp:158, drop:0.66},
-  {img:'assets/mob_thorn.webp', name:'荊棘藤蔓怪', hp:612, atk:28, weak:[3, 6], exp:163, drop:0.67, summon:true},
-  {img:'assets/mob_owlmage.webp', name:'貓頭鷹法師', hp:635, atk:28, weak:[4], exp:168, drop:0.68, ranged:true},
-  {img:'assets/mob_hedgehog.webp', name:'刺蝟滾滾', hp:658, atk:29, weak:[3, 7], exp:173, drop:0.68, fast:0.8},
+  {img:'assets/mob_firefly.webp', name:'螢火蟲精靈', hp:590, atk:27, weak:[2, 3], exp:158, drop:0.66, spr:'firefly'},
+  {img:'assets/mob_thorn.webp', name:'荊棘藤蔓怪', hp:612, atk:28, weak:[3, 6], exp:163, drop:0.67, summon:true, spr:'thorn'},
+  {img:'assets/mob_owlmage.webp', name:'貓頭鷹法師', hp:635, atk:28, weak:[4], exp:168, drop:0.68, ranged:true, spr:'owlmage'},
+  {img:'assets/mob_hedgehog.webp', name:'刺蝟滾滾', hp:658, atk:29, weak:[3, 7], exp:173, drop:0.68, fast:0.8, spr:'hedgehog'},
   {img:'assets/mob_raccoon.webp', name:'浣熊小偷', hp:680, atk:29, weak:[3, 6], exp:178, drop:0.69, fast:0.8, spr:'raccoon'},
   {img:'assets/mob_scorpion.webp', name:'沙塵蠍', hp:702, atk:30, weak:[2], exp:183, drop:0.70},
   {img:'assets/mob_camel.webp', name:'骸骨駱駝', hp:725, atk:30, weak:[3], exp:188, drop:0.71, armor:0.75},
@@ -1657,7 +1658,14 @@ const SPR = {
   /* 2026-09-01：虎王石像（第一隻 Boss）。這隻 `flip:true`——來源圖跟這支逐幀影片
      都是「自然朝右」，不用先翻轉，遊戲既有的 `.mobflip{scaleX(-1)}` 包在 #mob 外面，
      連逐幀模式的 background 一起鏡像，不用另外處理 */
-  bosstiger_atk:{img:'assets/spr_bosstiger_atk.webp',cols:6, rows:9, n:52, ar:1, fps:15}
+  bosstiger_atk:{img:'assets/spr_bosstiger_atk.webp',cols:6, rows:9, n:52, ar:1, fps:15},
+  /* 2026-09-01 第四輪：紫金巨龍之後那 37 隻普通怪，開始一支一支補。這四隻第一次生就過關，
+     但取樣時發現「前幾秒鏡頭拉太近／怪太大」，抽幀 --start 都往後移到已經正常縮小的
+     那一段（不是每支影片一開場就是理想構圖，開檔案多看幾個時間點再決定區間） */
+  firefly_atk: {img:'assets/spr_firefly_atk.webp', cols:6, rows:8, n:43, ar:1, fps:13},
+  thorn_atk:   {img:'assets/spr_thorn_atk.webp',   cols:6, rows:9, n:52, ar:1, fps:13},
+  owlmage_atk: {img:'assets/spr_owlmage_atk.webp', cols:6, rows:7, n:39, ar:1, fps:13},
+  hedgehog_atk:{img:'assets/spr_hedgehog_atk.webp',cols:6, rows:8, n:46, ar:1, fps:13}
 };
 /* ---------- 待機不跑逐幀（2026-08-23 效能量測結論） ----------
    量出來（CPU 節流 6 倍模擬中階手機，看主執行緒每秒被吃掉多少毫秒）：
@@ -2689,7 +2697,11 @@ const MOB_ATK = {
   bee:     {from:0, to:51, fps:22, hit:.55, back:10, rush:-30},    /* 魔杖遠遠一揮，不用真的撲過來 */
   ninja:   {from:0, to:51, fps:30, hit:.45, back:20, rush:-80},    /* 快、丟飛鏢，跟浣熊同一類敏捷型 */
   gargoyle:{from:0, to:51, fps:24, hit:.62, back:14, rush:-50},    /* 重甲盾牌怪，動作慢一點、位移小 */
-  bosstiger:{from:0, to:51, fps:22, hit:.42, back:26, rush:-100}   /* Boss 撲擊，位移比小怪略大 */
+  bosstiger:{from:0, to:51, fps:22, hit:.42, back:26, rush:-100},  /* Boss 撲擊，位移比小怪略大 */
+  firefly: {from:0, to:42, fps:24, hit:.45, back:16, rush:-60},    /* 小蟲俯衝一撲 */
+  thorn:   {from:0, to:51, fps:24, hit:.5,  back:20, rush:-90},    /* 藤蔓甩鞭 */
+  owlmage: {from:0, to:38, fps:22, hit:.6,  back:0,  rush:0},      /* 遠程：原地施法噴投射物 */
+  hedgehog:{from:0, to:45, fps:26, hit:.4,  back:20, rush:-80}     /* fast:0.8，滾球衝撞 */
 };
 /* 遠程型：不撲過來，改成噴一發投射物；打中之前有一段飛行時間，看得到才躲得掉 */
 function shotAtHero(){
@@ -3214,7 +3226,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260901b"></script>
-<script src="assets/lock.js?v=20260901b"></script>
+<script src="assets/audio.js?v=20260901c"></script>
+<script src="assets/lock.js?v=20260901c"></script>
 </body>
 </html>

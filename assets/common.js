@@ -1,6 +1,19 @@
 /* 邊玩邊變強 共用程式：角色演出、音效、背景金幣、答題紀錄、飄分粒子
    三個玩法版本共用同一份，改這裡三版一起改 */
 
+/* ---------- 正式版本編號（2026-09-01 起，Steve 要求） ----------
+   語意化版號 MAJOR.MINOR.PATCH，唯一權威值只在這裡，八頁全部吃這個常數。
+   這是第一次掛正式版號，起始訂 1.0.0（不是從 0 開始，這款已經穩定上線一段時間，
+   掛 1.0.0 代表「這是第一個有版號可追蹤的正式版」，不是重新從頭算）。
+   往後怎麼加號碼：
+     PATCH（+0.0.1）：修 bug、調數值、小畫面調整，玩法沒變
+     MINOR（+0.1.0）：加新內容（新技能／新怪物動畫／新玩法），舊存檔玩法不變
+     MAJOR（+1.0.0）：大改版（例如整個戰鬥系統重做），玩起來明顯不一樣
+   每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
+   跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
+   Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
+const GAME_VERSION = '1.0.0';
+
 const $ = id => document.getElementById(id);
 
 /* 數字變大之後要好讀：一萬以上用「萬」，其餘加千分位。
@@ -1035,7 +1048,8 @@ addEventListener('DOMContentLoaded', () => {
   box.innerHTML =
     '<button type="button" class="pcbtn" data-act="back" aria-label="返回上一層" title="返回上一層">←</button>' +
     '<button type="button" class="pcbtn" data-act="reload" aria-label="重新整理" title="重新整理">⟳</button>' +
-    '<button type="button" class="pcbtn" data-act="clearcache" aria-label="清除快取，抓最新版本" title="畫面跑版／怪怪的？點這裡清快取重載">🧹</button>';
+    '<button type="button" class="pcbtn" data-act="clearcache" aria-label="清除快取，抓最新版本" title="畫面跑版／怪怪的？點這裡清快取重載">🧹</button>' +
+    '<span class="pcver" title="目前版本，回報問題時可以附上這個號碼">v' + GAME_VERSION + '</span>';
   box.addEventListener('click', async e => {
     const b = e.target.closest('.pcbtn'); if(!b) return;
     if(b.dataset.act === 'back'){

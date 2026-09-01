@@ -158,9 +158,16 @@ h1{
   box-shadow:0 4px 12px #0006;
 }
 .pcbtn:active{transform:translateY(2px)}
+/* 版本號：跟按鈕同一排，故意做得很不顯眼（小、暗、無邊框）——
+   平常沒人會注意，回報問題時才需要瞄一眼角落 */
+.pcver{
+  align-self:center;font-size:10px;color:var(--dim);opacity:.55;
+  padding:0 2px;user-select:text;white-space:nowrap;
+}
 @media (max-width:480px){
   .pagectrl{left:8px;top:8px;gap:5px}
   .pcbtn{width:32px;height:32px;font-size:15px}
+  .pcver{font-size:9px}
 }
 .levels{display:flex;gap:8px;width:min(96vw,560px)}
 .lv{

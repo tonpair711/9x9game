@@ -1184,7 +1184,7 @@ body.playing #pauseBtn{display:flex}
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
    這裡不能直接查 SPR 有沒有 key，見 preloadNearby() 那邊的說明） */
 const ATK_ONLY_SPR = new Set(['raccoon', 'bat', 'mush', 'rock', 'ghost', 'cactus', 'ice', 'flame', 'robot', 'boar', 'bee', 'ninja', 'gargoyle', 'bosstiger',
-  'firefly', 'thorn', 'owlmage', 'hedgehog']);
+  'firefly', 'thorn', 'owlmage', 'hedgehog', 'scorpion', 'camel', 'lizard', 'jelly']);
 /* ---------- 敵人：每隻怕不同的乘法表，打弱點兩倍傷害 ---------- */
 const MOBS = [
   {img:'assets/mob_slime.webp',  name:'黏黏怪',   hp:110, atk:10, weak:[2,3],   exp:24, drop:0.40, spr:'slime'},
@@ -1211,10 +1211,10 @@ const MOBS = [
   {img:'assets/mob_owlmage.webp', name:'貓頭鷹法師', hp:635, atk:28, weak:[4], exp:168, drop:0.68, ranged:true, spr:'owlmage'},
   {img:'assets/mob_hedgehog.webp', name:'刺蝟滾滾', hp:658, atk:29, weak:[3, 7], exp:173, drop:0.68, fast:0.8, spr:'hedgehog'},
   {img:'assets/mob_raccoon.webp', name:'浣熊小偷', hp:680, atk:29, weak:[3, 6], exp:178, drop:0.69, fast:0.8, spr:'raccoon'},
-  {img:'assets/mob_scorpion.webp', name:'沙塵蠍', hp:702, atk:30, weak:[2], exp:183, drop:0.70},
-  {img:'assets/mob_camel.webp', name:'骸骨駱駝', hp:725, atk:30, weak:[3], exp:188, drop:0.71, armor:0.75},
-  {img:'assets/mob_lizard.webp', name:'沙丘蜥蜴', hp:748, atk:31, weak:[5], exp:193, drop:0.72},
-  {img:'assets/mob_jelly.webp', name:'水母怪', hp:770, atk:31, weak:[2, 6], exp:198, drop:0.72},
+  {img:'assets/mob_scorpion.webp', name:'沙塵蠍', hp:702, atk:30, weak:[2], exp:183, drop:0.70, spr:'scorpion'},
+  {img:'assets/mob_camel.webp', name:'骸骨駱駝', hp:725, atk:30, weak:[3], exp:188, drop:0.71, armor:0.75, spr:'camel'},
+  {img:'assets/mob_lizard.webp', name:'沙丘蜥蜴', hp:748, atk:31, weak:[5], exp:193, drop:0.72, spr:'lizard'},
+  {img:'assets/mob_jelly.webp', name:'水母怪', hp:770, atk:31, weak:[2, 6], exp:198, drop:0.72, spr:'jelly'},
   {img:'assets/mob_crab.webp', name:'寄居蟹士兵', hp:792, atk:32, weak:[8], exp:204, drop:0.73, armor:0.75},
   {img:'assets/mob_octomage.webp', name:'章魚法師', hp:815, atk:32, weak:[9], exp:209, drop:0.74, ranged:true},
   {img:'assets/mob_coralfish.webp', name:'珊瑚魚人', hp:838, atk:33, weak:[6, 8], exp:214, drop:0.75},
@@ -1665,7 +1665,14 @@ const SPR = {
   firefly_atk: {img:'assets/spr_firefly_atk.webp', cols:6, rows:8, n:43, ar:1, fps:13},
   thorn_atk:   {img:'assets/spr_thorn_atk.webp',   cols:6, rows:9, n:52, ar:1, fps:13},
   owlmage_atk: {img:'assets/spr_owlmage_atk.webp', cols:6, rows:7, n:39, ar:1, fps:13},
-  hedgehog_atk:{img:'assets/spr_hedgehog_atk.webp',cols:6, rows:8, n:46, ar:1, fps:13}
+  hedgehog_atk:{img:'assets/spr_hedgehog_atk.webp',cols:6, rows:8, n:46, ar:1, fps:13},
+  /* 2026-09-01 第六輪：沙塵蠍／骸骨駱駝／沙丘蜥蜴／水母怪。水母那支圖生影片中途游動時
+     整隻左右鏡像了一下（頭跑到右邊、觸手甩到左邊），但牠本來就沒有明確的「正面」，
+     最後選的區間剛好落在牠回正、面對鏡頭的那段，不影響方向判斷，沒有另外處理 */
+  scorpion_atk:{img:'assets/spr_scorpion_atk.webp',cols:6, rows:8, n:46, ar:1, fps:13},
+  camel_atk:   {img:'assets/spr_camel_atk.webp',   cols:6, rows:8, n:45, ar:1, fps:15},
+  lizard_atk:  {img:'assets/spr_lizard_atk.webp',  cols:6, rows:8, n:46, ar:1, fps:13},
+  jelly_atk:   {img:'assets/spr_jelly_atk.webp',   cols:6, rows:8, n:46, ar:1, fps:13}
 };
 /* ---------- 待機不跑逐幀（2026-08-23 效能量測結論） ----------
    量出來（CPU 節流 6 倍模擬中階手機，看主執行緒每秒被吃掉多少毫秒）：
@@ -2701,7 +2708,11 @@ const MOB_ATK = {
   firefly: {from:0, to:42, fps:24, hit:.45, back:16, rush:-60},    /* 小蟲俯衝一撲 */
   thorn:   {from:0, to:51, fps:24, hit:.5,  back:20, rush:-90},    /* 藤蔓甩鞭 */
   owlmage: {from:0, to:38, fps:22, hit:.6,  back:0,  rush:0},      /* 遠程：原地施法噴投射物 */
-  hedgehog:{from:0, to:45, fps:26, hit:.4,  back:20, rush:-80}     /* fast:0.8，滾球衝撞 */
+  hedgehog:{from:0, to:45, fps:26, hit:.4,  back:20, rush:-80},    /* fast:0.8，滾球衝撞 */
+  scorpion:{from:0, to:45, fps:24, hit:.5,  back:20, rush:-80},    /* 鉗夾＋毒尾巴 */
+  camel:   {from:0, to:44, fps:22, hit:.35, back:14, rush:-60},    /* armor:0.75，張嘴撲咬在前段 */
+  lizard:  {from:0, to:45, fps:24, hit:.5,  back:20, rush:-80},    /* 咬擊＋皺褶頸展開 */
+  jelly:   {from:0, to:45, fps:20, hit:.5,  back:14, rush:-40}     /* 觸手甩動，位移小一點 */
 };
 /* 遠程型：不撲過來，改成噴一發投射物；打中之前有一段飛行時間，看得到才躲得掉 */
 function shotAtHero(){

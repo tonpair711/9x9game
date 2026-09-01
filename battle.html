@@ -1183,7 +1183,7 @@ body.playing #pauseBtn{display:flex}
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
    這裡不能直接查 SPR 有沒有 key，見 preloadNearby() 那邊的說明） */
-const ATK_ONLY_SPR = new Set(['raccoon', 'bat', 'mush', 'rock', 'ghost', 'cactus', 'ice', 'flame', 'robot']);
+const ATK_ONLY_SPR = new Set(['raccoon', 'bat', 'mush', 'rock', 'ghost', 'cactus', 'ice', 'flame', 'robot', 'boar', 'bee', 'ninja']);
 /* ---------- 敵人：每隻怕不同的乘法表，打弱點兩倍傷害 ---------- */
 const MOBS = [
   {img:'assets/mob_slime.webp',  name:'黏黏怪',   hp:110, atk:10, weak:[2,3],   exp:24, drop:0.40, spr:'slime'},
@@ -1196,9 +1196,9 @@ const MOBS = [
   {img:'assets/mob_flame.webp',  name:'火焰怪',   hp:320, atk:19, weak:[8,9],   exp:70, drop:0.65, spr:'flame'},
   {img:'assets/mob_robot.webp',  name:'鐵皮機器', hp:355, atk:20, weak:[7,8],   exp:80, drop:0.70, spr:'robot'},
   /* 2026-08-22 新增：出手快的衝鋒型、會擋傷害的精英、閃來閃去的刺客 */
-  {img:'assets/mob_boar.webp',     name:'暴走野豬', hp:300, atk:21, weak:[3,4],   exp:76, drop:0.62, fast:0.75},
-  {img:'assets/mob_bee.webp',      name:'蜂后',     hp:330, atk:18, weak:[5,6],   exp:84, drop:0.66, summon:true},
-  {img:'assets/mob_ninja.webp',    name:'影武者貓', hp:340, atk:23, weak:[8,9],   exp:92, drop:0.70, fast:0.8},
+  {img:'assets/mob_boar.webp',     name:'暴走野豬', hp:300, atk:21, weak:[3,4],   exp:76, drop:0.62, fast:0.75, spr:'boar'},
+  {img:'assets/mob_bee.webp',      name:'蜂后',     hp:330, atk:18, weak:[5,6],   exp:84, drop:0.66, summon:true, spr:'bee'},
+  {img:'assets/mob_ninja.webp',    name:'影武者貓', hp:340, atk:23, weak:[8,9],   exp:92, drop:0.70, fast:0.8, spr:'ninja'},
   {img:'assets/mob_gargoyle.webp', name:'石像守衛', hp:480, atk:24, weak:[6,7,9], exp:120, drop:0.9, armor:0.72},
   {img:'assets/mob_boss.webp',   name:'虎王石像', hp:430, atk:22, weak:[7,8,9], exp:110, drop:1, boss:true, flip:true},
   {img:'assets/mob_dragon.webp', name:'紫金巨龍', hp:560, atk:26, weak:[6,7,8,9], exp:150, drop:1, boss:true, spr:'dragon'},
@@ -1641,7 +1641,12 @@ const SPR = {
      prompt（"wide full-body shot"、"do not zoom in, do not crop"）重生一次才正常，
      以後生怪物攻擊影片的 prompt 都要把這句加進去，不能只描述動作 */
   flame_atk:   {img:'assets/spr_flame_atk.webp',   cols:6, rows:9, n:52, ar:1, fps:14},
-  robot_atk:   {img:'assets/spr_robot_atk.webp',   cols:6, rows:8, n:48, ar:1, fps:16}
+  robot_atk:   {img:'assets/spr_robot_atk.webp',   cols:6, rows:8, n:48, ar:1, fps:16},
+  /* 2026-09-01 第三輪，繼續往下補：暴走野豬／蜂后／影武者貓，三隻都是第一次生就過關
+     （wide full-body shot + do not zoom in 那句 prompt 有效）*/
+  boar_atk:    {img:'assets/spr_boar_atk.webp',    cols:6, rows:9, n:52, ar:1, fps:13},
+  bee_atk:     {img:'assets/spr_bee_atk.webp',     cols:6, rows:9, n:52, ar:1, fps:13},
+  ninja_atk:   {img:'assets/spr_ninja_atk.webp',   cols:6, rows:9, n:52, ar:1, fps:13}
 };
 /* ---------- 待機不跑逐幀（2026-08-23 效能量測結論） ----------
    量出來（CPU 節流 6 倍模擬中階手機，看主執行緒每秒被吃掉多少毫秒）：
@@ -2668,7 +2673,10 @@ const MOB_ATK = {
   ice:     {from:0, to:47, fps:30, hit:.6,  back:26, rush:-80},    /* 立起來雙爪往下砸，冰晶爆開 */
   /* 2026-09-01 第三輪：再補兩隻，都是近戰撲上去型，跟 mush/rock 同一類 */
   flame:   {from:0, to:51, fps:26, hit:.55, back:24, rush:-90},    /* 雙拳蓄力→噴火吐息 */
-  robot:   {from:0, to:47, fps:26, hit:.45, back:20, rush:-70}     /* 蓄力甩出爪臂，火花四濺 */
+  robot:   {from:0, to:47, fps:26, hit:.45, back:20, rush:-70},    /* 蓄力甩出爪臂，火花四濺 */
+  boar:    {from:0, to:51, fps:28, hit:.50, back:28, rush:-110},   /* 助跑衝撞，跟黏黏怪/香菇同一類全力衝刺 */
+  bee:     {from:0, to:51, fps:22, hit:.55, back:10, rush:-30},    /* 魔杖遠遠一揮，不用真的撲過來 */
+  ninja:   {from:0, to:51, fps:30, hit:.45, back:20, rush:-80}     /* 快、丟飛鏢，跟浣熊同一類敏捷型 */
 };
 /* 遠程型：不撲過來，改成噴一發投射物；打中之前有一段飛行時間，看得到才躲得掉 */
 function shotAtHero(){

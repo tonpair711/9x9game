@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.1.0';
+const GAME_VERSION = '1.2.0';
 
 const $ = id => document.getElementById(id);
 
@@ -146,6 +146,9 @@ const DEFAULT_SAVE = {
   scroll:0,                                      // 強化卷軸：打怪會掉，也能用金幣買
   gear:{weapon:null, armor:null, helmet:null, boots:null, ring:null, charm:null},
   bag:[],
+  loadout:{active:[], ult:null},                 // 2026-09-01第十輪：出戰技能配裝，只存key字串
+                                                   // （SKILLS表格定義在battle.html，真正的補齊邏輯
+                                                   //   fixLoadout()也放那邊，這裡只保底不讓欄位是undefined）
   round:1, wave:0,
   totalKill:0, playCount:0, lastPlay:''
 };

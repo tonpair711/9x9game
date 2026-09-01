@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260901d">
+<link rel="stylesheet" href="assets/common.css?v=20260902a">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -431,6 +431,21 @@ body.lowfx .shard{animation-duration:.35s}
 }
 @keyframes warnPop{from{transform:translateX(-50%) scale(.8)}to{transform:translateX(-50%) scale(1.15)}}
 
+/* 2026-09-01 第十輪：怪物乘法特性——偶數護盾／快答爆彈，視覺跟既有shield/marked/warn分開，
+   避免看起來像同一種效果搞混。 */
+.mobwrap.evenshield::after{
+  content:"🛡️";position:absolute;left:-6%;top:-8%;z-index:8;pointer-events:none;
+  font-size:clamp(20px,4vw,30px);filter:drop-shadow(0 2px 4px #000a);
+}
+.bombIcon{
+  position:absolute;left:50%;top:-16%;transform:translateX(-50%) scale(0);z-index:9;pointer-events:none;
+  font-size:clamp(24px,5vw,36px);opacity:0;transition:transform .2s,opacity .2s;
+}
+.mobwrap.bombing .bombIcon{opacity:1;transform:translateX(-50%) scale(1)}
+.mobwrap.bombWarn .bombIcon{animation:bombShake .3s ease-in-out infinite alternate}
+@keyframes bombShake{to{transform:translateX(-50%) rotate(-8deg) scale(1.1)}}
+.bar.bombbar i{background:linear-gradient(90deg,#ff8a3d,#dc2626)}
+
 /* 逐幀模式：img 本身變成雪碧圖的視窗，寬度由 aspect-ratio 算，其餘定位照舊。
    ⚠ 這裡一定要把 drop-shadow 關掉：逐幀每換一格就重畫一次元素，
    還要連整張圖的陰影一起重算，桌機也會掉幀（地上本來就有 .gshadow 影子）。 */
@@ -556,7 +571,7 @@ body.lowfx .shard{animation-duration:.35s}
 
 /* 血條 */
 .bars{position:absolute;left:0;right:0;top:0;z-index:4;padding:10px 12px;display:flex;
-  flex-direction:column;gap:6px}
+  flex-direction:column;gap:6px;align-items:center}
 .bar{background:#00000066;border:1px solid #ffffff22;border-radius:99px;height:16px;
   position:relative;overflow:hidden}
 .bar i{position:absolute;inset:0;transform-origin:left;transition:transform .35s cubic-bezier(.2,1,.3,1)}
@@ -565,9 +580,33 @@ body.lowfx .shard{animation-duration:.35s}
 .bar.mob i{background:linear-gradient(90deg,#f87171,#dc2626)}
 /* 掉血殘影：白條慢半拍才追上，看得出「這一下扣了多少」 */
 .bar .ghost{background:#ffffffcc;transition:transform .55s cubic-bezier(.4,0,.2,1) .22s}
-.bar.hero i{background:linear-gradient(90deg,#4ade80,#16a34a)}
-.bar.timerbar{height:8px}
+/* 2026-09-01 第十輪：class 從 .bar.hero 改名 .bar.herohp——common.css 有一個完全無關的
+   `.hero{display:none}`（角落吉祥物插畫用），跟這裡的 `hero` class 撞名，兩條規則的
+   選擇器優先度一樣時靠後蓋前，蓋掉了原本要顯示的血條，**這條血條線上其實從沒顯示過**
+   （8/19那條規則加進來之後就沒人發現，這次順便查出來修掉，不是這輪新增的鍋）。 */
+.bar.herohp i{background:linear-gradient(90deg,#4ade80,#16a34a)}
+.bar.timerbar{width:min(70%,320px);height:8px}
 .bar.timerbar i{background:linear-gradient(90deg,#facc15,#f97316)}
+
+/* 2026-09-01 第十輪：常駐連擊數，不管幾連擊都看得到，不再只靠里程碑跳字才知道連擊。
+   顏色隨 comboVisualTier() 的三階段一起變深，跟combo三階段視覺呼應。 */
+.comboCounter{
+  font-size:12px;font-weight:800;color:#ffffffaa;letter-spacing:1px;
+  text-shadow:0 1px 3px #000;transition:color .2s,transform .2s;padding:1px 10px;
+  border-radius:99px;background:#00000044;
+}
+.comboCounter.active{color:#ffe066;background:#00000066}
+.comboCounter.t2{color:#6ea8ff;transform:scale(1.08)}
+.comboCounter.t3{color:#c893ff;transform:scale(1.16);text-shadow:0 0 10px #c893ffaa}
+
+/* HP條各自浮在人物/怪物正上方，跟 #hero2(left:4%)／.mobwrap(right:4%) 用同一組水平錨點，
+   但獨立浮動不跟著呼吸/受擊動畫抖動——那些動畫都掛在 #hero2/.mobwrap 本體上，
+   血條放在同一層(#world)但不共用同一個會動的元素，天然不會被帶著晃。 */
+.charBar{position:absolute;top:6%;z-index:7;width:34%;max-width:220px;pointer-events:none}
+.charBar .bar{height:13px}
+.charBar .bar span{font-size:10px}
+.heroBar{left:3%}
+.mobBar{right:3%}
 
 /* 題目與答案 */
 .qbox{
@@ -699,6 +738,36 @@ body.lowfx .shard{animation-duration:.35s}
 .slot .nm{font-size:12px;font-weight:800}
 .slot .st2{font-size:10px;color:var(--dim);line-height:1.4}
 .slot.empty .nm{color:#6b578a}
+
+/* 2026-09-01 第十輪：技能配裝視窗，仿.gearwin/.gearbox同一套結構與開關模式 */
+.loadoutwin{position:fixed;inset:0;z-index:22;display:none;align-items:center;justify-content:center;
+  background:#0b0714e8;backdrop-filter:blur(6px);padding:14px}
+.loadoutwin.on{display:flex;animation:fade .25s}
+.loadoutSlots{display:flex;gap:8px;margin:12px 0}
+.loadoutSlot{
+  flex:1;background:#241638;border:1px solid var(--line);border-radius:12px;padding:8px 4px;
+  text-align:center;min-height:64px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:2px;cursor:pointer;
+}
+.loadoutSlot b{font-size:20px}
+.loadoutSlot small{font-size:10px;font-weight:700;color:var(--gold2)}
+.loadoutSlot.empty{border-style:dashed}
+.loadoutSlot.empty small{color:#6b578a}
+.loadoutSlot.ult{border-color:var(--gold);cursor:default}
+.loadoutSlot.ult small{color:var(--gold)}
+.loadoutLib{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;
+  max-height:46vh;overflow-y:auto;margin-top:8px}
+.libItem{
+  position:relative;background:#241638;border:1px solid var(--line);border-radius:10px;
+  padding:8px 4px;text-align:center;cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;gap:2px;
+}
+.libItem b{font-size:18px}
+.libItem small{font-size:10px;font-weight:700}
+.libItem.equipped{border-color:var(--gold)}
+.libItem.equipped::after{content:"✓";position:absolute;top:2px;right:6px;color:var(--gold);font-weight:900}
+.loadoutwin .empty-tip{color:var(--dim);font-size:13px;text-align:center;padding:20px 0;grid-column:1/-1}
+
 .baglist{margin-top:12px;display:flex;flex-direction:column;gap:6px}
 .bagitem{
   display:flex;align-items:center;gap:8px;background:#241638;border:1px solid var(--line);
@@ -1004,6 +1073,10 @@ body.playing #pauseBtn{display:flex}
   .mobwrap{right:1%;height:46%}
   #shHero{left:2%;width:17%}
   #shMob{right:2%;width:17%}
+  .charBar{width:44%;top:4%}
+  .heroBar{left:1%}
+  .mobBar{right:1%}
+  .charBar .bar span{font-size:9px}
   /* 手機省效能（實測 CPU 放慢四倍：這兩項讓打怪頁從 30fps 回到 60fps）
      1. drop-shadow 每換一格逐幀都要重算一次整張圖的陰影，最貴；地上本來就有 .gshadow 影子
      2. 星星與飄浮光點是整片覆蓋的動畫層，畫面小根本看不出來 */
@@ -1037,15 +1110,16 @@ body.playing #pauseBtn{display:flex}
     <div class="chip"><b>關卡</b><span id="stage">1-1</span></div>
     <div class="grow"></div>
     <button class="chip bagbtn" id="bagBtn">🎒<span class="lb"> 裝備</span> <i class="dot2" id="bagDot"></i></button>
+    <button class="chip iconbtn" id="loadoutBtn" title="技能配裝" aria-label="技能配裝">🎯</button>
     <button class="chip iconbtn" id="helpBtn" title="怎麼玩" aria-label="怎麼玩">？</button>
     <button class="chip iconbtn" id="pauseBtn" title="暫停" aria-label="暫停">⏸</button>
   </div>
 
   <div class="field" id="field">
     <div class="bars">
-      <div class="bar mob"><i class="ghost" id="mobHpGhost"></i><i id="mobHp"></i><span id="mobHpText">敵人</span></div>
       <div class="bar timerbar"><i id="mobTimer"></i></div>
-      <div class="bar hero"><i class="ghost" id="heroHpGhost"></i><i id="heroHp"></i><span id="heroHpText">小勇者</span></div>
+      <div class="comboCounter" id="comboCounter">連擊 x0</div>
+      <div class="bar bombbar" id="bombBarWrap" style="display:none"><i id="bombBar"></i><span id="bombNum">5</span></div>
     </div>
     <div id="world">
     <div class="scene">
@@ -1054,9 +1128,18 @@ body.playing #pauseBtn{display:flex}
     </div>
     <div class="gshadow" id="shHero"></div>
     <div class="gshadow" id="shMob"></div>
+    <!-- 2026-09-01 第十輪：HP條從畫面最上方那條HUD搬到人物/怪物正上方，各自跟著自己主人，
+         不要讓玩家在最上方跟本體之間來回對照是哪一條血。位置用跟 #hero2/.mobwrap 一樣的
+         left/right%對齊，但獨立浮動不跟著呼吸動畫抖動（見下面CSS說明）。 -->
+    <div class="charBar heroBar">
+      <div class="bar herohp"><i class="ghost" id="heroHpGhost"></i><i id="heroHp"></i><span id="heroHpText">小勇者</span></div>
+    </div>
+    <div class="charBar mobBar">
+      <div class="bar mob"><i class="ghost" id="mobHpGhost"></i><i id="mobHp"></i><span id="mobHpText">敵人</span></div>
+    </div>
     <img class="fighter" id="hero2" src="assets/fx_hero_ready.webp" alt="">
     <img class="fighter" id="cat2" src="assets/fx_cat_attack.webp" alt="">
-    <div class="fighter mobwrap" id="mobWrap"><div class="mobflip" id="mobFlip"><img id="mob" src="assets/mob_slime.webp" alt=""></div></div>
+    <div class="fighter mobwrap" id="mobWrap"><div class="mobflip" id="mobFlip"><img id="mob" src="assets/mob_slime.webp" alt=""></div><div class="bombIcon">💣</div></div>
     <div class="slash" id="slash"></div>
     <div class="speedlines" id="speedlines"></div>
     <img class="circle" id="circle" src="assets/fx_holy.webp" alt="">
@@ -1188,6 +1271,15 @@ body.playing #pauseBtn{display:flex}
   </div>
 </div>
 
+<div class="loadoutwin" id="loadoutwin">
+  <div class="gearbox">
+    <h2>技 能 配 裝</h2>
+    <div class="loadoutSlots" id="loadoutSlots"></div>
+    <div class="loadoutLib" id="loadoutLib"></div>
+    <button class="btn" id="closeLoadout" style="width:100%;margin-top:14px">關 閉</button>
+  </div>
+</div>
+
 <div class="over" id="over">
   <div class="card">
     <h2 id="ovTitle">這次沒過關</h2>
@@ -1221,7 +1313,7 @@ body.playing #pauseBtn{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260901d"></script>
+<script src="assets/common.js?v=20260902a"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -1230,7 +1322,7 @@ const ATK_ONLY_SPR = new Set(['raccoon', 'bat', 'mush', 'rock', 'ghost', 'cactus
   'firefly', 'thorn', 'owlmage', 'hedgehog', 'scorpion', 'camel', 'lizard', 'jelly', 'crab', 'octomage', 'coralfish']);
 /* ---------- 敵人：每隻怕不同的乘法表，打弱點兩倍傷害 ---------- */
 const MOBS = [
-  {img:'assets/mob_slime.webp',  name:'黏黏怪',   hp:110, atk:10, weak:[2,3],   exp:24, drop:0.40, spr:'slime'},
+  {img:'assets/mob_slime.webp',  name:'黏黏怪',   hp:110, atk:10, weak:[2,3],   exp:24, drop:0.40, flip:true, spr:'slime'},
   {img:'assets/mob_bat.webp',    name:'小蝙蝠',   hp:135, atk:12, weak:[4,5],   exp:30, drop:0.45, spr:'bat'},
   {img:'assets/mob_mush.webp',   name:'香菇怪',   hp:165, atk:13, weak:[6],     exp:36, drop:0.50, spr:'mush'},
   {img:'assets/mob_rock.webp',   name:'石頭怪',   hp:195, atk:15, weak:[7],     exp:42, drop:0.55, spr:'rock'},
@@ -1240,10 +1332,10 @@ const MOBS = [
   {img:'assets/mob_flame.webp',  name:'火焰怪',   hp:320, atk:19, weak:[8,9],   exp:70, drop:0.65, spr:'flame'},
   {img:'assets/mob_robot.webp',  name:'鐵皮機器', hp:355, atk:20, weak:[7,8],   exp:80, drop:0.70, spr:'robot'},
   /* 2026-08-22 新增：出手快的衝鋒型、會擋傷害的精英、閃來閃去的刺客 */
-  {img:'assets/mob_boar.webp',     name:'暴走野豬', hp:300, atk:21, weak:[3,4],   exp:76, drop:0.62, fast:0.75, spr:'boar'},
+  {img:'assets/mob_boar.webp',     name:'暴走野豬', hp:300, atk:21, weak:[3,4],   exp:76, drop:0.62, fast:0.75, mathTrait:'SPEED_BOMB', spr:'boar'},
   {img:'assets/mob_bee.webp',      name:'蜂后',     hp:330, atk:18, weak:[5,6],   exp:84, drop:0.66, summon:true, spr:'bee'},
-  {img:'assets/mob_ninja.webp',    name:'影武者貓', hp:340, atk:23, weak:[8,9],   exp:92, drop:0.70, fast:0.8, spr:'ninja'},
-  {img:'assets/mob_gargoyle.webp', name:'石像守衛', hp:480, atk:24, weak:[6,7,9], exp:120, drop:0.9, armor:0.72, spr:'gargoyle'},
+  {img:'assets/mob_ninja.webp',    name:'影武者貓', hp:340, atk:23, weak:[8,9],   exp:92, drop:0.70, fast:0.8, mathTrait:'SPEED_BOMB', spr:'ninja'},
+  {img:'assets/mob_gargoyle.webp', name:'石像守衛', hp:480, atk:24, weak:[6,7,9], exp:120, drop:0.9, armor:0.72, mathTrait:'EVEN_SHIELD', spr:'gargoyle'},
   {img:'assets/mob_boss.webp',   name:'虎王石像', hp:430, atk:22, weak:[7,8,9], exp:110, drop:1, boss:true, flip:true, spr:'bosstiger'},
   {img:'assets/mob_dragon.webp', name:'紫金巨龍', hp:560, atk:26, weak:[6,7,8,9], exp:150, drop:1, boss:true, spr:'dragon'},
   /* 2026-08-23 大量新增：37 隻普通怪＋8 隻 Boss（Steve：至少 50 種普通、10 種 Boss）。
@@ -1253,9 +1345,9 @@ const MOBS = [
   {img:'assets/mob_thorn.webp', name:'荊棘藤蔓怪', hp:612, atk:28, weak:[3, 6], exp:163, drop:0.67, summon:true, spr:'thorn'},
   {img:'assets/mob_owlmage.webp', name:'貓頭鷹法師', hp:635, atk:28, weak:[4], exp:168, drop:0.68, ranged:true, spr:'owlmage'},
   {img:'assets/mob_hedgehog.webp', name:'刺蝟滾滾', hp:658, atk:29, weak:[3, 7], exp:173, drop:0.68, fast:0.8, spr:'hedgehog'},
-  {img:'assets/mob_raccoon.webp', name:'浣熊小偷', hp:680, atk:29, weak:[3, 6], exp:178, drop:0.69, fast:0.8, spr:'raccoon'},
+  {img:'assets/mob_raccoon.webp', name:'浣熊小偷', hp:680, atk:29, weak:[3, 6], exp:178, drop:0.69, fast:0.8, mathTrait:'SPEED_BOMB', spr:'raccoon'},
   {img:'assets/mob_scorpion.webp', name:'沙塵蠍', hp:702, atk:30, weak:[2], exp:183, drop:0.70, spr:'scorpion'},
-  {img:'assets/mob_camel.webp', name:'骸骨駱駝', hp:725, atk:30, weak:[3], exp:188, drop:0.71, armor:0.75, spr:'camel'},
+  {img:'assets/mob_camel.webp', name:'骸骨駱駝', hp:725, atk:30, weak:[3], exp:188, drop:0.71, armor:0.75, mathTrait:'EVEN_SHIELD', spr:'camel'},
   {img:'assets/mob_lizard.webp', name:'沙丘蜥蜴', hp:748, atk:31, weak:[5], exp:193, drop:0.72, spr:'lizard'},
   {img:'assets/mob_jelly.webp', name:'水母怪', hp:770, atk:31, weak:[2, 6], exp:198, drop:0.72, spr:'jelly'},
   {img:'assets/mob_crab.webp', name:'寄居蟹士兵', hp:792, atk:32, weak:[8], exp:204, drop:0.73, armor:0.75, spr:'crab'},
@@ -1271,7 +1363,7 @@ const MOBS = [
   {img:'assets/mob_ghostknight.webp', name:'幽靈騎士', hp:1018, atk:37, weak:[6, 8], exp:254, drop:0.81, summon:true},
   {img:'assets/mob_mummy.webp', name:'木乃伊', hp:1040, atk:38, weak:[9], exp:259, drop:0.82},
   {img:'assets/mob_gearspider.webp', name:'齒輪蜘蛛', hp:1062, atk:38, weak:[3, 5], exp:264, drop:0.83, summon:true},
-  {img:'assets/mob_steamtank.webp', name:'蒸汽坦克', hp:1085, atk:39, weak:[6], exp:269, drop:0.84, armor:0.75},
+  {img:'assets/mob_steamtank.webp', name:'蒸汽坦克', hp:1085, atk:39, weak:[6], exp:269, drop:0.84, armor:0.75, mathTrait:'EVEN_SHIELD'},
   {img:'assets/mob_zapmouse.webp', name:'電磁飛鼠', hp:1108, atk:39, weak:[6, 7], exp:274, drop:0.85, fast:0.8},
   {img:'assets/mob_windspirit.webp', name:'風元精', hp:1130, atk:40, weak:[3], exp:279, drop:0.85, ranged:true},
   {img:'assets/mob_earthgolem.webp', name:'土元精', hp:1152, atk:40, weak:[5], exp:284, drop:0.86, armor:0.75},
@@ -2181,6 +2273,17 @@ $('autoEq').onclick = () => {
 };
 $('bagBtn').onclick = () => { paintGear(); $('gearwin').classList.add('on'); };
 $('closeGear').onclick = () => $('gearwin').classList.remove('on');
+$('loadoutBtn').onclick = () => { paintLoadout(); $('loadoutwin').classList.add('on'); };
+$('closeLoadout').onclick = () => $('loadoutwin').classList.remove('on');
+$('loadoutSlots').onclick = (e) => {
+  const el = e.target.closest('.loadoutSlot.filled:not(.ult)'); if(!el) return;
+  unequipSkill(el.dataset.k);
+};
+$('loadoutLib').onclick = (e) => {
+  const el = e.target.closest('.libItem'); if(!el) return;
+  const k = el.dataset.k;
+  Save.d.loadout.active.includes(k) ? unequipSkill(k) : equipSkill(k);
+};
 $('resetSave').onclick = () => {
   if(!confirm('確定要清除存檔嗎？等級、金幣、裝備都會不見。')) return;
   Save.reset();
@@ -2202,20 +2305,25 @@ function paintHeroBar(){
    十位數節奏對齊）。100 連擊之後沿用最後一招、每 +10 連擊重播一次。
    vk 借既有 6 種特效圖（火／冰＝火加藍色調／雷／光／旋風／毒霧）配不同 --sc 濾色做出
    招式差異，沒有另外畫新素材，不用等 Gemini 額度 */
+/* 2026-09-01 第十輪：觸發門檻改成 Steve 指定的 3/5/9/13/17/22/29/35/42/55/65/75/85/95/100，
+   跟等級解鎖的 20 顆主動技能（SKILLS）是兩套獨立系統，各自負責「連擊」與「升級」，
+   不互相綁定（Steve已確認要維持獨立，不要合併）。原本14招名字/效果保留，只挪動門檻；
+   多出來的第15招（95連擊）新增「九數禁咒」補在超越限界跟乘法神話之間。 */
 const SPELLS = [
   {at:3,   key:'s3',   vk:'fire',    name:'火球術',   color:'#ff8a3d', mult:1.6,  mode:'fly'},
   {at:5,   key:'s5',   vk:'ice',     name:'冰霜術',   color:'#6ea8ff', mult:2.0,  mode:'fly'},
   {at:9,   key:'s9',   vk:'thunder', name:'落雷術',   color:'#c4b5fd', mult:2.6,  mode:'drop'},
-  {at:11,  key:'s11',  vk:'whirl',   name:'破魂旋斬', color:'#7fe6ff', mult:3.2,  mode:'fly'},
-  {at:15,  key:'s15',  vk:'holy',    name:'聖光審判', color:'#ffe9a8', mult:3.8,  mode:'drop', heal:15},
-  {at:20,  key:'s20',  vk:'ice',     name:'疾風狂斬', color:'#5cc8ff', mult:4.4,  mode:'fly'},
-  {at:30,  key:'s30',  vk:'poison',  name:'幻影無雙', color:'#b98bff', mult:5.0,  mode:'drop'},
-  {at:40,  key:'s40',  vk:'thunder', name:'隕石衝擊', color:'#ff8a3d', mult:5.8,  mode:'drop'},
-  {at:50,  key:'s50',  vk:'holy',    name:'王者降臨', color:'#ffd76a', mult:6.6,  mode:'drop', heal:30},
-  {at:60,  key:'s60',  vk:'fire',    name:'龍王破空', color:'#ff9d5c', mult:7.4,  mode:'fly'},
-  {at:70,  key:'s70',  vk:'whirl',   name:'時空崩裂', color:'#5cf0ff', mult:8.2,  mode:'drop'},
-  {at:80,  key:'s80',  vk:'poison',  name:'宇宙極光', color:'#c893ff', mult:9.0,  mode:'fly'},
-  {at:90,  key:'s90',  vk:'ice',     name:'超越限界', color:'#ffffff', mult:9.8,  mode:'drop'},
+  {at:13,  key:'s13',  vk:'whirl',   name:'破魂旋斬', color:'#7fe6ff', mult:3.2,  mode:'fly'},
+  {at:17,  key:'s17',  vk:'holy',    name:'聖光審判', color:'#ffe9a8', mult:3.8,  mode:'drop', heal:15},
+  {at:22,  key:'s22',  vk:'ice',     name:'疾風狂斬', color:'#5cc8ff', mult:4.4,  mode:'fly'},
+  {at:29,  key:'s29',  vk:'poison',  name:'幻影無雙', color:'#b98bff', mult:5.0,  mode:'drop'},
+  {at:35,  key:'s35',  vk:'thunder', name:'隕石衝擊', color:'#ff8a3d', mult:5.8,  mode:'drop'},
+  {at:42,  key:'s42',  vk:'holy',    name:'王者降臨', color:'#ffd76a', mult:6.6,  mode:'drop', heal:30},
+  {at:55,  key:'s55',  vk:'fire',    name:'龍王破空', color:'#ff9d5c', mult:7.4,  mode:'fly'},
+  {at:65,  key:'s65',  vk:'whirl',   name:'時空崩裂', color:'#5cf0ff', mult:8.2,  mode:'drop'},
+  {at:75,  key:'s75',  vk:'poison',  name:'宇宙極光', color:'#c893ff', mult:9.0,  mode:'fly'},
+  {at:85,  key:'s85',  vk:'ice',     name:'超越限界', color:'#ffffff', mult:9.8,  mode:'drop'},
+  {at:95,  key:'s95',  vk:'holy',    name:'九數禁咒', color:'#fff2c2', mult:10.4, mode:'drop', heal:20},
   {at:100, key:'s100', vk:'fire',    name:'乘法神話', color:'#ffe066', mult:11.0, mode:'drop', heal:40}
 ];
 function spellFor(c){
@@ -2358,14 +2466,88 @@ const SKILLS = [
   {key:'ultra80', name:'終極斬', icon:'💥', lv:80, cd:15000, color:'#ffe066',
    fx:{key:'whirl', size:520, bright:1.4, sat:1.3}, mult:6.4, desc:'集氣後的終極一擊'}
 ];
+
+/* 2026-09-01 第十輪：技能組配裝——20顆全解鎖全能用沒有取捨感，改成戰鬥只能帶3主動+1必殺。
+   loadout只存key字串，SKILLS表格才是唯一權威資料源。fixLoadout()依賴SKILLS，所以放在這裡
+   (battle.html)而不是common.js，SKILLS定義完後立刻呼叫一次，只有進過battle.html才會補齊，
+   這是刻意的(loadout本來就只有這頁用得到)。 */
+function fixLoadout(d){
+  d.loadout = Object.assign({active:[], ult:null}, d.loadout || {});
+  d.loadout.active = (d.loadout.active || [])
+    .filter(k => SKILLS.some(s => s.key === k && d.lv >= s.lv))
+    .slice(0, 3);
+  d.loadout.ult = 'default';   // 目前只有一顆寫死的必殺技，配裝畫面唯讀展示，不做選擇
+  if(d.loadout.active.length < 3){
+    for(const s of SKILLS){
+      if(d.lv < s.lv) continue;
+      if(d.loadout.active.length >= 3) break;
+      if(!d.loadout.active.includes(s.key)) d.loadout.active.push(s.key);
+    }
+  }
+  return d;
+}
+fixLoadout(Save.d); Save.put();
+
+function autoFillLoadout(){          // 升級解鎖新技能時，出戰欄還有空位就自動幫玩家裝上
+  let changed = false;
+  for(const s of SKILLS){
+    if(Save.d.lv < s.lv) continue;
+    if(Save.d.loadout.active.includes(s.key)) continue;
+    if(Save.d.loadout.active.length >= 3) break;
+    Save.d.loadout.active.push(s.key);
+    changed = true;
+  }
+  if(changed) Save.put();
+}
+function equipSkill(key){
+  const arr = Save.d.loadout.active;
+  if(arr.includes(key)) return;
+  if(running){ comboShout('戰鬥中無法更換配裝', '#f87171'); return; }
+  if(arr.length >= 3){ comboShout('請先卸下一個技能', '#f87171'); return; }
+  arr.push(key);
+  Save.put();
+  paintLoadout();
+  paintSkills();
+}
+function unequipSkill(key){
+  if(running){ comboShout('戰鬥中無法更換配裝', '#f87171'); return; }
+  Save.d.loadout.active = Save.d.loadout.active.filter(k => k !== key);
+  Save.put();
+  paintLoadout();
+  paintSkills();
+}
+function paintLoadout(){
+  const activeSlots = [0,1,2].map(i => {
+    const key = Save.d.loadout.active[i];
+    const sk = key && SKILLS.find(s => s.key === key);
+    return sk
+      ? '<div class="loadoutSlot filled" data-k="' + sk.key + '"><b>' + sk.icon + '</b><small>' + sk.name + '</small></div>'
+      : '<div class="loadoutSlot empty">空</div>';
+  }).join('');
+  const ultSlot = '<div class="loadoutSlot ult filled"><b>💥</b><small>' + ($('ultBtn').textContent || '必殺技') + '</small></div>';
+  $('loadoutSlots').innerHTML = activeSlots + ultSlot;
+
+  const unlocked = SKILLS.filter(s => Save.d.lv >= s.lv);
+  $('loadoutLib').innerHTML = unlocked.length ? unlocked.map(s => {
+    const eq = Save.d.loadout.active.includes(s.key);
+    return '<div class="libItem' + (eq ? ' equipped' : '') + '" data-k="' + s.key + '">' +
+      '<b>' + s.icon + '</b><small>' + s.name + '</small></div>';
+  }).join('') : '<div class="empty-tip">升級解鎖技能後會出現在這裡</div>';
+}
+
 const skillState = {};              // key → 可以再用的時間點
 function paintSkills(){
   const box = $('skills');
-  if(!box.children.length){
-    box.innerHTML = SKILLS.map(s =>
-      '<button class="skill" data-k="' + s.key + '">' +
+  const wantKeys = Save.d.loadout.active.join(',');
+  const curKeys = [...box.children].map(b => b.dataset.k).join(',');
+  if(curKeys !== wantKeys){
+    box.innerHTML = Save.d.loadout.active.map(key => {
+      const s = SKILLS.find(x => x.key === key);
+      if(!s) return '';
+      return '<button class="skill" data-k="' + s.key + '">' +
         '<b>' + s.icon + ' ' + s.name + '</b><small>' + s.desc + '</small>' +
-        '<i></i><em></em></button>').join('');
+        '<i></i><em></em></button>';
+    }).join('');
     box.onclick = (e) => {
       const b = e.target.closest('.skill'); if(!b) return;
       useSkill(b.dataset.k);
@@ -2373,12 +2555,10 @@ function paintSkills(){
   }
   [...box.children].forEach(b => {
     const sk = SKILLS.find(x => x.key === b.dataset.k);
-    const locked = Save.d.lv < sk.lv;
+    if(!sk) return;
     const left = Math.max(0, (skillState[sk.key] || 0) - performance.now());
-    b.classList.toggle('locked', locked);
-    b.disabled = locked || left > 0 || !running || locked;
-    b.querySelector('em').textContent = locked ? ('🔒 Lv' + sk.lv + ' 解鎖')
-                                      : (left > 0 ? Math.ceil(left/1000) + ' 秒' : '');
+    b.disabled = left > 0 || !running;
+    b.querySelector('em').textContent = left > 0 ? Math.ceil(left/1000) + ' 秒' : '';
   });
 }
 function useSkill(key){
@@ -2535,11 +2715,12 @@ function newQ(){
   telegraphed = false;
   mobTimer = turnTime;
   locked = false;
+  if(mob.mathTrait === 'SPEED_BOMB') startBomb();   // 2026-09-01第十輪：這一題就是拆彈限時
 }
 /* 打中敵人之後的共同處理：扣血、特效、鏡頭、必殺充能。回傳「有沒有打死」 */
-function applyHit(dmg, isCrit, isWeak, label){
+function applyHit(dmg, isCrit, isWeak, label, isEven){
   if(mob.armor) dmg = Math.max(1, Math.round(dmg * mob.armor));   // 石像守衛那種有護甲的
-  if(shield > 0){                                                 // 先吃護盾，本體不掉血
+  if(shield > 0){                                                 // 先吃護盾，本體不掉血（召喚型護盾，跟下面的偶數護盾是兩回事）
     shield = Math.max(0, shield - dmg);
     dmgText('護盾 -' + dmg, false);
     hitEffect(false, false, false);
@@ -2551,6 +2732,19 @@ function applyHit(dmg, isCrit, isWeak, label){
     $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
     return false;
   }
+  /* 2026-09-01 第十輪：偶數護盾（mathTrait='EVEN_SHIELD'）——不是血量式，是層數。
+     偶數命中才扣層＋完整傷害；奇數命中只給1點傷害、層數不變。走完這段之後跟一般命中
+     共用同一套扣血/特效/飄字流程，只是先把 dmg 改小，不重複寫一次扣血邏輯。 */
+  let brokeEvenShield = false;
+  if(evenShield > 0){
+    if(isEven){
+      evenShield--;
+      if(evenShield === 0) brokeEvenShield = true;
+    }else{
+      dmg = 1;
+      label = '護盾中 ';
+    }
+  }
   mobHp = Math.max(0, mobHp - dmg);
   totalDmg += dmg;
   hitEffect(isCrit, isWeak, mobHp <= 0);
@@ -2558,6 +2752,7 @@ function applyHit(dmg, isCrit, isWeak, label){
   dmgText((label || (isCrit ? '爆擊 ' : '')) + '-' + dmg, isWeak || isCrit);
   setHp('mobHp', mobHp / mob.hp);
   $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
+  if(brokeEvenShield){ dmgText('護盾破了！', true); ring(mobCenter(), 'dring', 170); }
   ult = Math.min(100, ult + P.ult + (isCrit ? (HERO.critBack || 0) : 0));   // 疾風獵手爆擊多回一點
   paintUlt();
   return mobHp <= 0;
@@ -2571,6 +2766,7 @@ function newTurn(){
   mobTimer = turnTime;
   telegraphed = false;
   locked = false;
+  if(mob.mathTrait === 'SPEED_BOMB') startBomb();   // 2026-09-01第十輪：這一回合就是拆彈限時
 }
 function cool(btn, ms, doneFlag){
   const bar = btn.querySelector('i') || btn.appendChild(document.createElement('i'));
@@ -2610,11 +2806,20 @@ function armComboDecay(){
 }
 
 /* 2026-09-01 第九輪：combo 三階段視覺（1-3輕斬／4-7雙連斬／8+終結技就緒），
-   兩個模式（playerAttack／answer）共用同一個函式，避免各寫一套視覺不同步。 */
+   兩個模式（playerAttack／answer）共用同一個函式，避免各寫一套視覺不同步。
+   第十輪順便在這裡統一畫「連擊數」常駐顯示——這裡是所有combo增減點唯一都會經過
+   的函式，比在每個改combo的地方各自補一行畫面更新可靠。 */
 let finisherReady = false;   // combo 達到 8 的下一擊，強制觸發終結技（練習/娛樂模式都適用）
 function comboVisualTier(c){
   const t = c >= 8 ? 3 : c >= 4 ? 2 : 1;
   $('actAtk').classList.toggle('charged', t === 3);
+  const cc = $('comboCounter');
+  if(cc){
+    cc.textContent = '連擊 x' + c;
+    cc.classList.toggle('active', c > 0);
+    cc.classList.toggle('t2', t === 2 && c > 0);
+    cc.classList.toggle('t3', t === 3 && c > 0);
+  }
   return t;
 }
 function armFinisher(){
@@ -2623,7 +2828,7 @@ function armFinisher(){
 /* 終結技：combo 滿 8 後的下一擊 100% 觸發，扣 8 層 combo（允許疊到 16+ 連續觸發）。
    一般小怪直接秒殺、Boss 走 3 倍傷害，跟 spellFor()/COMBO_MILESTONES 各自獨立，
    共用 combo 只在扣層那一下互動，觸發門檻不整除撞號。 */
-function playFinisher(baseDmg){
+function playFinisher(baseDmg, isEven){
   const dmg = mob.boss ? Math.round(baseDmg * 3) : mobHp;
   Sfx.milestone(4);
   camPush(true);
@@ -2632,7 +2837,7 @@ function playFinisher(baseDmg){
   const ff = $('finisherFlash');
   ff.querySelector('b').textContent = mob.boss ? '會心一擊！' : '終結技！';
   ff.classList.remove('on'); void ff.offsetWidth; ff.classList.add('on');
-  const dead = applyHit(dmg, true, false, mob.boss ? '' : '終結技 ');
+  const dead = applyHit(dmg, true, false, mob.boss ? '' : '終結技 ', isEven);
   return dead;
 }
 function finisherSwing(onHit){
@@ -2664,15 +2869,18 @@ function playerAttack(){
   const useFinisher = finisherReady;
   const isCrit = perfectHit || Math.random()*100 < P.crit;
   const counter = counterReady; counterReady = false;   // 完美閃避後的下一擊是反擊，用掉就沒了
+  const isEven = combo % 2 === 0;   // 2026-09-01第十輪：娛樂模式沒有明確答案，用攻擊當下的連擊數字判斷奇偶
+  const bombBonus = bombActive;     // 娛樂模式：這5秒內只要有成功命中一次就算拆彈成功
+  if(bombBonus){ bombHitDuringWindow = true; defuseBomb(); }
   const dmg = Math.round(P.atk * 0.62 * (1 + Math.min(combo,10)*0.05)
-              * (isCrit ? 1.8 : 1) * (perfectHit ? 1.6 : 1) * (counter ? 1.8 : 1));
+              * (isCrit ? 1.8 : 1) * (perfectHit ? 1.6 : 1) * (counter ? 1.8 : 1) * (bombBonus ? 1.5 : 1));
   const tier = comboVisualTier(combo);
   if(perfectHit) btn.querySelector('.rhythmRing').classList.add('perfect');
   Sfx.ok(combo);
   camPull();
   if(useFinisher){
     finisherSwing(() => {
-      const dead = playFinisher(dmg);
+      const dead = playFinisher(dmg, isEven);
       combo = Math.max(0, combo - 8);          // 不管這一下有沒有打死怪，都要先扣層，
       finisherReady = combo >= 8;               // 不然finisherReady會一路帶到下一隻怪身上
       comboVisualTier(combo);
@@ -2682,7 +2890,7 @@ function playerAttack(){
   }
   armFinisher();
   heroSwing(() => {
-    if(applyHit(dmg, isCrit, false, perfectHit ? 'PERFECT ' : (counter ? '反擊 ' : ''))) return killMob();
+    if(applyHit(dmg, isCrit, false, perfectHit ? 'PERFECT ' : (counter ? '反擊 ' : ''), isEven)) return killMob();
     comboAura(combo);
     const sp = spellFor(combo);
     if(sp) setTimeout(async () => { if(await castSpell(sp)) killMob(); }, 320);
@@ -2729,16 +2937,20 @@ function answer(v, btn){
     if(ms) showMilestone(ms);
     btn.classList.add('right');
     const isWeak = QQ.weak;
+    const isEven = !QQ.sym && typeof QQ.ans === 'number' && QQ.ans % 2 === 0;   // 2026-09-01第十輪：偶數護盾判定
+    const bombBonus = bombActive && took <= BOMB_TIME;   // 拆彈成功要在defuseBomb()清掉bombActive之前先存起來
+    if(bombBonus) defuseBomb();
+    else if(bombActive) { explodeBomb(); return; }        // 理論上tick()會先偵測到逾時，這裡是保險
     const speed = Math.max(1, Math.round((ANSWER_TIME - took) * 0.9));
     const isCrit = Math.random()*100 < P.crit;
-    let dmg = Math.round((P.atk*0.7 + speed) * (isWeak ? 2 : 1) * (1 + Math.min(combo,8)*0.06) * (isCrit ? 1.8 : 1));
+    let dmg = Math.round((P.atk*0.7 + speed) * (isWeak ? 2 : 1) * (1 + Math.min(combo,8)*0.06) * (isCrit ? 1.8 : 1) * (bombBonus ? 1.5 : 1));
     const tier = comboVisualTier(combo);
     const useFinisher = finisherReady;           // combo三階段視覺／終結技，跟娛樂模式共用同一套（Steve已確認練習模式也開放）
     Sfx.ok(combo);
     camPull();
     if(useFinisher){
       finisherSwing(() => {
-        const dead = playFinisher(dmg);
+        const dead = playFinisher(dmg, isEven);
         combo = Math.max(0, combo - 8);
         finisherReady = combo >= 8;
         comboVisualTier(combo);
@@ -2749,7 +2961,7 @@ function answer(v, btn){
     }
     armFinisher();
     heroSwing(()=>{
-      if(applyHit(dmg, isCrit, isWeak)) return killMob();
+      if(applyHit(dmg, isCrit, isWeak, undefined, isEven)) return killMob();
       comboAura(combo);
       const sp = spellFor(combo);
       if(sp){
@@ -2774,7 +2986,8 @@ function answer(v, btn){
     });
     Sfx.bad();
     Voice.sayAns(QQ);      // 答錯就把正解再唸一次，學注音最重要的就是這一下
-    setTimeout(mobAttack, 420);
+    if(bombActive) explodeBomb();          // 2026-09-01第十輪：答錯視同拆彈失敗，蓋掉底下mobAttack那條路
+    else setTimeout(mobAttack, 420);
   }
 }
 /* 怪物打中角色的那一下：原本只有紅閃，看不太出來被攻擊，補一朵爆散＋碎片＋圓環 */
@@ -2849,6 +3062,11 @@ function shotAtHero(){
 }
 /* 召喚型：叫出護盾擋在前面，玩家要先把護盾打掉才傷得到本體 */
 let shield = 0, shieldMax = 0;
+/* 2026-09-01 第十輪：怪物乘法特性——偶數護盾層數／快答爆彈倒數，各自獨立變數，
+   不跟上面的summon護盾、下面的mobTimer回合倒數混用（語意不同，混用會互相干擾）。 */
+let evenShield = 0;
+let bombActive = false, bombTimer = 0, bombHitDuringWindow = false;
+const BOMB_TIME = 5;
 function summonGuards(){
   shieldMax = Math.round(mob.hp * 0.22);
   shield = shieldMax;
@@ -2857,6 +3075,50 @@ function summonGuards(){
   dmgText('召喚護衛！', true);
   ring(mobCenter(), 'dring', 150);
   $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
+}
+
+/* 2026-09-01 第十輪：快答爆彈（mathTrait='SPEED_BOMB'）——換題/換回合當下就開始倒數，
+   讓玩家一開始就看到頭頂炸彈+5秒，不是打到一半忽然冒出來。跟mobTimer(回合出手倒數)
+   完全獨立，tick()裡各自一個if區塊，互不覆蓋。 */
+function startBomb(){
+  bombActive = true;
+  bombTimer = BOMB_TIME;
+  bombHitDuringWindow = false;
+  $('mobWrap').classList.add('bombing');
+  paintBomb();
+}
+function stopBomb(){
+  bombActive = false;
+  $('mobWrap').classList.remove('bombing', 'bombWarn');
+  $('bombBarWrap').style.display = 'none';
+}
+function paintBomb(){
+  if(!bombActive) return;
+  $('bombBarWrap').style.display = 'block';
+  $('bombBar').style.transform = 'scaleX(' + Math.max(0, bombTimer/BOMB_TIME) + ')';
+  $('bombNum').textContent = Math.ceil(bombTimer);
+  if(bombTimer <= 1.2 && !$('mobWrap').classList.contains('bombWarn')) bombWarn();
+}
+function bombWarn(){
+  const w = $('mobWrap');
+  w.classList.add('bombWarn');
+  Sfx.tick && Sfx.tick();
+}
+function defuseBomb(){                // 期限內答對/命中：拆彈成功，這次攻擊傷害另外×1.5(呼叫端處理)
+  stopBomb();
+  dmgText('拆彈成功！', true);
+  ring(mobCenter(), 'dring', 170);
+}
+function explodeBomb(){               // 逾時或答錯：扣25%當前最大血量，怪物這回合不再另外出手
+  stopBomb();
+  mobHitFx();
+  heroHurtAnim();
+  heroHp = Math.max(1, heroHp - Math.round(maxHp * 0.25));
+  paintHeroBar();
+  Sfx.hurt();
+  comboShout('炸彈爆炸！', '#f87171');
+  locked = true;
+  setTimeout(() => { arcade ? newTurn() : newQ(); }, 700);
 }
 function mobAttack(){
   if(!running) return;
@@ -3034,6 +3296,7 @@ function killMob(){
       const before = maxHp; maxHp = P.hp;
       heroHp = Math.min(maxHp, heroHp + (maxHp - before) + 25);   // 升級順便回一點血
       paintHeroBar();
+      autoFillLoadout();          // 新解鎖的技能，出戰欄還有空位就自動裝上
       showDrop('<b style="color:var(--gold)">升級！Lv ' + Save.d.lv + '</b>' +
                '<small>攻擊與血量提升，回復 25 點血</small>');
       Sfx.win();
@@ -3059,6 +3322,7 @@ function killMob(){
 function mobLabel(){
   return mob.name + (mob.armor ? ' 🛡' : '') + (mob.fast ? ' ⚡' : '')
        + (mob.ranged ? ' 🎯' : '') + (mob.summon ? ' 🐝' : '')
+       + (evenShield > 0 ? ' 🛡️x' + evenShield : '')
        + (shield > 0 ? ' 護盾 ' + shield : '');
 }
 /* 怪物圖片沒有任何錯誤處理：CDN 一個瞬間的載入失誤、或部署後短暫的快取不同步，
@@ -3092,8 +3356,11 @@ function setMob(){
   mob.atk = Math.round(mob.atk * Math.pow(1.05, round - 1));
   mobHp = mob.hp;
   shield = 0; shieldMax = 0;
+  evenShield = mob.mathTrait === 'EVEN_SHIELD' ? 2 : 0;   // 2026-09-01第十輪：換怪重設乘法特性狀態
+  stopBomb();
   mobMarkedUntil = 0;         // 換怪印記歸零，不能留到下一隻
   $('mobWrap').classList.remove('shielded');
+  $('mobWrap').classList.toggle('evenshield', evenShield > 0);
   $('mobFlip').classList.toggle('flip', !!mob.flip);   // 背對主角的怪物：CSS 鏡像，不動原始圖檔
   const mel = $('mob');
   /* 2026-08-24 修「空戰鬥畫面」：`mobDie` 是 forwards 動畫，最後一格 opacity:0。
@@ -3162,16 +3429,25 @@ function tick(){
     $('shMob').classList.remove('gone');
   }
   $('mobWrap').classList.toggle('marked', mobMarkedUntil > performance.now());
-  if(!running || locked){ paintTimer(); return; }
+  if(!running || locked){ paintTimer(); paintBomb(); return; }
   mobTimer = Math.max(0, mobTimer - 0.1);
   paintTimer();
+  /* 2026-09-01 第十輪：快答爆彈倒數，跟上面mobTimer完全獨立的一段，各自的DOM/計時器不互相覆蓋 */
+  if(bombActive){
+    bombTimer = Math.max(0, bombTimer - 0.1);
+    paintBomb();
+    if(bombTimer <= 0){
+      explodeBomb();   // 走到這裡代表這5秒內沒有defuseBomb()把bombActive關掉，一律視為逾時
+      return;           // explodeBomb()已經locked=true，這裡務必return，不然同一個tick還會往下掉進mobTimer<=0判斷，雙重處罰
+    }
+  }
   /* 出手前 1.2 秒給預告：怪物繃緊＋頭上驚嘆號。
      沒有預告的攻擊只會讓人覺得被偷打，有預告才有「看懂就躲得掉」的感覺 */
   if(mobTimer <= 1.2 && !telegraphed){
     telegraphed = true;
     warnMob();
   }
-  if(mobTimer <= 0){
+  if(mobTimer <= 0 && !bombActive){    // 爆彈倒數期間暫停回合逾時出手判斷，避免雙重懲罰
     locked = true;
     wrong++; combo = 0; comboVisualTier(0); finisherReady = false;
     if(!arcade){
@@ -3204,7 +3480,7 @@ function start(){
   P = Save.power();
   maxHp = P.hp; heroHp = P.hp;
   running = true; locked = true;
-  ult = 0; combo = 0; finisherReady = false;
+  ult = 0; combo = 0; finisherReady = false; comboVisualTier(0);
   kills = 0; totalDmg = 0; right = 0; wrong = 0; fastest = null;
   earnGold = 0; earnExp = 0; drops = [];
   paintStageQ();               // 開局重讀一次，防止登入狀態在設定頁之後才改變
@@ -3382,7 +3658,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260901d"></script>
-<script src="assets/lock.js?v=20260901d"></script>
+<script src="assets/audio.js?v=20260902a"></script>
+<script src="assets/lock.js?v=20260902a"></script>
 </body>
 </html>

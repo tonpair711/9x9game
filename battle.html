@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260831h">
+<link rel="stylesheet" href="assets/common.css?v=20260901b">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -218,6 +218,8 @@ body{padding-bottom:16px}
 /* 單張圖角色的攻擊／受傷姿勢 */
 #hero2.poseSwing{filter:drop-shadow(0 10px 18px #000a) brightness(1.12) contrast(1.06)}
 #hero2.poseHurt{filter:drop-shadow(0 10px 18px #000a) saturate(.6) brightness(.85)}
+/* 2026-09-01：技能施法姿勢（跟一般攻擊 poseSwing 分開，加一圈金色光暈區分「這是放技能」） */
+#hero2.poseCast{filter:drop-shadow(0 0 22px #ffe9a8cc) brightness(1.1)}
 .afterimg{
   position:absolute;bottom:8%;z-index:2;pointer-events:none;opacity:.55;
   filter:brightness(1.6) saturate(.4) drop-shadow(0 0 10px #ffe9a8);
@@ -259,6 +261,12 @@ body{padding-bottom:16px}
    兩個動畫如果掛同一層會互相覆蓋，命中結束的瞬間會「跳」一下回漂浮的相位 */
 .mobwrap{right:4%;height:56%;animation:mobIdle 2.2s ease-in-out infinite alternate}
 @keyframes mobIdle{to{transform:translateY(-10px) scale(1.02)}}
+/* 2026-09-01：部分怪物素材原本畫成背對主角，逐一盤點後對錯的怪加 mob.flip:true，
+   在 setMob() 切 .mobflip 的 .flip class。獨立包一層是因為 #mob／.mobwrap 兩層都已經有
+   自己的 transform 動畫（呼吸／受擊／死亡／漂浮／擊退），直接在它們身上加 scaleX(-1)
+   會被動畫的 transform 蓋掉；這層什麼動畫都不掛，純粹負責鏡像，才不會互相干擾 */
+.mobflip{height:100%;display:inline-block}
+.mobflip.flip{transform:scaleX(-1)}
 #mob{width:auto;height:100%;display:block;filter:drop-shadow(0 10px 18px #000a);
   transform-origin:50% 100%}
 /* 逐幀素材自己就在呼吸，再疊 CSS 那套會變兩個節奏打架；受擊／死亡的還是要留 */
@@ -333,10 +341,18 @@ body{padding-bottom:16px}
   100%{opacity:0;transform:translateX(-50%) translateY(-26px) scale(.95)}
 }
 
-/* ---------- 主動技能 ---------- */
-.skills{display:flex;gap:8px;width:min(96vw,560px)}
+/* ---------- 主動技能 ----------
+   2026-09-01：從 3 顆擴到 11 顆（每 10 級解鎖一顆到 Lv80）。原本 flex-wrap 換行會把畫面拉得
+   很高，蓋到右下角固定的音效／縮放鎖按鈕（踩過的坑，已經改掉）。改成**橫向一排可以滑**
+   （不換行、超出用 overflow-x），頁面高度不變，技能再多也不會撐高版面；右邊淡出遮罩
+   借用 `.vers`（玩什麼那排）同一招提示「還能往右滑」 */
+.skills{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:8px;width:min(96vw,560px);
+  scrollbar-width:none;-ms-overflow-style:none;
+  mask-image:linear-gradient(90deg,#000 92%,transparent);
+  -webkit-mask-image:linear-gradient(90deg,#000 92%,transparent);}
+.skills::-webkit-scrollbar{display:none}
 .skill{
-  flex:1;min-height:56px;border-radius:14px;cursor:pointer;position:relative;overflow:hidden;
+  flex:0 0 31%;min-width:104px;min-height:56px;border-radius:14px;cursor:pointer;position:relative;overflow:hidden;
   background:linear-gradient(180deg,#3a2456,#241638);border:1px solid var(--line);
   color:var(--text);font-family:inherit;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:1px;padding:6px 8px;
@@ -998,7 +1014,7 @@ body.playing #pauseBtn{display:flex}
     <div class="gshadow" id="shMob"></div>
     <img class="fighter" id="hero2" src="assets/fx_hero_ready.webp" alt="">
     <img class="fighter" id="cat2" src="assets/fx_cat_attack.webp" alt="">
-    <div class="fighter mobwrap" id="mobWrap"><img id="mob" src="assets/mob_slime.webp" alt=""></div>
+    <div class="fighter mobwrap" id="mobWrap"><div class="mobflip" id="mobFlip"><img id="mob" src="assets/mob_slime.webp" alt=""></div></div>
     <div class="slash" id="slash"></div>
     <div class="speedlines" id="speedlines"></div>
     <img class="circle" id="circle" src="assets/fx_holy.webp" alt="">
@@ -1162,21 +1178,21 @@ body.playing #pauseBtn{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260831h"></script>
+<script src="assets/common.js?v=20260901b"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
    這裡不能直接查 SPR 有沒有 key，見 preloadNearby() 那邊的說明） */
-const ATK_ONLY_SPR = new Set(['raccoon', 'bat', 'mush', 'rock']);
+const ATK_ONLY_SPR = new Set(['raccoon', 'bat', 'mush', 'rock', 'ghost', 'cactus', 'ice']);
 /* ---------- 敵人：每隻怕不同的乘法表，打弱點兩倍傷害 ---------- */
 const MOBS = [
   {img:'assets/mob_slime.webp',  name:'黏黏怪',   hp:110, atk:10, weak:[2,3],   exp:24, drop:0.40, spr:'slime'},
   {img:'assets/mob_bat.webp',    name:'小蝙蝠',   hp:135, atk:12, weak:[4,5],   exp:30, drop:0.45, spr:'bat'},
   {img:'assets/mob_mush.webp',   name:'香菇怪',   hp:165, atk:13, weak:[6],     exp:36, drop:0.50, spr:'mush'},
   {img:'assets/mob_rock.webp',   name:'石頭怪',   hp:195, atk:15, weak:[7],     exp:42, drop:0.55, spr:'rock'},
-  {img:'assets/mob_ghost.webp',  name:'幽靈球',   hp:225, atk:16, weak:[8],     exp:48, drop:0.55},
-  {img:'assets/mob_cactus.webp', name:'仙人掌',   hp:255, atk:17, weak:[9],     exp:54, drop:0.60, ranged:true},
-  {img:'assets/mob_ice.webp',    name:'冰晶怪',   hp:290, atk:18, weak:[6,7],   exp:62, drop:0.62},
+  {img:'assets/mob_ghost.webp',  name:'幽靈球',   hp:225, atk:16, weak:[8],     exp:48, drop:0.55, spr:'ghost'},
+  {img:'assets/mob_cactus.webp', name:'仙人掌',   hp:255, atk:17, weak:[9],     exp:54, drop:0.60, ranged:true, spr:'cactus'},
+  {img:'assets/mob_ice.webp',    name:'冰晶怪',   hp:290, atk:18, weak:[6,7],   exp:62, drop:0.62, spr:'ice'},
   {img:'assets/mob_flame.webp',  name:'火焰怪',   hp:320, atk:19, weak:[8,9],   exp:70, drop:0.65},
   {img:'assets/mob_robot.webp',  name:'鐵皮機器', hp:355, atk:20, weak:[7,8],   exp:80, drop:0.70},
   /* 2026-08-22 新增：出手快的衝鋒型、會擋傷害的精英、閃來閃去的刺客 */
@@ -1184,7 +1200,7 @@ const MOBS = [
   {img:'assets/mob_bee.webp',      name:'蜂后',     hp:330, atk:18, weak:[5,6],   exp:84, drop:0.66, summon:true},
   {img:'assets/mob_ninja.webp',    name:'影武者貓', hp:340, atk:23, weak:[8,9],   exp:92, drop:0.70, fast:0.8},
   {img:'assets/mob_gargoyle.webp', name:'石像守衛', hp:480, atk:24, weak:[6,7,9], exp:120, drop:0.9, armor:0.72},
-  {img:'assets/mob_boss.webp',   name:'虎王石像', hp:430, atk:22, weak:[7,8,9], exp:110, drop:1, boss:true},
+  {img:'assets/mob_boss.webp',   name:'虎王石像', hp:430, atk:22, weak:[7,8,9], exp:110, drop:1, boss:true, flip:true},
   {img:'assets/mob_dragon.webp', name:'紫金巨龍', hp:560, atk:26, weak:[6,7,8,9], exp:150, drop:1, boss:true, spr:'dragon'},
   /* 2026-08-23 大量新增：37 隻普通怪＋8 隻 Boss（Steve：至少 50 種普通、10 種 Boss）。
      數值接續原本最後一隻（紫金巨龍 hp560/atk26/exp150）往上爬，
@@ -1229,7 +1245,7 @@ const MOBS = [
   /* 8 隻新 Boss，接在最後——跟現有兩隻 Boss 一樣，每打倒一隻就結束這次冒險 */
   {img:'assets/mob_bosstitan.webp', name:'巨石泰坦', hp:900, atk:30, weak:[6, 7, 8], exp:260, drop:1, boss:true},
   {img:'assets/mob_bossphoenix.webp', name:'烈焰鳳凰', hp:1086, atk:33, weak:[4, 5, 7], exp:297, drop:1, boss:true},
-  {img:'assets/mob_bosskraken.webp', name:'深淵巨蛛章魚', hp:1271, atk:36, weak:[2, 3, 9], exp:334, drop:1, boss:true},
+  {img:'assets/mob_bosskraken.webp', name:'深淵巨蛛章魚', hp:1271, atk:36, weak:[2, 3, 9], exp:334, drop:1, boss:true, flip:true},
   {img:'assets/mob_bosslich.webp', name:'巫妖領主', hp:1457, atk:39, weak:[4, 5, 7], exp:371, drop:1, boss:true},
   {img:'assets/mob_bosshydra.webp', name:'雙頭火龍', hp:1643, atk:43, weak:[3, 6, 9], exp:409, drop:1, boss:true},
   {img:'assets/mob_bossgolemking.webp', name:'黃金機甲皇', hp:1829, atk:46, weak:[3, 7, 9], exp:446, drop:1, boss:true},
@@ -1343,7 +1359,7 @@ function preloadNearby(){
 }
 preload([...Object.values(HERO_FRAMES), 'assets/fx_cat_attack.webp', HERO.img]);
 /* 逐幀雪碧圖：角色自己那組跟第一隻怪的先載，播到才抓會閃一下空白 */
-if(HERO.frames) preload(['assets/spr_hero_idle.webp', 'assets/spr_hero_atk.webp']);
+if(HERO.frames) preload(['assets/spr_hero_idle.webp', 'assets/spr_hero_atk.webp', 'assets/spr_hero_skillcast.webp']);
 preload(['assets/spr_slime_idle.webp', 'assets/spr_slime_atk.webp',
          'assets/fx_whirl.webp', 'assets/fx_heal.webp']);
 preloadNearby();
@@ -1367,10 +1383,14 @@ function heroFrame(k){
   const el = $('hero2');
   /* 小虎姬有整組逐幀，走 Spr；挑第 7～22 格（揮擊那段）對上 heroSwing 的節奏 */
   if(HERO.frames && SPR.hero_idle){
-    el.classList.remove('poseSwing','poseHurt');
+    el.classList.remove('poseSwing','poseHurt','poseCast');
     const rest = () => IDLE_SPRITE() ? Spr.play(el, 'hero_idle', {loop:true})
                                      : Spr.off(el, HERO_FRAMES.ready);
     if(k === 'swing')      Spr.play(el, 'hero_atk', {from:7, to:23, fps:45, done:rest});
+    else if(k === 'cast'){
+      el.classList.add('poseCast');
+      Spr.play(el, 'hero_skillcast', {done:() => { el.classList.remove('poseCast'); rest(); }});
+    }
     else if(k === 'hurt'){
       if(IDLE_SPRITE()) Spr.play(el, 'hero_idle', {from:0, to:1});
       else Spr.off(el, HERO_FRAMES.hurt);
@@ -1451,6 +1471,27 @@ function heroSwing(onHit){
     onHit && onHit();
   });
   at(.72, () => heroFrame('ready'));
+}
+/* 2026-09-01：技能專用的施法動作，跟 heroSwing()（普通攻擊的衝刺揮擊）分開——
+   人待在原地舉杖引光（不衝刺），只有原地的小幅浮動，出招判定放在光爆那個瞬間
+   （對到 spr_hero_skillcast 雪碧圖最後匯聚爆發的那幾格）。只有 HERO.frames
+   的角色（目前是王者）才有這組逐幀；其餘角色沒有 hero_skillcast 素材，
+   heroFrame('cast') 對他們會直接是 no-op（見 heroFrame 內的 HERO_FRAMES 分支），
+   等於退回原本靜圖表現，不會報錯。 */
+const CAST_MS = 3250;                 // 52 幀 @ 16fps ≈ 3.25s
+function heroCast(onHit){
+  const h = $('hero2');
+  h.style.transform = '';
+  h.style.transition = 'none';
+  const anim = h.animate([
+    {offset:0,   transform:'translateY(0) scale(1,1)',           easing:'cubic-bezier(.3,.9,.5,1)'},
+    {offset:.25, transform:'translateY(-6px) scale(1.02,1.03)',  easing:'cubic-bezier(.4,0,.6,1)'},
+    {offset:.82, transform:'translateY(-10px) scale(1.05,1.06)', easing:'cubic-bezier(.2,.8,.4,1)'},
+    {offset:1,   transform:'translateY(0) scale(1,1)'}
+  ], {duration:CAST_MS, fill:'none'});
+  h._swing = anim;
+  heroFrame('cast');
+  setTimeout(() => onHit && onHit(), CAST_MS * .82);   // 光爆瞬間＝出招判定
 }
 function heroHurtAnim(){
   const h = $('hero2');
@@ -1573,6 +1614,11 @@ const PX1 = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABA
 const SPR = {
   hero_idle:   {img:'assets/spr_hero_idle.webp',   cols:5, rows:3, n:15, ar:224/174, fps:8},
   hero_atk:    {img:'assets/spr_hero_atk.webp',    cols:6, rows:5, n:29, ar:224/174, fps:24},
+  /* 2026-09-01：技能施法逐幀（gemini vids 圖生影片，參考圖 fx_hero_ready.webp，
+     舉杖過頭引光→匯聚→小爆發，在畫面整個被光炸滿、黑底流失前就切掉，源片 2.0~6.0s 段，
+     所以雪碧圖裡沒有那種全白畫面）。放技能時用這組取代 hero_atk，跟一般攻擊分開，
+     不再是「20 顆技能全部長一樣」 */
+  hero_skillcast: {img:'assets/spr_hero_skillcast.webp', cols:6, rows:9, n:52, ar:1, fps:16},
   slime_idle:  {img:'assets/spr_slime_idle.webp',  cols:5, rows:4, n:16, ar:224/125, fps:8},
   slime_atk:   {img:'assets/spr_slime_atk.webp',   cols:6, rows:5, n:29, ar:224/125, fps:20},
   dragon_idle: {img:'assets/spr_dragon_idle.webp', cols:6, rows:4, n:24, ar:224/211, fps:10},
@@ -1583,7 +1629,12 @@ const SPR = {
   raccoon_atk: {img:'assets/spr_raccoon_atk.webp', cols:6, rows:7, n:38, ar:224/126, fps:15},
   bat_atk:     {img:'assets/spr_bat_atk.webp',     cols:6, rows:4, n:24, ar:224/126, fps:15},
   mush_atk:    {img:'assets/spr_mush_atk.webp',    cols:7, rows:7, n:48, ar:224/126, fps:15},
-  rock_atk:    {img:'assets/spr_rock_atk.webp',    cols:7, rows:8, n:53, ar:224/126, fps:15}
+  rock_atk:    {img:'assets/spr_rock_atk.webp',    cols:7, rows:8, n:53, ar:224/126, fps:15},
+  /* 2026-09-01：這三隻用 gemini vids 生的（cw/ch 都是 224，跟前四隻的 224/126 不一樣——
+     sprite_char.py 會照角色實際佔的範圍裁切，不是整張影片直接縮，這批剛好裁成正方形） */
+  ghost_atk:   {img:'assets/spr_ghost_atk.webp',   cols:6, rows:6, n:36, ar:1, fps:15},
+  cactus_atk:  {img:'assets/spr_cactus_atk.webp',  cols:6, rows:6, n:36, ar:1, fps:15},
+  ice_atk:     {img:'assets/spr_ice_atk.webp',     cols:6, rows:8, n:48, ar:1, fps:15}
 };
 /* ---------- 待機不跑逐幀（2026-08-23 效能量測結論） ----------
    量出來（CPU 節流 6 倍模擬中階手機，看主執行緒每秒被吃掉多少毫秒）：
@@ -2167,13 +2218,58 @@ function showMilestone(m){
    ——我們戰鬥畫面永遠只有一隻怪，沒有天堂/楓之谷那種一群小怪可以聚。 */
 let mobMarkedUntil = 0;
 const MARK_MULT = 1.9;              // 破綻沒被引爆時，旋風斬命中會自動觸發
+/* 2026-09-01 Steve 第一輪：技能要多一點，每 10 級學一個新技能。字面上「每10級」套到 Lv200
+   會變成 20 顆技能鈕，手機畫面塞不下（`.skills` 當時還是同排等寬按鈕），先只做到 Lv10～80
+   （8 顆新技能＋原本 3 顆＝11 顆）。**下面這段第二輪已經推翻「塞不下」的判斷**——
+   `.skills` 其實是 `flex nowrap;overflow-x:auto`（橫向捲動，不是同排等寬硬擠），
+   20 顆按鈕捲動就好，不會溢出，所以第二輪直接補滿 20 顆。Lv80 之後仍由連擊自動施法
+   （SPELLS，14 個門檻一路到連擊100）跟連擊里程碑（COMBO_MILESTONES）接手節奏。 */
+/* 2026-09-01 第二輪：從 11 顆擴到 20 顆（Steve 要求「主角最少 20 個技能」）。
+   沒有畫新素材——沿用既有 6 種動畫特效（whirl／poison／heal／fire／thunder／holy），
+   靠 hue/sat/bright/size 調不同配色與大小做出視覺差異，desc 各自寫不同招式感覺。
+   等級間距刻意拉開早期（2/3/4/6/8）跟後期（65/70/75/80），呼應天堂式升等曲線
+   （早期幾秒升一級、後期要磨很久），新技能不會擠在同一段忽然全部解鎖。 */
 const SKILLS = [
-  {key:'mark',  name:'破魂突刺', icon:'💢', lv:4,  cd:7000,  color:'#ff8a8a',
-   fx:{key:'whirl', size:280, hue:-70, sat:1.6}, mult:1.1, markMs:4500, desc:'打上破綻，接旋風斬爆傷'},
+  {key:'gale2', name:'疾風斬', icon:'🌪️', lv:2, cd:5000, color:'#9be8ff',
+   fx:{key:'whirl', size:240, sat:1.1}, mult:0.9, desc:'比普通攻擊快、CD 短的入門技'},
   {key:'whirl', name:'旋風斬', icon:'🌀', lv:3,  cd:9000,  color:'#7fe6ff',
    fx:{key:'whirl', size:460, bright:1.35, sat:1.3}, mult:2.4, desc:'一圈掃過去的大傷害'},
+  {key:'mark',  name:'破魂突刺', icon:'💢', lv:4,  cd:7000,  color:'#ff8a8a',
+   fx:{key:'whirl', size:280, hue:-70, sat:1.6}, mult:1.1, markMs:4500, desc:'打上破綻，接旋風斬爆傷'},
   {key:'heal',  name:'治療術', icon:'💚', lv:6,  cd:22000, color:'#8affc4',
-   fx:{key:'heal', size:340, dy:14, bright:1.25}, heal:0.3, desc:'回一大口血'}
+   fx:{key:'heal', size:340, dy:14, bright:1.25}, heal:0.3, desc:'回一大口血'},
+  {key:'iceshot8', name:'冰箭穿心', icon:'🧊', lv:8, cd:8000, color:'#8fd6ff',
+   fx:{key:'fire', size:260, hue:180, sat:1.5}, mult:1.4, desc:'凍徹心扉的一箭'},
+  {key:'flame10', name:'烈焰斬', icon:'🔥', lv:10, cd:8000, color:'#ff8a3d',
+   fx:{key:'fire', size:320, dy:6}, mult:2.0, desc:'火燄纏繞的一斬'},
+  {key:'inferno15', name:'烈焰漩渦', icon:'🌋', lv:15, cd:10000, color:'#ff7a4d',
+   fx:{key:'whirl', size:400, hue:15, bright:1.3}, mult:2.2, desc:'一圈燒起來的漩渦'},
+  {key:'ice20', name:'冰霜爆裂', icon:'❄️', lv:20, cd:9000, color:'#6ea8ff',
+   fx:{key:'fire', size:320, dy:6, hue:168, sat:1.7, bright:1.1}, mult:2.6, desc:'凍結範圍內爆開'},
+  {key:'shadowpoison25', name:'暗影毒襲', icon:'🐍', lv:25, cd:11000, color:'#b98bff',
+   fx:{key:'poison', size:300, hue:-100, sat:1.4}, mult:2.9, desc:'從暗處竄出的毒牙'},
+  {key:'thunder30', name:'雷霆一擊', icon:'⚡', lv:30, cd:10000, color:'#c4b5fd',
+   fx:{key:'thunder', size:460, dy:-8}, mult:3.2, desc:'天降落雷，貫穿全場'},
+  {key:'gust35', name:'狂風掃殺', icon:'🌬️', lv:35, cd:11000, color:'#7fe6ff',
+   fx:{key:'whirl', size:500, bright:1.5}, mult:3.6, desc:'範圍更大的旋風進化版'},
+  {key:'holy40', name:'聖光治癒', icon:'✨', lv:40, cd:24000, color:'#ffe9a8',
+   fx:{key:'holy', size:360, dy:-4}, heal:0.35, desc:'比治療術更強的回血'},
+  {key:'chainlightning45', name:'雷鎖鏈', icon:'⛓️', lv:45, cd:11000, color:'#c9baff',
+   fx:{key:'thunder', size:400, hue:40}, mult:4.0, desc:'一道接一道的連鎖落雷'},
+  {key:'poison50', name:'幻毒突襲', icon:'☠️', lv:50, cd:12000, color:'#b98bff',
+   fx:{key:'poison', size:320, hue:-40, sat:1.6}, mult:4.4, desc:'毒霧瀰漫，重擊要害'},
+  {key:'radiance55', name:'光輝回復', icon:'🌟', lv:55, cd:26000, color:'#ffe9a8',
+   fx:{key:'heal', size:380, bright:1.35}, heal:0.32, desc:'又一招更亮的回血術'},
+  {key:'dragon60', name:'龍炎爆擊', icon:'🐲', lv:60, cd:13000, color:'#ff9d5c',
+   fx:{key:'fire', size:400, dy:0, bright:1.3}, mult:5.0, desc:'龍息般的爆炸傷害'},
+  {key:'hellfire65', name:'業火審判', icon:'🔱', lv:65, cd:13000, color:'#ff6a3d',
+   fx:{key:'fire', size:440, bright:1.4}, mult:5.4, desc:'燒盡一切的業火'},
+  {key:'star70', name:'星辰隕落', icon:'🌠', lv:70, cd:14000, color:'#5cf0ff',
+   fx:{key:'thunder', size:480, dy:-10, hue:180, sat:1.4}, mult:5.6, desc:'星辰墜落，範圍重創'},
+  {key:'obliterate75', name:'滅世射線', icon:'🌀', lv:75, cd:14000, color:'#ffb3ff',
+   fx:{key:'thunder', size:500, hue:-160, sat:1.6}, mult:6.0, desc:'一線貫穿的毀滅之光'},
+  {key:'ultra80', name:'終極斬', icon:'💥', lv:80, cd:15000, color:'#ffe066',
+   fx:{key:'whirl', size:520, bright:1.4, sat:1.3}, mult:6.4, desc:'集氣後的終極一擊'}
 ];
 const skillState = {};              // key → 可以再用的時間點
 function paintSkills(){
@@ -2211,13 +2307,17 @@ function useSkill(key){
   Sfx.next();
 
   if(sk.heal){
-    const back = Math.round(maxHp * sk.heal);
-    heroHp = Math.min(maxHp, heroHp + back);
-    paintHeroBar();
-    playFx(sk.fx.key, heroCenter(), sk.fx);
-    dmgText('+' + back, true);
+    /* 2026-09-01：回血也改播施法逐幀（heroCast），不再原地不動只噴特效——
+       光爆那瞬間才真的加血，跟傷害技能的「命中判定對到動畫高潮」邏輯一致 */
+    heroCast(() => {
+      const back = Math.round(maxHp * sk.heal);
+      heroHp = Math.min(maxHp, heroHp + back);
+      paintHeroBar();
+      playFx(sk.fx.key, heroCenter(), sk.fx);
+      dmgText('+' + back, true);
+    });
   }else{
-    heroSwing(() => {
+    heroCast(() => {
       /* 先讓招式看得見，再結算傷害：同一格同時噴命中火花會把技能特效蓋掉 */
       playFx(sk.fx.key, mobCenter(), sk.fx);
       setTimeout(() => {
@@ -2552,7 +2652,13 @@ const MOB_ATK = {
   raccoon: {from:0, to:37, fps:28, hit:.50, back:30, rush:-90},    /* 爪擊，中距離撲上去 */
   bat:     {from:0, to:23, fps:24, hit:.50, back:20, rush:-70},    /* 咬擊，小幅飛撲 */
   mush:    {from:0, to:47, fps:32, hit:.55, back:26, rush:-130},   /* 衝撞頭槌，跟黏黏怪一樣是全力衝刺 */
-  rock:    {from:0, to:52, fps:30, hit:.55, back:24, rush:-70}     /* 重拳＋爆炸，手臂打過去不用整隻衝過去 */
+  rock:    {from:0, to:52, fps:30, hit:.55, back:24, rush:-70},    /* 重拳＋爆炸，手臂打過去不用整隻衝過去 */
+  /* 2026-09-01：gemini vids 圖生影片補的三隻（幽靈球／仙人掌／冰晶怪）。仙人掌是遠程，
+     mobAttack() 另外處理成「原地播放＋噴投射物」，不吃 back/rush 那條位移時間軸，
+     這裡的 back/rush 純粹保留欄位一致性、實際不會用到 */
+  ghost:   {from:0, to:35, fps:30, hit:.35, back:16, rush:-40},    /* 飄在原地張嘴尖嘯，不撲過來 */
+  cactus:  {from:0, to:35, fps:27, hit:.35, back:0,  rush:0},      /* 遠程：噴刺 */
+  ice:     {from:0, to:47, fps:30, hit:.6,  back:26, rush:-80}     /* 立起來雙爪往下砸，冰晶爆開 */
 };
 /* 遠程型：不撲過來，改成噴一發投射物；打中之前有一段飛行時間，看得到才躲得掉 */
 function shotAtHero(){
@@ -2588,25 +2694,30 @@ function mobAttack(){
   }
   const key = mob.spr && SPR[mob.spr + '_atk'] ? mob.spr : null;
   let hitDelay = 260;
-  if(mob.ranged){
-    el.classList.remove('attack'); void el.offsetWidth; el.classList.add('attack');
-    shotAtHero();
-    hitDelay = 420;
-  }else
   if(key){
     const a = MOB_ATK[key];
     const total = Math.round((a.to - a.from) / a.fps * 1000);
     hitDelay = Math.round(total * a.hit);
     Spr.play(el, key + '_atk', {from:a.from, to:a.to, fps:a.fps,
       done:() => IDLE_SPRITE() ? Spr.play(el, key + '_idle', {loop:true}) : Spr.off(el, mob.img)});
-    // 逐幀只在自己那格裡動，不會真的靠近角色，位移另外補一條時間軸
-    el.animate([
-      {offset:0,          transform:'translateX(0)'},
-      {offset:a.hit*0.55, transform:'translateX(' + (a.back || 34) + 'px)'},   // 蓄力往後
-      {offset:a.hit,      transform:'translateX(' + (a.rush || -120) + 'px)'}, // 撲到面前
-      {offset:Math.min(1, a.hit + .18), transform:'translateX(' + ((a.rush || -120)*0.55) + 'px)'},
-      {offset:1,          transform:'translateX(0)'}
-    ], {duration:total, easing:'ease-in-out', fill:'none'});
+    if(mob.ranged){
+      /* 2026-09-01：遠程但也有逐幀圖（目前只有仙人掌）——原地播完整套「蓄力→噴刺」動畫，
+         不疊 rush 位移（不撲過來），命中時機配合逐幀動畫節奏發射投射物，而不是動畫一開始就噴 */
+      setTimeout(() => running && shotAtHero(), hitDelay);
+    }else{
+      // 逐幀只在自己那格裡動，不會真的靠近角色，位移另外補一條時間軸
+      el.animate([
+        {offset:0,          transform:'translateX(0)'},
+        {offset:a.hit*0.55, transform:'translateX(' + (a.back || 34) + 'px)'},   // 蓄力往後
+        {offset:a.hit,      transform:'translateX(' + (a.rush || -120) + 'px)'}, // 撲到面前
+        {offset:Math.min(1, a.hit + .18), transform:'translateX(' + ((a.rush || -120)*0.55) + 'px)'},
+        {offset:1,          transform:'translateX(0)'}
+      ], {duration:total, easing:'ease-in-out', fill:'none'});
+    }
+  }else if(mob.ranged){
+    el.classList.remove('attack'); void el.offsetWidth; el.classList.add('attack');
+    shotAtHero();
+    hitDelay = 420;
   }else{
     el.classList.remove('attack'); void el.offsetWidth; el.classList.add('attack');
     // 沒有逐幀圖的怪（現在是大多數）原本只有一顆 CSS 位移，看起來很單薄。
@@ -2786,6 +2897,7 @@ function setMob(){
   mobMarkedUntil = 0;         // 換怪破綻歸零，不能留到下一隻
   weakOpenUntil = 0; $('mobWrap').classList.remove('weakopen');
   $('mobWrap').classList.remove('shielded');
+  $('mobFlip').classList.toggle('flip', !!mob.flip);   // 背對主角的怪物：CSS 鏡像，不動原始圖檔
   const mel = $('mob');
   /* 2026-08-24 修「空戰鬥畫面」：`mobDie` 是 forwards 動畫，最後一格 opacity:0。
      原本只靠打倒之後那個 setTimeout 把 .die 拿掉——手機切到背景、中途暫停或重開時
@@ -3071,7 +3183,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260831h"></script>
-<script src="assets/lock.js?v=20260831h"></script>
+<script src="assets/audio.js?v=20260901b"></script>
+<script src="assets/lock.js?v=20260901b"></script>
 </body>
 </html>

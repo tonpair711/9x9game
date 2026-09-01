@@ -69,27 +69,34 @@ const Best = {
 };
 
 /* ---------- 存檔：關掉瀏覽器再打開也接得回來 ---------- */
-/* ---------- 升級曲線（2026-08-23 改，參考放置天堂的做法） ----------
-   原本是 `40 + 等級×35` 的直線，後期升級快得沒有成就感。改成三段：
-   1. 前四級幾乎是秒升——新玩家頭幾分鐘一定要看到等級一直跳
-   2. Lv5～34 固定 1.26 倍成長，穩定往上爬
-   3. Lv35 之後改線性，才不會變成天文數字（參考站也是在 Lv70 改線性化）
+/* ---------- 升級曲線（2026-09-01 第二次改，Steve：等級不要那麼好升，要更像天堂的算法） ----------
+   上一版（2026-08-23）Lv30 之後刻意改成線性成長，避免數字爆炸，但代價是後期升級變得太快、
+   練起來沒有天堂那種「越到後面越難升」的感覺。天堂 1 代真實經驗表大致是每級累計約 1.25～1.30
+   倍在滾（查證：Lv1→2 需 125、Lv25→26 需 66,351，24 級之間翻了約 531 倍），如果整條路都照這個
+   倍率compounding 到 Lv200 會衝上兆等級的天文數字（實測跑過 rate=1.17 全程不轉折，Lv199 單級
+   需求就到 3,284 億），那真的是「練不完」不是「難」，所以不能整條線都硬套天堂倍率。
+   改成四段，讓後段**持續複利成長、不再拉平成直線**，但複利倍率隨等級遞減，把 Lv199 累計經驗
+   壓在約 4 億（是上一版 4,000 萬的 10 倍，等於後期要多打 10 倍才能升，同時仍是有限、爬得到的數字）：
+   1. Lv1～4：維持秒升，新玩家頭幾分鐘要看到等級一直跳
+   2. Lv5～34：1.19 倍複利（比上一版 1.20 略陡，範圍不變）
+   3. Lv35～99：1.06 倍複利（上一版這段是拉平的線性 +8%，現在改回真複利，會持續變重）
+   4. Lv100～199：1.03 倍複利（更溫和，但仍持續變重，不會停在原地）
    ⚠ 後期變慢一律靠「需求變高」，**不要調低打怪拿到的經驗**：
       拿到的變少玩家會覺得被扣，需求變高則是自然的難度曲線。 */
 const MAX_LV = 200;                      // Steve 2026-08-23：開放到 200 級
 const EXP_EARLY = [8, 22, 45, 80];       // Lv1→2、2→3、3→4、4→5
-const EXP_MID_BASE = 80, EXP_MID_RATE = 1.20, EXP_MID_END = 30;   // 指數段到 Lv30
-const EXP_S2_END = 100;                  // Lv30～100 一段、100 以上再一段
-/* 斜率壓得比第一版低很多：Lv200 累計約 4,000 萬，配上怪物經驗隨關卡指數成長才打得到。
-   算過 1.24/0.22/0.5 那組要 9.5 億，等於永遠練不完，那不是難度是絕望 */
+const EXP_S1_RATE = 1.19, EXP_S1_END = 35;    // Lv5～34 複利
+const EXP_S2_RATE = 1.06, EXP_S2_END = 100;   // Lv35～99 複利（比上一版陡，且不再拉平）
+const EXP_S3_RATE = 1.03;                     // Lv100～199 複利（最溫和，但持續在漲）
 function expReq(lv){                     // 從 lv 升到 lv+1 需要多少經驗
   if(lv >= MAX_LV) return Infinity;
   if(lv <= EXP_EARLY.length) return EXP_EARLY[lv - 1];
-  if(lv < EXP_MID_END) return Math.round(EXP_MID_BASE * Math.pow(EXP_MID_RATE, lv - EXP_EARLY.length));
-  const at30 = EXP_MID_BASE * Math.pow(EXP_MID_RATE, EXP_MID_END - EXP_EARLY.length);
-  if(lv < EXP_S2_END) return Math.round(at30 * (1 + (lv - EXP_MID_END + 1) * 0.08));
-  const at100 = at30 * (1 + (EXP_S2_END - EXP_MID_END + 1) * 0.08);
-  return Math.round(at100 * (1 + (lv - EXP_S2_END + 1) * 0.10));
+  const base = EXP_EARLY[EXP_EARLY.length - 1];
+  if(lv < EXP_S1_END) return Math.round(base * Math.pow(EXP_S1_RATE, lv - EXP_EARLY.length));
+  const atS1 = base * Math.pow(EXP_S1_RATE, EXP_S1_END - EXP_EARLY.length - 1);
+  if(lv < EXP_S2_END) return Math.round(atS1 * Math.pow(EXP_S2_RATE, lv - EXP_S1_END + 1));
+  const atS2 = atS1 * Math.pow(EXP_S2_RATE, EXP_S2_END - EXP_S1_END);
+  return Math.round(atS2 * Math.pow(EXP_S3_RATE, lv - EXP_S2_END + 1));
 }
 
 /* 裝備欄位（2026-08-24 Steve 指定：從四格擴成**剛好六格**，不要再多）。

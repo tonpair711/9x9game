@@ -1184,7 +1184,7 @@ body.playing #pauseBtn{display:flex}
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
    這裡不能直接查 SPR 有沒有 key，見 preloadNearby() 那邊的說明） */
 const ATK_ONLY_SPR = new Set(['raccoon', 'bat', 'mush', 'rock', 'ghost', 'cactus', 'ice', 'flame', 'robot', 'boar', 'bee', 'ninja', 'gargoyle', 'bosstiger',
-  'firefly', 'thorn', 'owlmage', 'hedgehog', 'scorpion', 'camel', 'lizard', 'jelly']);
+  'firefly', 'thorn', 'owlmage', 'hedgehog', 'scorpion', 'camel', 'lizard', 'jelly', 'crab', 'octomage', 'coralfish']);
 /* ---------- 敵人：每隻怕不同的乘法表，打弱點兩倍傷害 ---------- */
 const MOBS = [
   {img:'assets/mob_slime.webp',  name:'黏黏怪',   hp:110, atk:10, weak:[2,3],   exp:24, drop:0.40, spr:'slime'},
@@ -1215,9 +1215,9 @@ const MOBS = [
   {img:'assets/mob_camel.webp', name:'骸骨駱駝', hp:725, atk:30, weak:[3], exp:188, drop:0.71, armor:0.75, spr:'camel'},
   {img:'assets/mob_lizard.webp', name:'沙丘蜥蜴', hp:748, atk:31, weak:[5], exp:193, drop:0.72, spr:'lizard'},
   {img:'assets/mob_jelly.webp', name:'水母怪', hp:770, atk:31, weak:[2, 6], exp:198, drop:0.72, spr:'jelly'},
-  {img:'assets/mob_crab.webp', name:'寄居蟹士兵', hp:792, atk:32, weak:[8], exp:204, drop:0.73, armor:0.75},
-  {img:'assets/mob_octomage.webp', name:'章魚法師', hp:815, atk:32, weak:[9], exp:209, drop:0.74, ranged:true},
-  {img:'assets/mob_coralfish.webp', name:'珊瑚魚人', hp:838, atk:33, weak:[6, 8], exp:214, drop:0.75},
+  {img:'assets/mob_crab.webp', name:'寄居蟹士兵', hp:792, atk:32, weak:[8], exp:204, drop:0.73, armor:0.75, spr:'crab'},
+  {img:'assets/mob_octomage.webp', name:'章魚法師', hp:815, atk:32, weak:[9], exp:209, drop:0.74, ranged:true, spr:'octomage'},
+  {img:'assets/mob_coralfish.webp', name:'珊瑚魚人', hp:838, atk:33, weak:[6, 8], exp:214, drop:0.75, spr:'coralfish'},
   {img:'assets/mob_thundereagle.webp', name:'雷鷹', hp:860, atk:33, weak:[4], exp:219, drop:0.76, fast:0.8},
   {img:'assets/mob_windbird.webp', name:'風之信使鳥', hp:882, atk:34, weak:[4, 8], exp:224, drop:0.76, ranged:true},
   {img:'assets/mob_cloudghost.webp', name:'雲霧幽靈', hp:905, atk:34, weak:[4], exp:229, drop:0.77},
@@ -1672,7 +1672,11 @@ const SPR = {
   scorpion_atk:{img:'assets/spr_scorpion_atk.webp',cols:6, rows:8, n:46, ar:1, fps:13},
   camel_atk:   {img:'assets/spr_camel_atk.webp',   cols:6, rows:8, n:45, ar:1, fps:15},
   lizard_atk:  {img:'assets/spr_lizard_atk.webp',  cols:6, rows:8, n:46, ar:1, fps:13},
-  jelly_atk:   {img:'assets/spr_jelly_atk.webp',   cols:6, rows:8, n:46, ar:1, fps:13}
+  jelly_atk:   {img:'assets/spr_jelly_atk.webp',   cols:6, rows:8, n:46, ar:1, fps:13},
+  /* 2026-09-01 第七輪：寄居蟹士兵／章魚法師／珊瑚魚人。章魚法師是遠程，沿用通用分支 */
+  crab_atk:      {img:'assets/spr_crab_atk.webp',      cols:6, rows:8, n:46, ar:1, fps:13},
+  octomage_atk:  {img:'assets/spr_octomage_atk.webp',  cols:6, rows:8, n:46, ar:1, fps:13},
+  coralfish_atk: {img:'assets/spr_coralfish_atk.webp', cols:6, rows:8, n:46, ar:1, fps:13}
 };
 /* ---------- 待機不跑逐幀（2026-08-23 效能量測結論） ----------
    量出來（CPU 節流 6 倍模擬中階手機，看主執行緒每秒被吃掉多少毫秒）：
@@ -2712,7 +2716,10 @@ const MOB_ATK = {
   scorpion:{from:0, to:45, fps:24, hit:.5,  back:20, rush:-80},    /* 鉗夾＋毒尾巴 */
   camel:   {from:0, to:44, fps:22, hit:.35, back:14, rush:-60},    /* armor:0.75，張嘴撲咬在前段 */
   lizard:  {from:0, to:45, fps:24, hit:.5,  back:20, rush:-80},    /* 咬擊＋皺褶頸展開 */
-  jelly:   {from:0, to:45, fps:20, hit:.5,  back:14, rush:-40}     /* 觸手甩動，位移小一點 */
+  jelly:   {from:0, to:45, fps:20, hit:.5,  back:14, rush:-40},    /* 觸手甩動，位移小一點 */
+  crab:    {from:0, to:45, fps:22, hit:.4,  back:18, rush:-70},    /* armor:0.75，大鉗子甩過去 */
+  octomage:{from:0, to:45, fps:20, hit:.55, back:0,  rush:0},      /* 遠程：原地施法噴投射物 */
+  coralfish:{from:0, to:45, fps:24, hit:.35, back:20, rush:-90}    /* 三叉戟突刺 */
 };
 /* 遠程型：不撲過來，改成噴一發投射物；打中之前有一段飛行時間，看得到才躲得掉 */
 function shotAtHero(){

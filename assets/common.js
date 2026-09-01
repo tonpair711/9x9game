@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.0.0';
+const GAME_VERSION = '1.1.0';
 
 const $ = id => document.getElementById(id);
 
@@ -97,19 +97,33 @@ const Best = {
    ⚠ 後期變慢一律靠「需求變高」，**不要調低打怪拿到的經驗**：
       拿到的變少玩家會覺得被扣，需求變高則是自然的難度曲線。 */
 const MAX_LV = 200;                      // Steve 2026-08-23：開放到 200 級
-const EXP_EARLY = [8, 22, 45, 80];       // Lv1→2、2→3、3→4、4→5
-const EXP_S1_RATE = 1.19, EXP_S1_END = 35;    // Lv5～34 複利
-const EXP_S2_RATE = 1.06, EXP_S2_END = 100;   // Lv35～99 複利（比上一版陡，且不再拉平）
-const EXP_S3_RATE = 1.03;                     // Lv100～199 複利（最溫和，但持續在漲）
+/* 2026-09-01 第九輪：仿《天堂》式經驗曲線，整體拉長（Lv99累積約現行5.8倍，Steve已確認接受）。
+   Lv1-10 甜頭期延伸（原本只到Lv4）、Lv11-30 複利加陡、Lv31-99 複利不變但加撞牆里程碑、
+   Lv100+ 整段再乘1.5。撞牆只讓「該級」需求×2，不污染後續複利基準，撞完隔一級立刻回到正常軌跡。 */
+const EXP_EARLY = [6, 14, 26, 42, 62, 86, 114, 146, 182, 222];  // Lv1→2...Lv10→11
+const EXP_S1_RATE = 1.23, EXP_S1_END = 31;    // Lv11～30 複利
+const EXP_S2_RATE = 1.09, EXP_S2_END = 100;   // Lv31～99 複利
+const EXP_S3_RATE = 1.03;                     // Lv100～199 複利，整段再乘1.5
+const EXP_MILESTONE_LV = new Set([30, 50, 70, 90]);   // 天堂式撞牆等級：當級需求直接翻倍
+const EXP_MILESTONE_MUL = 2;
 function expReq(lv){                     // 從 lv 升到 lv+1 需要多少經驗
   if(lv >= MAX_LV) return Infinity;
-  if(lv <= EXP_EARLY.length) return EXP_EARLY[lv - 1];
-  const base = EXP_EARLY[EXP_EARLY.length - 1];
-  if(lv < EXP_S1_END) return Math.round(base * Math.pow(EXP_S1_RATE, lv - EXP_EARLY.length));
-  const atS1 = base * Math.pow(EXP_S1_RATE, EXP_S1_END - EXP_EARLY.length - 1);
-  if(lv < EXP_S2_END) return Math.round(atS1 * Math.pow(EXP_S2_RATE, lv - EXP_S1_END + 1));
-  const atS2 = atS1 * Math.pow(EXP_S2_RATE, EXP_S2_END - EXP_S1_END);
-  return Math.round(atS2 * Math.pow(EXP_S3_RATE, lv - EXP_S2_END + 1));
+  let v;
+  if(lv <= EXP_EARLY.length) v = EXP_EARLY[lv - 1];
+  else{
+    const base = EXP_EARLY[EXP_EARLY.length - 1];
+    if(lv < EXP_S1_END) v = base * Math.pow(EXP_S1_RATE, lv - EXP_EARLY.length);
+    else{
+      const atS1 = base * Math.pow(EXP_S1_RATE, EXP_S1_END - EXP_EARLY.length - 1);
+      if(lv < EXP_S2_END) v = atS1 * Math.pow(EXP_S2_RATE, lv - EXP_S1_END + 1);
+      else{
+        const atS2 = atS1 * Math.pow(EXP_S2_RATE, EXP_S2_END - EXP_S1_END);
+        v = atS2 * Math.pow(EXP_S3_RATE, lv - EXP_S2_END + 1) * 1.5;
+      }
+    }
+  }
+  if(EXP_MILESTONE_LV.has(lv)) v *= EXP_MILESTONE_MUL;
+  return Math.round(v);
 }
 
 /* 裝備欄位（2026-08-24 Steve 指定：從四格擴成**剛好六格**，不要再多）。

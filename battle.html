@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260901c">
+<link rel="stylesheet" href="assets/common.css?v=20260901d">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -419,16 +419,6 @@ body.lowfx .shard{animation-duration:.35s}
   animation:markSpin 2.4s linear infinite;
 }
 @keyframes markSpin{to{transform:rotate(360deg)}}
-
-/* 破綻時機：金色脈動圈，開著的時候按攻擊才是必爆擊＋額外傷害。
-   跟 .marked 的紅色破綻是兩回事——這個是娛樂模式攻擊鈕的「時機」提示，
-   .marked 是技能連段的「印記」，顏色刻意分開不會搞混。 */
-.mobwrap.weakopen::after{
-  content:"";position:absolute;inset:-10% -14%;border-radius:50%;pointer-events:none;z-index:6;
-  border:3px solid #ffe066;box-shadow:0 0 24px #ffe066cc,inset 0 0 16px #ffe06666;
-  animation:weakPulse .5s ease-in-out infinite alternate;
-}
-@keyframes weakPulse{to{transform:scale(1.1);opacity:.6}}
 
 /* 出手預告：怪物繃緊＋頭上跳一顆驚嘆號 */
 .mobwrap.warn{animation:mobWarn .42s ease-in-out 3}
@@ -859,6 +849,58 @@ body.arcade .qbox,body.arcade #ans{display:none}
 /* 冷卻：底下那條由左往右補回來 */
 .act i{position:absolute;left:0;bottom:0;height:5px;width:0;background:#ffffffcc}
 .act.cool i{transition:width linear}
+
+/* 2026-09-01 第九輪：節奏光圈取代舊破綻——CD快結束時攻擊鈕自己收縮一個金圈，
+   抓準收縮尾段點擊＝PERFECT。時間軸掛在 cool() 同一組 setTimeout 上，不另起計時器。 */
+.rhythmRing{
+  position:absolute;left:50%;top:50%;width:64%;aspect-ratio:1/1;
+  transform:translate(-50%,-50%) scale(1.6);
+  border-radius:50%;border:3px solid #ffe066;
+  box-shadow:0 0 18px #ffe066cc,inset 0 0 12px #ffe06666;
+  opacity:0;pointer-events:none;z-index:3;
+}
+.rhythmRing.arm{opacity:1;animation:rhythmShrink var(--rms,400ms) linear forwards}
+@keyframes rhythmShrink{
+  0%{transform:translate(-50%,-50%) scale(1.6);opacity:.9}
+  85%{transform:translate(-50%,-50%) scale(1.02);opacity:1}
+  100%{transform:translate(-50%,-50%) scale(.9);opacity:0}
+}
+.rhythmRing.perfect{animation:rhythmPop .35s ease-out forwards}
+@keyframes rhythmPop{
+  0%{transform:translate(-50%,-50%) scale(1.02);opacity:1;border-color:#ffd76a}
+  100%{transform:translate(-50%,-50%) scale(1.9);opacity:0;border-color:#fff2c2}
+}
+/* combo 8+：攻擊鈕常駐紫金脈動，預告終結技已就緒 */
+.act.charged{animation:chargedPulse 1s ease-in-out infinite}
+@keyframes chargedPulse{
+  0%,100%{box-shadow:0 5px 0 #a9521b,0 10px 24px #0008,0 0 0 #c893ffaa}
+  50%{box-shadow:0 5px 0 #a9521b,0 10px 24px #0008,0 0 22px #c893ffcc}
+}
+/* combo 4-7：命中特效疊一層藍色弧形劍氣，跟 tier1 的橘色 .slash 區隔 */
+#slash.slashBlue{filter:hue-rotate(150deg) saturate(1.6) brightness(1.15)}
+/* 終結技：全螢幕紫金閃光，比照里程碑 msFlash/msBig 的疊字模式 */
+#finisherFlash{
+  position:absolute;inset:0;pointer-events:none;z-index:40;
+  display:flex;align-items:center;justify-content:center;opacity:0;
+}
+#finisherFlash.on{animation:finisherFlashPlay .9s ease-out forwards}
+@keyframes finisherFlashPlay{
+  0%{opacity:0;background:radial-gradient(circle,#c893ffcc,#00000000 70%)}
+  18%{opacity:1}
+  100%{opacity:0;background:radial-gradient(circle,#c893ff00,#00000000 70%)}
+}
+#finisherFlash b{
+  font-size:clamp(28px,7vw,56px);font-weight:900;color:#ffe9a8;
+  text-shadow:0 0 18px #c893ff,0 0 36px #c893ffaa;letter-spacing:4px;
+  transform:scale(.6);opacity:0;
+}
+#finisherFlash.on b{animation:finisherWordPop .9s cubic-bezier(.2,1.3,.4,1) forwards}
+@keyframes finisherWordPop{
+  0%{transform:scale(.4);opacity:0}
+  30%{transform:scale(1.15);opacity:1}
+  70%{transform:scale(1);opacity:1}
+  100%{transform:scale(1.05);opacity:0}
+}
 /* 閃避成功的瞬間，角色會有一圈藍光 */
 #hero2.evade{filter:drop-shadow(0 0 22px #6ea8ff) brightness(1.3)}
 
@@ -1024,6 +1066,7 @@ body.playing #pauseBtn{display:flex}
     <div class="msFlash" id="msFlash"></div>
     <div class="msBig" id="msBig"><small></small><b></b></div>
     <div class="msSparks" id="msSparks"></div>
+    <div id="finisherFlash"><b></b></div>
     <div class="impact" id="impact"></div>
     <div class="curtain" id="curtain"></div>
     </div><!-- /#world -->
@@ -1078,7 +1121,7 @@ body.playing #pauseBtn{display:flex}
   <div class="combat">
     <!-- 娛樂模式的操作區（不出題時才顯示） -->
     <div class="acts" id="acts">
-      <button class="act atk" id="actAtk"><b>攻　擊</b><small id="atkCd">點一下打一次</small></button>
+      <button class="act atk" id="actAtk"><b>攻　擊</b><small id="atkCd">點一下打一次</small><span class="rhythmRing"></span></button>
       <button class="act dodge" id="actDodge"><b>閃　避</b><small id="dodgeCd">敵人出手前按</small></button>
     </div>
     <div class="row3">
@@ -1178,7 +1221,7 @@ body.playing #pauseBtn{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260901c"></script>
+<script src="assets/common.js?v=20260901d"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -1438,7 +1481,7 @@ function afterImage(){ ghostOf($('hero2')); }
    整段是「一條」時間軸（Web Animations API），不是五顆 setTimeout 疊出來的——
    分開排程各自會漂移，中間就會看到卡頓。換圖的時間點也一起掛在同一條軸上。 */
 const SWING_MS = 620;
-function heroSwing(onHit){
+function heroSwing(onHit, tier){
   const h = $('hero2');
   heroFrame('ready');
   h.style.transform = '';
@@ -1468,7 +1511,9 @@ function heroSwing(onHit){
   at(.40, () => {                                    // 命中
     heroFrame('after');
     const s = $('slash');
-    s.classList.remove('on'); void s.offsetWidth; s.classList.add('on');
+    s.classList.remove('on', 'slashBlue'); void s.offsetWidth;
+    s.classList.add('on');
+    if(tier >= 2) s.classList.add('slashBlue');        // combo 4+：疊一層藍色弧形劍氣
     onHit && onHit();
   });
   at(.72, () => heroFrame('ready'));
@@ -2534,26 +2579,25 @@ function cool(btn, ms, doneFlag){
   void bar.offsetWidth;
   bar.style.transition = 'width ' + ms + 'ms linear';
   bar.style.width = '100%';
-  setTimeout(() => { btn.disabled = false; bar.style.transition = 'none'; bar.style.width = '0'; doneFlag(); }, ms);
+
+  /* 2026-09-01 第九輪：節奏光圈跟冷卻條共用同一組 setTimeout 時間軸，不另起計時器避免飄移。
+     光圈只在 CD 快結束的最後 0.3~0.5 秒亮起收縮，抓準收縮尾段點擊＝PERFECT（見 playerAttack）。 */
+  const ring = btn.querySelector('.rhythmRing');
+  if(ring){
+    const ringWindowMs = Math.max(300, Math.min(500, ms));
+    ring.style.setProperty('--rms', ringWindowMs + 'ms');
+    ring.classList.remove('arm', 'perfect'); void ring.offsetWidth;
+    const openAt = performance.now() + Math.max(0, ms - ringWindowMs);
+    btn._ringOpenAt = openAt; btn._ringCloseAt = openAt + ringWindowMs;
+    setTimeout(() => ring.classList.add('arm'), Math.max(0, ms - ringWindowMs));
+  }
+
+  setTimeout(() => {
+    btn.disabled = false; bar.style.transition = 'none'; bar.style.width = '0';
+    if(ring) ring.classList.remove('arm', 'perfect');
+    doneFlag();
+  }, ms);
 }
-/* 破綻時機（2026-08-23，Steve：娛樂模式只是一直點滑鼠太無趣）——
-   怪物身上會隨機亮起金色破綻圈，抓那個時機按攻擊是必定爆擊＋額外加成。
-   不看畫面亂點打不到破綻，這才是「有操作空間」而不是無腦連點的關鍵。 */
-let weakOpenUntil = 0;
-function scheduleWeakSpot(){
-  clearTimeout(weakSpotTimer);
-  if(!arcade || !running) return;
-  weakSpotTimer = setTimeout(() => {
-    if(!running || locked) return;
-    weakOpenUntil = performance.now() + 900;      // 破綻開 0.9 秒
-    $('mobWrap').classList.add('weakopen');
-    setTimeout(() => {
-      $('mobWrap').classList.remove('weakopen');
-      scheduleWeakSpot();                          // 不管有沒有打中，下一個破綻繼續排
-    }, 900);
-  }, 2600 + Math.random()*2200);                    // 每 2.6~4.8 秒一次
-}
-let weakSpotTimer = null;
 
 /* 連擊會衰退：太久沒出手連擊會斷掉，逼人維持節奏，不能點一下放著慢慢滑手機 */
 let comboDecayTimer = null;
@@ -2561,34 +2605,88 @@ function armComboDecay(){
   clearTimeout(comboDecayTimer);
   if(combo <= 0) return;
   comboDecayTimer = setTimeout(() => {
-    if(combo > 0){ combo = 0; comboAura(0); comboShout('連擊中斷', '#a894c4'); }
+    if(combo > 0){ combo = 0; comboAura(0); comboShout('連擊中斷', '#a894c4'); comboVisualTier(0); finisherReady = false; }
   }, 3000);
+}
+
+/* 2026-09-01 第九輪：combo 三階段視覺（1-3輕斬／4-7雙連斬／8+終結技就緒），
+   兩個模式（playerAttack／answer）共用同一個函式，避免各寫一套視覺不同步。 */
+let finisherReady = false;   // combo 達到 8 的下一擊，強制觸發終結技（練習/娛樂模式都適用）
+function comboVisualTier(c){
+  const t = c >= 8 ? 3 : c >= 4 ? 2 : 1;
+  $('actAtk').classList.toggle('charged', t === 3);
+  return t;
+}
+function armFinisher(){
+  if(combo >= 8 && !finisherReady) finisherReady = true;
+}
+/* 終結技：combo 滿 8 後的下一擊 100% 觸發，扣 8 層 combo（允許疊到 16+ 連續觸發）。
+   一般小怪直接秒殺、Boss 走 3 倍傷害，跟 spellFor()/COMBO_MILESTONES 各自獨立，
+   共用 combo 只在扣層那一下互動，觸發門檻不整除撞號。 */
+function playFinisher(baseDmg){
+  const dmg = mob.boss ? Math.round(baseDmg * 3) : mobHp;
+  Sfx.milestone(4);
+  camPush(true);
+  F().classList.add('slowmo'); slowmoField(500, .55);
+  setTimeout(() => F().classList.remove('slowmo'), 500);
+  const ff = $('finisherFlash');
+  ff.querySelector('b').textContent = mob.boss ? '會心一擊！' : '終結技！';
+  ff.classList.remove('on'); void ff.offsetWidth; ff.classList.add('on');
+  const dead = applyHit(dmg, true, false, mob.boss ? '' : '終結技 ');
+  return dead;
+}
+function finisherSwing(onHit){
+  const h = $('hero2');
+  h.style.transform = ''; h.style.transition = 'none';
+  h.animate([
+    {offset:0,   transform:'translateX(0) scale(1,1)',           easing:'cubic-bezier(.3,.9,.5,1)'},
+    {offset:.18, transform:'translateX(-26px) scale(1.05,.92)',  easing:'cubic-bezier(.55,0,.9,.45)'},
+    {offset:.42, transform:'translateX(150px) scale(1.12,.95)',  easing:'cubic-bezier(.2,.7,.4,1)'},
+    {offset:.52, transform:'translateX(140px) scale(1.06,1.06)', easing:'cubic-bezier(.3,0,.5,1)'},
+    {offset:.78, transform:'translateX(60px) scale(.97,1.04)',   easing:'cubic-bezier(.2,1.1,.4,1)'},
+    {offset:1,   transform:'translateX(0) scale(1,1)'}
+  ], {duration:900, fill:'none'});
+  heroFrame('swing');
+  setTimeout(() => { const s = $('slash'); s.classList.remove('on','slashBlue'); void s.offsetWidth; s.classList.add('on','slashBlue'); onHit && onHit(); }, 900*.42);
+  setTimeout(() => heroFrame('ready'), 900*.85);
 }
 
 function playerAttack(){
   if(!running || paused || !arcade || locked || !atkReady) return;
+  const btn = $('actAtk');
+  const now = performance.now();
+  const perfectHit = !!btn._ringCloseAt && now >= (btn._ringCloseAt - (btn._ringCloseAt - btn._ringOpenAt) * 0.3) && now <= btn._ringCloseAt + 60;
   atkReady = false;
-  cool($('actAtk'), D().cd, () => atkReady = true);
+  cool(btn, perfectHit ? D().cd * 0.6 : D().cd, () => atkReady = true);   // PERFECT取消收招硬直：這次冷卻打折
   hits++;
-  combo++;
+  combo += perfectHit ? 2 : 1;
   armComboDecay();
-  const weakHit = performance.now() < weakOpenUntil;
-  if(weakHit){
-    weakOpenUntil = 0; $('mobWrap').classList.remove('weakopen');
-    clearTimeout(weakSpotTimer); scheduleWeakSpot();
-  }
-  const isCrit = weakHit || Math.random()*100 < P.crit;
+  const useFinisher = finisherReady;
+  const isCrit = perfectHit || Math.random()*100 < P.crit;
   const counter = counterReady; counterReady = false;   // 完美閃避後的下一擊是反擊，用掉就沒了
   const dmg = Math.round(P.atk * 0.62 * (1 + Math.min(combo,10)*0.05)
-              * (isCrit ? 1.8 : 1) * (weakHit ? 1.6 : 1) * (counter ? 1.8 : 1));
+              * (isCrit ? 1.8 : 1) * (perfectHit ? 1.6 : 1) * (counter ? 1.8 : 1));
+  const tier = comboVisualTier(combo);
+  if(perfectHit) btn.querySelector('.rhythmRing').classList.add('perfect');
   Sfx.ok(combo);
   camPull();
+  if(useFinisher){
+    finisherSwing(() => {
+      const dead = playFinisher(dmg);
+      combo = Math.max(0, combo - 8);          // 不管這一下有沒有打死怪，都要先扣層，
+      finisherReady = combo >= 8;               // 不然finisherReady會一路帶到下一隻怪身上
+      comboVisualTier(combo);
+      if(dead) killMob();
+    });
+    return;
+  }
+  armFinisher();
   heroSwing(() => {
-    if(applyHit(dmg, isCrit, false, weakHit ? '破綻 ' : (counter ? '反擊 ' : ''))) return killMob();
+    if(applyHit(dmg, isCrit, false, perfectHit ? 'PERFECT ' : (counter ? '反擊 ' : ''))) return killMob();
     comboAura(combo);
     const sp = spellFor(combo);
     if(sp) setTimeout(async () => { if(await castSpell(sp)) killMob(); }, 320);
-  });
+  }, tier);
 }
 /* 完美閃避（2026-08-23，跟 Gemini 討論的「Parry」）：
    隨便按都躲得掉，這樣不算操作。但是**在怪物出手前那半秒內**按，
@@ -2624,7 +2722,9 @@ function answer(v, btn){
   if(v === ans){
     right++; stageAdvance(true);
     if(fastest === null || took < fastest) fastest = took;
-    combo++; Stats.mark(QQ.key, true);
+    combo++;
+    if(took <= 2.5) combo += 2;                 // 2026-09-01 第九輪：快答加成，鼓勵熟練不鼓勵拖時間
+    Stats.mark(QQ.key, true);
     const ms = milestoneFor(combo);
     if(ms) showMilestone(ms);
     btn.classList.add('right');
@@ -2632,8 +2732,22 @@ function answer(v, btn){
     const speed = Math.max(1, Math.round((ANSWER_TIME - took) * 0.9));
     const isCrit = Math.random()*100 < P.crit;
     let dmg = Math.round((P.atk*0.7 + speed) * (isWeak ? 2 : 1) * (1 + Math.min(combo,8)*0.06) * (isCrit ? 1.8 : 1));
+    const tier = comboVisualTier(combo);
+    const useFinisher = finisherReady;           // combo三階段視覺／終結技，跟娛樂模式共用同一套（Steve已確認練習模式也開放）
     Sfx.ok(combo);
     camPull();
+    if(useFinisher){
+      finisherSwing(() => {
+        const dead = playFinisher(dmg);
+        combo = Math.max(0, combo - 8);
+        finisherReady = combo >= 8;
+        comboVisualTier(combo);
+        if(dead) return killMob();
+        setTimeout(newQ, 460);
+      });
+      return;
+    }
+    armFinisher();
     heroSwing(()=>{
       if(applyHit(dmg, isCrit, isWeak)) return killMob();
       comboAura(combo);
@@ -2647,10 +2761,10 @@ function answer(v, btn){
       }else{
         setTimeout(newQ, 460);
       }
-    });
+    }, tier);
   }else{
     wrong++; combo = 0; stageAdvance(false);
-    comboAura(0);
+    comboAura(0); comboVisualTier(0); finisherReady = false;
     Stats.mark(QQ.key, false);
     btn.classList.add('wrong');
     /* 符號題的答案是字串，不能用 +b.textContent 轉數字去比 */
@@ -2822,7 +2936,7 @@ function mobAttack(){
     const raw = mob.atk * (arcade ? D().dmg : 1) * (1 - (HERO.reduce || 0));
     heroHp = Math.max(0, heroHp - Math.max(1, Math.round(raw)));
     if(HERO.hitUlt){ ult = Math.min(100, ult + HERO.hitUlt); paintUlt(); }   // 鐵壁衛士被打會回必殺
-    if(arcade) { combo = 0; comboAura(0); }
+    if(arcade) { combo = 0; comboAura(0); comboVisualTier(0); finisherReady = false; }
     paintHeroBar();
     Sfx.hurt();
     F().classList.remove('hurt'); void F().offsetWidth; F().classList.add('hurt');
@@ -2978,8 +3092,7 @@ function setMob(){
   mob.atk = Math.round(mob.atk * Math.pow(1.05, round - 1));
   mobHp = mob.hp;
   shield = 0; shieldMax = 0;
-  mobMarkedUntil = 0;         // 換怪破綻歸零，不能留到下一隻
-  weakOpenUntil = 0; $('mobWrap').classList.remove('weakopen');
+  mobMarkedUntil = 0;         // 換怪印記歸零，不能留到下一隻
   $('mobWrap').classList.remove('shielded');
   $('mobFlip').classList.toggle('flip', !!mob.flip);   // 背對主角的怪物：CSS 鏡像，不動原始圖檔
   const mel = $('mob');
@@ -3060,7 +3173,7 @@ function tick(){
   }
   if(mobTimer <= 0){
     locked = true;
-    wrong++; combo = 0;
+    wrong++; combo = 0; comboVisualTier(0); finisherReady = false;
     if(!arcade){
       Stats.mark(QQ.key, false);
       [...$('ans').children].forEach(b => { b.disabled = true; if(+b.textContent === ans) b.classList.add('right'); });
@@ -3091,7 +3204,7 @@ function start(){
   P = Save.power();
   maxHp = P.hp; heroHp = P.hp;
   running = true; locked = true;
-  ult = 0; combo = 0;
+  ult = 0; combo = 0; finisherReady = false;
   kills = 0; totalDmg = 0; right = 0; wrong = 0; fastest = null;
   earnGold = 0; earnExp = 0; drops = [];
   paintStageQ();               // 開局重讀一次，防止登入狀態在設定頁之後才改變
@@ -3104,8 +3217,6 @@ function start(){
   $('shMob').classList.remove('gone','hit');
   paintHeroBar();
   paintUlt(); paintSkills(); nextMob(); idleBreak();
-  weakOpenUntil = 0; $('mobWrap').classList.remove('weakopen');
-  if(arcade) scheduleWeakSpot(); else clearTimeout(weakSpotTimer);
   paused = false;
   document.body.classList.remove('paused');
   $('pausewin').classList.remove('on');
@@ -3119,7 +3230,7 @@ function over(win){
   Voice.stop();
   document.body.classList.remove('paused');
   $('pausewin').classList.remove('on');
-  clearTimeout(weakSpotTimer); clearTimeout(comboDecayTimer);
+  clearTimeout(comboDecayTimer);
   document.body.classList.remove('playing');
   Save.put();
   $('ovTitle').textContent = win ? '全部打倒了！' : '這次沒過關';
@@ -3271,7 +3382,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260901c"></script>
-<script src="assets/lock.js?v=20260901c"></script>
+<script src="assets/audio.js?v=20260901d"></script>
+<script src="assets/lock.js?v=20260901d"></script>
 </body>
 </html>

@@ -356,7 +356,7 @@ h1{
   <button type="button" class="pcbtn" onclick="location.reload()" aria-label="重新整理" title="重新整理">⟳</button>
   <!-- 這頁不吃 common.js，沒有 GAME_VERSION 常數可以引用，版號寫死在這裡——
        以後在 common.js 改 GAME_VERSION 記得回來手動同步這個數字 -->
-  <span class="pcver" title="目前版本，回報問題時可以附上這個號碼">v1.2.2</span>
+  <span class="pcver" title="目前版本，回報問題時可以附上這個號碼">v1.2.3</span>
 </div>
 <img class="hero" id="hero" src="assets/princess.webp" alt="" loading="lazy" decoding="async" fetchpriority="low">
 <div class="say" id="say"></div>
@@ -910,7 +910,7 @@ for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) grid[y][x] = newCell((y+1)*(x+1)
 paint();
 tick(true);
 </script>
-<script src="assets/audio.js?v=20260902c"></script>
-<script src="assets/lock.js?v=20260902c"></script>
+<script src="assets/audio.js?v=20260902d"></script>
+<script src="assets/lock.js?v=20260902d"></script>
 </body>
 </html>

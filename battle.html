@@ -2767,7 +2767,15 @@ function mobAttack(){
       setTimeout(() => running && shotAtHero(), hitDelay);
     }else{
       // 逐幀只在自己那格裡動，不會真的靠近角色，位移另外補一條時間軸
-      el.animate([
+      // ⚠ 2026-09-01：這條 WAAPI 動畫（可以跑到 2.3 秒）跟上面算的 hitDelay/newQ()
+      // 解鎖時間點沒有對齊——大多數怪物 `hitDelay+700` 比這條動畫的 `total` 短，
+      // 代表回合已經解鎖、玩家理論上可以再出手把怪打死，但這條位移動畫其實還在跑。
+      // 打死換下一隻時 `setMob()`／`killMob()` 都只會處理 `Spr`（雪碧圖）跟圖片
+      // 本身，不知道還有一條「別人的」WAAPI 動畫控制著同一個 <img> 的 transform，
+      // 下一隻怪一出場位置就被這條殘留動畫帶偏，嚴重的話直接偏到看不見——這就是
+      // Steve 截圖回報「娛樂模式常常看不到怪物」的真正原因。存下 Animation 物件的
+      // 參照，`setMob()`／`killMob()` 都要記得 cancel 掉它，才不會留著跑
+      el._atkAnim = el.animate([
         {offset:0,          transform:'translateX(0)'},
         {offset:a.hit*0.55, transform:'translateX(' + (a.back || 34) + 'px)'},   // 蓄力往後
         {offset:a.hit,      transform:'translateX(' + (a.rush || -120) + 'px)'}, // 撲到面前
@@ -2788,6 +2796,17 @@ function mobAttack(){
     setTimeout(() => running && ghostOf(el), 90);
     setTimeout(() => running && ghostOf(el), 170);
   }
+  /* 2026-09-01 抓到的舊 bug：這裡以前寫死 260，跟上面 sprite 怪算出來的 hitDelay
+     （近戰對到 hit 那格、遠程對到投射物飛行時間）完全脫鉤。逐幀動畫沒問題時
+     （原本 slime/dragon 這種短動畫）260 剛好夠用看不出來，但這幾輪陸續補了
+     十幾隻攻擊動畫拉到 3~3.7 秒的怪物之後，260ms 就把「這一撞算完、換下一題」
+     的整個回合往前推了 3 秒——原本這隻怪的攻擊動畫還在自己那格播（Spr 的 rAF
+     跟位移的 el.animate() 都還沒跑完），下一回合的 mobAttack() 就已經在同一個
+     <img> 上疊了第二組動畫上去，兩組 transform 互相搶控制權，收尾時對到中間值，
+     畫面看起來就是「這一關的怪物憑空消失」——Steve 截圖回報的「娛樂模式常常看不到
+     怪物」就是這個。改用 hitDelay（sprite 怪對到真的命中那格，其餘怪維持原本
+     260 不變），讓下一回合的計時器晚一點才開始跑，跟動畫剩餘時間對不上的機率
+     大幅降低。 */
   setTimeout(()=>{
     if(arcade && performance.now() < invuln){        // 閃過了：不扣血
       // 完美閃避的必殺／慢動作已經在按下的當下給過了，這裡只補一般閃過的獎勵，不重複算
@@ -2812,7 +2831,7 @@ function mobAttack(){
     Char.react(false);
     if(heroHp <= 0) return over(false);
     setTimeout(newQ, 700);
-  }, 260);
+  }, hitDelay);
 }
 
 /* 掉寶演出：從怪物身上噴出來，轉一圈飛進右上角的背包，落點閃一下。
@@ -2851,6 +2870,10 @@ function showDrop(html){
   setTimeout(()=>d.classList.remove('on'), 1600);
 }
 function killMob(){
+  // 打死的當下就把牠自己的出手位移動畫收掉，不要讓它繼續跑到下一隻怪身上
+  // （見 mobAttack() 那條 el._atkAnim 旁邊的說明）
+  const mel0 = $('mob');
+  if(mel0._atkAnim){ mel0._atkAnim.cancel(); mel0._atkAnim = null; }
   Sfx.win();
   kills++;
   Save.d.totalKill++;
@@ -2966,6 +2989,10 @@ function setMob(){
      玩家看到的就是「只有血條、沒有怪物」。換怪時一律先把演出用的 class 全部清乾淨。 */
   mel.classList.remove('die','hit','attack','blink');
   $('shMob').classList.remove('gone','hit');
+  // 2026-09-01：保險再收一次——`killMob()` 已經會 cancel，但換怪不是只有「打死」
+  // 這條路（例如中途重整、關卡沒對齊等邊界情況），這裡兜底確保上一隻怪的出手
+  // 位移動畫不會帶到新怪身上
+  if(mel._atkAnim){ mel._atkAnim.cancel(); mel._atkAnim = null; }
   mobImgRetried = false; mel.classList.remove('imgfail');   // 換怪就重新給圖片一次機會
   $('mobWrap').classList.remove('imgfail');
   const warn = document.getElementById('mobImgWarn'); if(warn) warn.remove();

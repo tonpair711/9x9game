@@ -253,7 +253,14 @@ body{padding-bottom:16px}
 }
 #shMob.gone{animation:shGone .5s ease-in forwards}
 @keyframes shGone{to{transform:scale(.2);opacity:0}}
-#hero2{left:4%;height:62%;filter:drop-shadow(0 10px 18px #000a);
+/* 2026-09-02第十六輪：Steve回報iPhone 17 Pro（頂規機種）玩還是會卡格，實測用WebKit
+   （Playwright）跑90秒連續攻擊，drop-shadow這個filter即使掛在「沒在動畫」的靜止圖上
+   也持續拖效能——單獨拿掉這條，掉幀率(>32ms)從約19~37%降到約13~20%，比單獨拿掉呼吸
+   動畫（heroIdle/mobBreath）本身的效果還大。這條原本永遠掛著（呼吸待機也算），改成
+   只留地面那圈.gshadow橢圓陰影(#shHero/#shMob，本來就有，成本低很多)，角色本體不再
+   常態套drop-shadow——命中／施法／閃避那幾個短暫的filter（poseSwing/poseHurt/poseCast/
+   evade/casting）維持不動，那些是幾百毫秒的單次觸發，不是永遠在跑的成本 */
+#hero2{left:4%;height:62%;
   animation:heroIdle 2.6s ease-in-out infinite alternate}
 @keyframes heroIdle{from{transform:translateY(0) scale(1,1)}to{transform:translateY(-7px) scale(.99,1.02)}}
 /* 漂浮掛在外層 .mobwrap、受擊掛在 #mob 自己身上。
@@ -266,7 +273,7 @@ body{padding-bottom:16px}
    會被動畫的 transform 蓋掉；這層什麼動畫都不掛，純粹負責鏡像，才不會互相干擾 */
 .mobflip{height:100%;display:inline-block}
 .mobflip.flip{transform:scaleX(-1)}
-#mob{width:auto;height:100%;display:block;filter:drop-shadow(0 10px 18px #000a);
+#mob{width:auto;height:100%;display:block;
   transform-origin:50% 100%}
 /* 逐幀素材自己就在呼吸，再疊 CSS 那套會變兩個節奏打架；受擊／死亡的還是要留 */
 #mob:not(.sprmode){animation:mobBreath 1.9s ease-in-out infinite alternate}
@@ -1331,7 +1338,7 @@ const MOBS = [
   {img:'assets/mob_earthgolem.webp', name:'土元精', hp:1152, atk:40, weak:[5], exp:284, drop:0.86, armor:0.75},
   {img:'assets/mob_shadowwolf.webp', name:'暗影狼', hp:1175, atk:41, weak:[3], exp:289, drop:0.87},
   {img:'assets/mob_poisonfrog.webp', name:'毒蛙', hp:1198, atk:41, weak:[3], exp:294, drop:0.88},
-  {img:'assets/mob_bunnyfist.webp', name:'兔子拳士', hp:1220, atk:42, weak:[6], exp:300, drop:0.89, fast:0.8},
+  {img:'assets/mob_bunnyfist.webp', name:'兔子拳士', hp:1220, atk:42, weak:[6], exp:300, drop:0.89, fast:0.8, flip:true},
   {img:'assets/mob_runegargoyle.webp', name:'符文石像鬼', hp:1242, atk:42, weak:[7], exp:305, drop:0.89, armor:0.75},
   {img:'assets/mob_bookspirit.webp', name:'魔導書精', hp:1265, atk:43, weak:[7], exp:310, drop:0.90, ranged:true},
   {img:'assets/mob_crystalbutterfly.webp', name:'水晶蝴蝶', hp:1288, atk:43, weak:[5], exp:315, drop:0.91, summon:true},

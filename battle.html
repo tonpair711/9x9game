@@ -256,7 +256,6 @@ body{padding-bottom:16px}
 #hero2{left:4%;height:62%;filter:drop-shadow(0 10px 18px #000a);
   animation:heroIdle 2.6s ease-in-out infinite alternate}
 @keyframes heroIdle{from{transform:translateY(0) scale(1,1)}to{transform:translateY(-7px) scale(.99,1.02)}}
-#cat2{left:22%;height:30%;opacity:0;transform:translateX(-40px);filter:drop-shadow(0 8px 14px #000a)}
 /* 漂浮掛在外層 .mobwrap、受擊掛在 #mob 自己身上。
    兩個動畫如果掛同一層會互相覆蓋，命中結束的瞬間會「跳」一下回漂浮的相位 */
 .mobwrap{right:4%;height:56%;animation:mobIdle 2.2s ease-in-out infinite alternate}
@@ -376,7 +375,7 @@ body.lowfx .scene .stars,
 body.lowfx .scene .motes,
 body.lowfx .afterimg,
 body.lowfx .speedlines{display:none}
-body.lowfx #hero2,body.lowfx #mob,body.lowfx #cat2{filter:none}
+body.lowfx #hero2,body.lowfx #mob{filter:none}
 body.lowfx .field{box-shadow:none}
 body.lowfx .shard{animation-duration:.35s}
 
@@ -450,7 +449,7 @@ body.lowfx .shard{animation-duration:.35s}
    ⚠ 這裡一定要把 drop-shadow 關掉：逐幀每換一格就重畫一次元素，
    還要連整張圖的陰影一起重算，桌機也會掉幀（地上本來就有 .gshadow 影子）。 */
 .sprmode{width:auto;background-repeat:no-repeat}
-#hero2.sprmode,#mob.sprmode,#cat2.sprmode,.afterimg.sprmode{filter:none}
+#hero2.sprmode,#mob.sprmode,.afterimg.sprmode{filter:none}
 /* 受擊：擠壓 → 被打飛 → 晃回來，中間夾白閃再轉紅 */
 #mob.hit{animation:mobHit .46s cubic-bezier(.2,1.2,.4,1), mobFlash .42s linear}
 @keyframes mobHit{
@@ -675,11 +674,14 @@ body.lowfx .shard{animation-duration:.35s}
   background:repeating-linear-gradient(100deg,#ffffff22 0 6px,transparent 6px 22px);
   animation:speed .5s linear infinite}
 @keyframes speed{to{transform:translateX(-28px)}}
-.ultfx img{height:min(46vh,360px);animation:ultCat .9s cubic-bezier(.2,1.4,.4,1)}
-@keyframes ultCat{
-  0%{transform:translateX(-60vw) scale(.6) rotate(-20deg);opacity:0}
-  40%{transform:none;opacity:1}
-  100%{transform:translateX(50vw) scale(1.1);opacity:0}
+/* 2026-09-02第十四輪：舊版是隻小老虎從左飛到右邊（角色改版後跟王者這個角色沒關係了，
+   Steve指名要換掉），改用既有的fx_slash_big.webp（本來定義好卻沒有任何SPELLS在用的
+   閒置素材）當作王者裁決的爆閃特效，從中心炸開的金色巨斬取代橫向飛過的老虎 */
+.ultfx img{width:min(86vw,620px);height:auto;animation:ultBurst .9s cubic-bezier(.2,1.4,.4,1)}
+@keyframes ultBurst{
+  0%{transform:scale(.35) rotate(-25deg);opacity:0}
+  45%{transform:scale(1.25) rotate(3deg);opacity:1}
+  100%{transform:scale(1.55) rotate(10deg);opacity:0}
 }
 .ultfx b{position:absolute;font-size:clamp(30px,9vw,68px);color:#fff;letter-spacing:6px;
   text-shadow:0 4px 0 #a83a00,0 0 40px #ffb547;animation:ultText .9s ease-out}
@@ -738,35 +740,6 @@ body.lowfx .shard{animation-duration:.35s}
 .slot .nm{font-size:12px;font-weight:800}
 .slot .st2{font-size:10px;color:var(--dim);line-height:1.4}
 .slot.empty .nm{color:#6b578a}
-
-/* 2026-09-01 第十輪：技能配裝視窗，仿.gearwin/.gearbox同一套結構與開關模式 */
-.loadoutwin{position:fixed;inset:0;z-index:22;display:none;align-items:center;justify-content:center;
-  background:#0b0714e8;backdrop-filter:blur(6px);padding:14px}
-.loadoutwin.on{display:flex;animation:fade .25s}
-.loadoutSlots{display:flex;gap:8px;margin:12px 0}
-.loadoutSlot{
-  flex:1;background:#241638;border:1px solid var(--line);border-radius:12px;padding:8px 4px;
-  text-align:center;min-height:64px;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;gap:2px;cursor:pointer;
-}
-.loadoutSlot b{font-size:20px}
-.loadoutSlot small{font-size:10px;font-weight:700;color:var(--gold2)}
-.loadoutSlot.empty{border-style:dashed}
-.loadoutSlot.empty small{color:#6b578a}
-.loadoutSlot.ult{border-color:var(--gold);cursor:default}
-.loadoutSlot.ult small{color:var(--gold)}
-.loadoutLib{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;
-  max-height:46vh;overflow-y:auto;margin-top:8px}
-.libItem{
-  position:relative;background:#241638;border:1px solid var(--line);border-radius:10px;
-  padding:8px 4px;text-align:center;cursor:pointer;display:flex;flex-direction:column;
-  align-items:center;gap:2px;
-}
-.libItem b{font-size:18px}
-.libItem small{font-size:10px;font-weight:700}
-.libItem.equipped{border-color:var(--gold)}
-.libItem.equipped::after{content:"✓";position:absolute;top:2px;right:6px;color:var(--gold);font-weight:900}
-.loadoutwin .empty-tip{color:var(--dim);font-size:13px;text-align:center;padding:20px 0;grid-column:1/-1}
 
 .baglist{margin-top:12px;display:flex;flex-direction:column;gap:6px}
 .bagitem{
@@ -1080,7 +1053,7 @@ body.playing #pauseBtn{display:flex}
   /* 手機省效能（實測 CPU 放慢四倍：這兩項讓打怪頁從 30fps 回到 60fps）
      1. drop-shadow 每換一格逐幀都要重算一次整張圖的陰影，最貴；地上本來就有 .gshadow 影子
      2. 星星與飄浮光點是整片覆蓋的動畫層，畫面小根本看不出來 */
-  #hero2,#mob,#cat2,.afterimg{filter:none}
+  #hero2,#mob,.afterimg{filter:none}
   .scene .stars,.scene .motes{display:none}
   .qbox{padding:10px 12px}
   .qbox .q{font-size:clamp(26px,8vw,38px)}
@@ -1110,7 +1083,6 @@ body.playing #pauseBtn{display:flex}
     <div class="chip"><b>關卡</b><span id="stage">1-1</span></div>
     <div class="grow"></div>
     <button class="chip bagbtn" id="bagBtn">🎒<span class="lb"> 裝備</span> <i class="dot2" id="bagDot"></i></button>
-    <button class="chip iconbtn" id="loadoutBtn" title="技能配裝" aria-label="技能配裝">🎯</button>
     <button class="chip iconbtn" id="helpBtn" title="怎麼玩" aria-label="怎麼玩">？</button>
     <button class="chip iconbtn" id="pauseBtn" title="暫停" aria-label="暫停">⏸</button>
   </div>
@@ -1138,7 +1110,6 @@ body.playing #pauseBtn{display:flex}
       <div class="bar mob"><i class="ghost" id="mobHpGhost"></i><i id="mobHp"></i><span id="mobHpText">敵人</span></div>
     </div>
     <img class="fighter" id="hero2" src="assets/fx_hero_ready.webp" alt="">
-    <img class="fighter" id="cat2" src="assets/fx_cat_attack.webp" alt="">
     <div class="fighter mobwrap" id="mobWrap"><div class="mobflip" id="mobFlip"><img id="mob" src="assets/mob_slime.webp" alt=""></div><div class="bombIcon">💣</div></div>
     <div class="slash" id="slash"></div>
     <div class="speedlines" id="speedlines"></div>
@@ -1211,7 +1182,7 @@ body.playing #pauseBtn{display:flex}
       <div class="ult">
         <span class="ultlab">必殺技</span>
         <div class="bar2"><i id="ultBar"></i></div>
-        <button id="ultBtn" disabled>小虎撲擊</button>
+        <button id="ultBtn" disabled>王者裁決</button>
       </div>
       <!-- 主動技能：兩顆就好，多了手機按不完（冷卻時底下那條會補回來） -->
       <div class="skills" id="skills"></div>
@@ -1254,8 +1225,8 @@ body.playing #pauseBtn{display:flex}
 
 <div class="ultfx" id="ultfx">
   <div class="line"></div>
-  <img id="ultCat" src="assets/fx_cat_attack.webp" alt="">
-  <b>小虎撲擊！</b>
+  <img id="ultBurst" src="assets/fx_slash_big.webp" alt="">
+  <b>王者裁決！</b>
 </div>
 
 <div class="gearwin" id="gearwin">
@@ -1268,15 +1239,6 @@ body.playing #pauseBtn{display:flex}
     <div class="baglist" id="baglist"></div>
     <button class="btn" id="closeGear" style="width:100%;margin-top:14px">關 閉</button>
     <button class="btn ghost" id="resetSave" style="width:100%;margin-top:8px;height:40px">清除存檔重新開始</button>
-  </div>
-</div>
-
-<div class="loadoutwin" id="loadoutwin">
-  <div class="gearbox">
-    <h2>技 能 配 裝</h2>
-    <div class="loadoutSlots" id="loadoutSlots"></div>
-    <div class="loadoutLib" id="loadoutLib"></div>
-    <button class="btn" id="closeLoadout" style="width:100%;margin-top:14px">關 閉</button>
   </div>
 </div>
 
@@ -1493,7 +1455,7 @@ function preloadNearby(){
     preload(list);
   }
 }
-preload([...Object.values(HERO_FRAMES), 'assets/fx_cat_attack.webp', HERO.img]);
+preload([...Object.values(HERO_FRAMES), 'assets/fx_slash_big.webp', HERO.img]);
 /* 逐幀雪碧圖：角色自己那組跟第一隻怪的先載，播到才抓會閃一下空白 */
 if(HERO.frames) preload(['assets/spr_hero_idle.webp', 'assets/spr_hero_atk.webp', 'assets/spr_hero_skillcast.webp']);
 preload(['assets/spr_slime_idle.webp', 'assets/spr_slime_atk.webp',
@@ -1514,10 +1476,10 @@ addEventListener('load', () => setTimeout(() => {
   if('requestIdleCallback' in window) requestIdleCallback(preloadRest, {timeout:3000});
   else preloadRest();
 }, 1200));
-/* 小虎姬有分解動作就換圖；其他角色只有一張，改用變形表現動作 */
+/* 王者有分解動作就換圖；其他角色只有一張，改用變形表現動作 */
 function heroFrame(k){
   const el = $('hero2');
-  /* 小虎姬有整組逐幀，走 Spr；挑第 7～22 格（揮擊那段）對上 heroSwing 的節奏 */
+  /* 王者有整組逐幀，走 Spr */
   if(HERO.frames && SPR.hero_idle){
     el.classList.remove('poseSwing','poseHurt','poseCast');
     const rest = () => IDLE_SPRITE() ? Spr.play(el, 'hero_idle', {loop:true})
@@ -1643,14 +1605,18 @@ function heroHurtAnim(){
   ], {duration:520, fill:'none'});
   setTimeout(()=>heroFrame('ready'), 430);
 }
-function catRush(){
-  const c = $('cat2');
-  c.style.transition = 'none'; c.style.opacity = '0'; c.style.transform = 'translateX(-60px) scale(.7)';
-  requestAnimationFrame(()=>{
-    c.style.transition = 'transform .5s cubic-bezier(.2,1.5,.4,1),opacity .15s';
-    c.style.opacity = '1'; c.style.transform = 'translateX(190px) scale(1.15)';
-    setTimeout(()=>{ c.style.opacity = '0'; c.style.transform = 'translateX(240px) scale(.8)'; }, 480);
-  });
+/* 2026-09-02第十四輪：王者裁決（原「小虎撲擊」）改成王者自己出手，不再是無關的老虎召喚獸
+   飛過畫面。只取 spr_hero_skillcast 尾段「光爆」那十幾格（跟heroCast()的CAST_MS=3.25s
+   全長不一樣，這裡要配合ultfx的.9s全螢幕閃光，所以直接自訂from/to/fps，不走heroFrame('cast')
+   那條播全長52幀的路） */
+function ultimateCast(){
+  if(!HERO.frames || !SPR.hero_idle) return;   // 沒有這組逐幀的角色（星辰術士等）直接跳過，不報錯
+  const h = $('hero2');
+  h.classList.remove('poseSwing','poseHurt'); h.classList.add('poseCast');
+  Spr.play(h, 'hero_skillcast', {from:30, to:51, fps:24, done:() => {
+    h.classList.remove('poseCast');
+    IDLE_SPRITE() ? Spr.play(h, 'hero_idle', {loop:true}) : Spr.off(h, HERO_FRAMES.ready);
+  }});
 }
 /* 畫面震動。原本這裡加的是 .field.shake，但整份 CSS 沒有這條規則（.hero.shake 是別的元素），
    所以一直都沒有真的晃過。改成共用 cam1/2/3 那三段強度，1 輕、2 中、3 重。 */
@@ -1750,7 +1716,8 @@ function slowmoField(ms, rate){
    這樣定位、drop-shadow、受擊／死亡那些既有 class 全部照舊能用。 */
 const PX1 = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 const SPR = {
-  hero_idle:   {img:'assets/spr_hero_idle.webp',   cols:5, rows:3, n:15, ar:224/174, fps:8},
+  /* 2026-09-02 第十四輪：重生，同樣是舊Q版跟現行角色畫風不符的問題（跟hero_atk同一批） */
+  hero_idle:   {img:'assets/spr_hero_idle.webp',   cols:5, rows:4, n:20, ar:1, fps:8},
   /* 2026-09-02：重生，跟角色現行畫風（fx_hero_ready/fx_hero_swing 那個寫實立繪）對上，
      舊版是更早期一批 Q 版素材，跟現在角色完全不同人，Steve 截圖回報過才發現 */
   hero_atk:    {img:'assets/spr_hero_atk.webp',    cols:6, rows:9, n:52, ar:1, fps:45},
@@ -2282,17 +2249,6 @@ $('autoEq').onclick = () => {
 };
 $('bagBtn').onclick = () => { paintGear(); $('gearwin').classList.add('on'); };
 $('closeGear').onclick = () => $('gearwin').classList.remove('on');
-$('loadoutBtn').onclick = () => { paintLoadout(); $('loadoutwin').classList.add('on'); };
-$('closeLoadout').onclick = () => $('loadoutwin').classList.remove('on');
-$('loadoutSlots').onclick = (e) => {
-  const el = e.target.closest('.loadoutSlot.filled:not(.ult)'); if(!el) return;
-  unequipSkill(el.dataset.k);
-};
-$('loadoutLib').onclick = (e) => {
-  const el = e.target.closest('.libItem'); if(!el) return;
-  const k = el.dataset.k;
-  Save.d.loadout.active.includes(k) ? unequipSkill(k) : equipSkill(k);
-};
 $('resetSave').onclick = () => {
   if(!confirm('確定要清除存檔嗎？等級、金幣、裝備都會不見。')) return;
   Save.reset();
@@ -2476,83 +2432,19 @@ const SKILLS = [
    fx:{key:'whirl', size:520, bright:1.4, sat:1.3}, mult:6.4, desc:'集氣後的終極一擊'}
 ];
 
-/* 2026-09-01 第十輪：技能組配裝——20顆全解鎖全能用沒有取捨感，改成戰鬥只能帶3主動+1必殺。
-   loadout只存key字串，SKILLS表格才是唯一權威資料源。fixLoadout()依賴SKILLS，所以放在這裡
-   (battle.html)而不是common.js，SKILLS定義完後立刻呼叫一次，只有進過battle.html才會補齊，
-   這是刻意的(loadout本來就只有這頁用得到)。 */
-function fixLoadout(d){
-  d.loadout = Object.assign({active:[], ult:null}, d.loadout || {});
-  d.loadout.active = (d.loadout.active || [])
-    .filter(k => SKILLS.some(s => s.key === k && d.lv >= s.lv))
-    .slice(0, 3);
-  d.loadout.ult = 'default';   // 目前只有一顆寫死的必殺技，配裝畫面唯讀展示，不做選擇
-  if(d.loadout.active.length < 3){
-    for(const s of SKILLS){
-      if(d.lv < s.lv) continue;
-      if(d.loadout.active.length >= 3) break;
-      if(!d.loadout.active.includes(s.key)) d.loadout.active.push(s.key);
-    }
-  }
-  return d;
-}
-fixLoadout(Save.d); Save.put();
-
-function autoFillLoadout(){          // 升級解鎖新技能時，出戰欄還有空位就自動幫玩家裝上
-  let changed = false;
-  for(const s of SKILLS){
-    if(Save.d.lv < s.lv) continue;
-    if(Save.d.loadout.active.includes(s.key)) continue;
-    if(Save.d.loadout.active.length >= 3) break;
-    Save.d.loadout.active.push(s.key);
-    changed = true;
-  }
-  if(changed) Save.put();
-}
-function equipSkill(key){
-  const arr = Save.d.loadout.active;
-  if(arr.includes(key)) return;
-  if(running){ comboShout('戰鬥中無法更換配裝', '#f87171'); return; }
-  if(arr.length >= 3){ comboShout('請先卸下一個技能', '#f87171'); return; }
-  arr.push(key);
-  Save.put();
-  paintLoadout();
-  paintSkills();
-}
-function unequipSkill(key){
-  if(running){ comboShout('戰鬥中無法更換配裝', '#f87171'); return; }
-  Save.d.loadout.active = Save.d.loadout.active.filter(k => k !== key);
-  Save.put();
-  paintLoadout();
-  paintSkills();
-}
-function paintLoadout(){
-  const activeSlots = [0,1,2].map(i => {
-    const key = Save.d.loadout.active[i];
-    const sk = key && SKILLS.find(s => s.key === key);
-    return sk
-      ? '<div class="loadoutSlot filled" data-k="' + sk.key + '"><b>' + sk.icon + '</b><small>' + sk.name + '</small></div>'
-      : '<div class="loadoutSlot empty">空</div>';
-  }).join('');
-  const ultSlot = '<div class="loadoutSlot ult filled"><b>💥</b><small>' + ($('ultBtn').textContent || '必殺技') + '</small></div>';
-  $('loadoutSlots').innerHTML = activeSlots + ultSlot;
-
-  const unlocked = SKILLS.filter(s => Save.d.lv >= s.lv);
-  $('loadoutLib').innerHTML = unlocked.length ? unlocked.map(s => {
-    const eq = Save.d.loadout.active.includes(s.key);
-    return '<div class="libItem' + (eq ? ' equipped' : '') + '" data-k="' + s.key + '">' +
-      '<b>' + s.icon + '</b><small>' + s.name + '</small></div>';
-  }).join('') : '<div class="empty-tip">升級解鎖技能後會出現在這裡</div>';
-}
-
+/* 2026-09-02 第十四輪：拿掉「戰鬥只能帶3主動」的配裝限制——Steve玩過反應「還是沒看到
+   角色的20個技能」，配裝畫面等於把大部分技能藏起來，違背玩家對「20顆技能」的期待。
+   改回「解鎖幾顆就看到幾顆」，`.skills`本來就是flex nowrap+overflow-x:auto橫向捲動，
+   20顆全部出現不會擠爆版面。配裝相關UI（🎯按鈕／視窗／equip/unequip）整組拿掉，
+   舊存檔裡殘留的 loadout 欄位留著不動（無害，不再讀取）。 */
 const skillState = {};              // key → 可以再用的時間點
 function paintSkills(){
   const box = $('skills');
-  const wantKeys = Save.d.loadout.active.join(',');
+  const unlocked = SKILLS.filter(s => Save.d.lv >= s.lv);
+  const wantKeys = unlocked.map(s => s.key).join(',');
   const curKeys = [...box.children].map(b => b.dataset.k).join(',');
   if(curKeys !== wantKeys){
-    box.innerHTML = Save.d.loadout.active.map(key => {
-      const s = SKILLS.find(x => x.key === key);
-      if(!s) return '';
+    box.innerHTML = unlocked.map(s => {
       return '<button class="skill" data-k="' + s.key + '">' +
         '<b>' + s.icon + ' ' + s.name + '</b><small>' + s.desc + '</small>' +
         '<i></i><em></em></button>';
@@ -3310,7 +3202,6 @@ function killMob(){
       const before = maxHp; maxHp = P.hp;
       heroHp = Math.min(maxHp, heroHp + (maxHp - before) + 25);   // 升級順便回一點血
       paintHeroBar();
-      autoFillLoadout();          // 新解鎖的技能，出戰欄還有空位就自動裝上
       showDrop('<b style="color:var(--gold)">升級！Lv ' + Save.d.lv + '</b>' +
                '<small>攻擊與血量提升，回復 25 點血</small>');
       Sfx.win();
@@ -3429,7 +3320,7 @@ function useUlt(){
   ult = 0; paintUlt(); locked = true;
   $('ultfx').classList.add('on');
   Sfx.win();
-  catRush();
+  ultimateCast();
   setTimeout(()=>{
     const dmg = Math.round(mob.hp * 0.3 + P.atk * 2.2);
     mobHp = Math.max(0, mobHp - dmg);

@@ -216,10 +216,14 @@ body{padding-bottom:16px}
 .fighter{position:absolute;bottom:8%;z-index:3;pointer-events:none;transition:transform .12s ease-out}
 /* 衝刺殘影：留在原地淡出，看得出移動軌跡 */
 /* 單張圖角色的攻擊／受傷姿勢 */
-#hero2.poseSwing{filter:drop-shadow(0 10px 18px #000a) brightness(1.12) contrast(1.06)}
-#hero2.poseHurt{filter:drop-shadow(0 10px 18px #000a) saturate(.6) brightness(.85)}
+/* 2026-09-02第十六輪：跟基礎呼吸待機那條一樣，這幾個combat短暫觸發的pose也拿掉
+   drop-shadow只留brightness/contrast/saturate（純色彩運算，不用逐像素算陰影模糊，
+   便宜很多）——Steve確認iPhone卡格問題要求「還沒做的現在做」，這裡是上一輪筆記裡
+   留的後續項目 */
+#hero2.poseSwing{filter:brightness(1.12) contrast(1.06)}
+#hero2.poseHurt{filter:saturate(.6) brightness(.85)}
 /* 2026-09-01：技能施法姿勢（跟一般攻擊 poseSwing 分開，加一圈金色光暈區分「這是放技能」） */
-#hero2.poseCast{filter:drop-shadow(0 0 22px #ffe9a8cc) brightness(1.1)}
+#hero2.poseCast{filter:brightness(1.1)}
 .afterimg{
   position:absolute;bottom:8%;z-index:2;pointer-events:none;opacity:.55;
   filter:brightness(1.6) saturate(.4) drop-shadow(0 0 10px #ffe9a8);
@@ -716,6 +720,25 @@ body.lowfx .shard{animation-duration:.35s}
 .drop small{font-size:12px;color:var(--dim)}
 .drop .rar{font-size:11px;font-weight:800}
 
+/* 戰鬥訊息紀錄（天堂風格的底部對話框）：只在開打後顯示，只用opacity/transform動畫，
+   不用filter，一行只跑一次不是逐幀重算，效能成本可忽略 */
+.combatLog{
+  display:none;width:min(96vw,620px);height:70px;overflow-y:auto;
+  background:#0b0714cc;border:1px solid var(--line);border-radius:10px;
+  padding:5px 10px;font-size:12px;line-height:1.7;color:var(--dim);
+}
+body.playing .combatLog{display:block}
+.combatLog .ln{opacity:0;animation:logIn .25s ease-out forwards}
+@keyframes logIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.combatLog .ln b{font-weight:800}
+.combatLog .ln.exp b{color:#6ea8ff}
+.combatLog .ln.gold b{color:#ffe066}
+.combatLog .ln.item b{color:var(--gold)}
+.combatLog .ln.lv b{color:#ff8a3d}
+@media (max-width:520px){
+  .combatLog{height:56px;font-size:11px;padding:4px 8px}
+}
+
 /* 裝備視窗 */
 .gearwin{position:fixed;inset:0;z-index:22;display:none;align-items:center;justify-content:center;
   background:#0b0714e8;backdrop-filter:blur(6px);padding:14px}
@@ -802,8 +825,8 @@ body.lowfx .shard{animation-duration:.35s}
   30%{opacity:1;transform:scaleY(.35) scale(1.05) rotate(60deg)}
   100%{opacity:0;transform:scaleY(.35) scale(1.25) rotate(200deg)}
 }
-/* 施法時角色被光包住 */
-.field.casting .fighter#hero2{filter:drop-shadow(0 0 26px var(--sc,#ffd066)) brightness(1.25)}
+/* 施法時角色被光包住（第十六輪拿掉drop-shadow只留brightness，理由同上） */
+.field.casting .fighter#hero2{filter:brightness(1.25)}
 
 /* ===== 連擊特效：邊框發光＋大字 ===== */
 .comboFrame{
@@ -950,8 +973,8 @@ body.arcade .qbox,body.arcade #ans{display:none}
   70%{transform:scale(1);opacity:1}
   100%{transform:scale(1.05);opacity:0}
 }
-/* 閃避成功的瞬間，角色會有一圈藍光 */
-#hero2.evade{filter:drop-shadow(0 0 22px #6ea8ff) brightness(1.3)}
+/* 閃避成功的瞬間，角色會有一圈藍光（第十六輪拿掉drop-shadow只留brightness，理由同上） */
+#hero2.evade{filter:brightness(1.3)}
 
 /* ---------- 開始前的設定區 ---------- */
 .setup{display:flex;flex-direction:column;gap:10px;width:min(96vw,560px)}
@@ -1134,6 +1157,11 @@ body.playing #pauseBtn{display:flex}
     <div class="bossname" id="bossName"></div>
     <div class="drop" id="drop"></div>
   </div>
+
+  <!-- 戰鬥訊息紀錄：照天堂的精神，戰鬥畫面下方常駐一格文字對話框，每打倒一隻怪就
+       疊一行「獲得經驗值／金幣／道具」，不用等結算才知道打了多少。跟 .drop 那個置中
+       彈窗互補：.drop 是打到裝備當下的醒目提示，這裡是可回顧的流水帳。 -->
+  <div class="combatLog" id="combatLog"></div>
 
   <!-- 開打前的那一組：大按鈕擺在戰場正下方，設定放在按鈕底下。
        Steve 2026-08-23：「開始冒險應該移到上方，比較直觀、不用往下拉」 -->
@@ -3172,6 +3200,18 @@ function showDrop(html){
   d.classList.remove('on'); void d.offsetWidth; d.classList.add('on');
   setTimeout(()=>d.classList.remove('on'), 1600);
 }
+/* 底部戰鬥紀錄：疊一行就好，超過上限從最舊的開始砍，不然DOM節點會一直長 */
+const LOG_MAX = 60;
+function logMsg(html, cls){
+  const box = $('combatLog');
+  const ln = document.createElement('div');
+  ln.className = 'ln' + (cls ? ' ' + cls : '');
+  ln.innerHTML = html;
+  box.appendChild(ln);
+  while(box.children.length > LOG_MAX) box.removeChild(box.firstChild);
+  box.scrollTop = box.scrollHeight;
+}
+function clearLog(){ $('combatLog').innerHTML = ''; }
 function killMob(){
   // 打死的當下就把牠自己的出手位移動畫收掉，不要讓它繼續跑到下一隻怪身上
   // （見 mobAttack() 那條 el._atkAnim 旁邊的說明）
@@ -3197,6 +3237,9 @@ function killMob(){
   Char.react(true, true, mob.boss ? '把 Boss 打倒了！' : '打倒一隻！');
   Char.cat(true);
   dmgText('+' + fmtN(gold) + ' 金幣', true);
+  logMsg((mob.boss ? '把 <b>' + mob.name + '</b> 打倒了！' : '打倒了 <b>' + mob.name + '</b>'));
+  logMsg('獲得經驗值 <b>+' + fmtN(exp) + '</b>', 'exp');
+  logMsg('獲得金幣 <b>+' + fmtN(gold) + '</b>', 'gold');
 
   // 掉卷軸照天堂的精神：**稀有**（Steve 2026-08-23：原本三成太高）。
   // 小怪 2%、Boss 25% 掉 1 張。打到才會開心，日常補給靠商店買（金幣的用途）
@@ -3205,6 +3248,7 @@ function killMob(){
   if(scrolls){
     Save.d.scroll = (Save.d.scroll || 0) + scrolls;
     dmgText('📜 卷軸 +' + scrolls, true);
+    logMsg('拾獲 <b>📜 強化卷軸 ×' + scrolls + '</b>', 'item');
   }
 
   // 掉裝備：打越後面越容易出好貨
@@ -3226,10 +3270,15 @@ function killMob(){
       showDrop('<b style="color:var(--gold)">升級！Lv ' + Save.d.lv + '</b>' +
                '<small>攻擊與血量提升，回復 25 點血</small>');
       Sfx.win();
+      logMsg('<b>升級了！目前 Lv ' + Save.d.lv + '</b>', 'lv');
     }else if(dropped){
       showDrop('<b style="color:' + dropped.color + '">' + dropped.icon + ' ' + dropped.name +
                ' <span class="rar">' + dropped.rarity + '</span></b>' +
                '<small>' + gearLine(dropped) + '</small>');
+    }
+    if(dropped){
+      logMsg('拾獲 <b style="color:' + dropped.color + '">' + dropped.icon + ' ' + dropped.name +
+             ' ' + dropped.rarity + '</b>', 'item');
     }
     paintTop();
   }, 500);
@@ -3422,6 +3471,8 @@ function start(){
   ult = 0; combo = 0; finisherReady = false; comboVisualTier(0);
   kills = 0; totalDmg = 0; right = 0; wrong = 0; fastest = null;
   earnGold = 0; earnExp = 0; drops = [];
+  clearLog();
+  logMsg('冒險開始！');
   paintStageQ();               // 開局重讀一次，防止登入狀態在設定頁之後才改變
   stageNo = 1; stageQ = 0; stagePending = null;
   stageRight = 0; stageWrong = 0; stageWrongList = [];

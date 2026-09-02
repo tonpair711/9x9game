@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260902d">
+<link rel="stylesheet" href="assets/common.css?v=20260902e">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -906,6 +906,9 @@ body.playing .combatLog{display:block}
 .acts{display:none;gap:10px;width:min(96vw,560px)}
 body.arcade .acts{display:flex}
 body.arcade .qbox,body.arcade #ans{display:none}
+/* 娛樂模式沒有在答題，結算畫面「最快作答」「最該再練的乘法」這兩項練習模式才有意義的
+   資料不該出現（2026-09-02 Steve指出） */
+body.arcade #ovFastLine,body.arcade #ovWeakWrap{display:none}
 .act{
   flex:1;min-height:76px;border-radius:18px;cursor:pointer;border:1px solid var(--line);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
@@ -1284,9 +1287,9 @@ body.playing #pauseBtn{display:flex}
     <div class="line">打倒的敵人 <span id="ovKill">0</span></div>
     <div class="line">造成的總傷害 <span id="ovDmg">0</span></div>
     <div class="line" id="ovQAline">答對／答錯 <span id="ovQA">0 / 0</span></div>
-    <div class="line">最快作答 <span id="ovFast">—</span></div>
+    <div class="line" id="ovFastLine">最快作答 <span id="ovFast">—</span></div>
     <div class="line">獲得金幣 <span id="ovGold">0</span></div>
-    <div class="weak"><h3>最該再練的乘法</h3><ul id="ovWeak"></ul></div>
+    <div class="weak" id="ovWeakWrap"><h3>最該再練的乘法</h3><ul id="ovWeak"></ul></div>
     <button class="btn" id="again">再 挑 戰 一 次</button>
   </div>
 </div>
@@ -1310,7 +1313,7 @@ body.playing #pauseBtn{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260902d"></script>
+<script src="assets/common.js?v=20260902e"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -1570,8 +1573,19 @@ function afterImage(){ ghostOf($('hero2')); }
    整段是「一條」時間軸（Web Animations API），不是五顆 setTimeout 疊出來的——
    分開排程各自會漂移，中間就會看到卡頓。換圖的時間點也一起掛在同一條軸上。 */
 const SWING_MS = 620;
+let swingGen = 0;             // 見下方heroSwing()說明
 function heroSwing(onHit, tier){
   const h = $('hero2');
+  // 2026-09-02第十八輪：娛樂模式CD（420~520ms，PERFECT再打6折低到約250ms）比整套揮擊動畫
+  // SWING_MS=620ms還短，遊戲還鼓勵照節奏連續快點打PERFECT，於是上一次animate()／
+  // 殘影／塵土／速度線這些特效還沒播完，下一次揮擊就疊上去——同一元素堆好幾條動畫＋
+  // 一狗票沒被收掉的視覺特效，這才是Steve反映「連續按造成lag」的根因。
+  // 修法：**不動CD數字**（不改遊戲節奏平衡），改用世代編號把「舊的那次揮擊」的視覺
+  // 特效（換圖/殘影/塵土/劍光）全部靜音，只有最新一次揮擊能畫效果；但傷害判定onHit
+  // 不管是不是最新一次都照樣要跑，不然連續快攻會平白少算傷害。
+  const myGen = ++swingGen;
+  h._swingGen = myGen;
+  if(h._swing){ try{ h._swing.cancel(); }catch(e){} }
   heroFrame('ready');
   h.style.transform = '';
   h.style.transition = 'none';
@@ -1586,8 +1600,10 @@ function heroSwing(onHit, tier){
   ], {duration:SWING_MS, fill:'none'});
   h._swing = anim;
 
+  const stale = () => h._swingGen !== myGen;
   const at = (k, fn) => setTimeout(fn, SWING_MS * k);
   at(.21, () => {                                    // 衝刺起步：換圖、速度線、殘影
+    if(stale()) return;
     heroFrame('swing');
     const sl = $('speedlines');
     sl.classList.remove('on'); void sl.offsetWidth; sl.classList.add('on');
@@ -1596,16 +1612,18 @@ function heroSwing(onHit, tier){
     dust((hr.left - wr.left + hr.width*0.5)/sc, (hr.bottom - wr.top - 6)/sc, 6);
     afterImage();
   });
-  at(.30, afterImage);
-  at(.40, () => {                                    // 命中
-    heroFrame('after');
-    const s = $('slash');
-    s.classList.remove('on', 'slashBlue'); void s.offsetWidth;
-    s.classList.add('on');
-    if(tier >= 2) s.classList.add('slashBlue');        // combo 4+：疊一層藍色弧形劍氣
+  at(.30, () => { if(!stale()) afterImage(); });
+  at(.40, () => {                                    // 命中：視覺效果照世代擋，傷害永遠要算
+    if(!stale()){
+      heroFrame('after');
+      const s = $('slash');
+      s.classList.remove('on', 'slashBlue'); void s.offsetWidth;
+      s.classList.add('on');
+      if(tier >= 2) s.classList.add('slashBlue');      // combo 4+：疊一層藍色弧形劍氣
+    }
     onHit && onHit();
   });
-  at(.72, () => heroFrame('ready'));
+  at(.72, () => { if(!stale()) heroFrame('ready'); });
 }
 /* 2026-09-01：技能專用的施法動作，跟 heroSwing()（普通攻擊的衝刺揮擊）分開——
    人待在原地舉杖引光（不衝刺），只有原地的小幅浮動，出招判定放在光爆那個瞬間
@@ -3648,7 +3666,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260902d"></script>
-<script src="assets/lock.js?v=20260902d"></script>
+<script src="assets/audio.js?v=20260902e"></script>
+<script src="assets/lock.js?v=20260902e"></script>
 </body>
 </html>

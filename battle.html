@@ -1522,7 +1522,7 @@ function heroFrame(k){
     el.classList.remove('poseSwing','poseHurt','poseCast');
     const rest = () => IDLE_SPRITE() ? Spr.play(el, 'hero_idle', {loop:true})
                                      : Spr.off(el, HERO_FRAMES.ready);
-    if(k === 'swing')      Spr.play(el, 'hero_atk', {from:7, to:23, fps:45, done:rest});
+    if(k === 'swing')      Spr.play(el, 'hero_atk', {from:12, to:32, fps:50, done:rest});
     else if(k === 'cast'){
       el.classList.add('poseCast');
       Spr.play(el, 'hero_skillcast', {done:() => { el.classList.remove('poseCast'); rest(); }});
@@ -1751,7 +1751,9 @@ function slowmoField(ms, rate){
 const PX1 = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 const SPR = {
   hero_idle:   {img:'assets/spr_hero_idle.webp',   cols:5, rows:3, n:15, ar:224/174, fps:8},
-  hero_atk:    {img:'assets/spr_hero_atk.webp',    cols:6, rows:5, n:29, ar:224/174, fps:24},
+  /* 2026-09-02：重生，跟角色現行畫風（fx_hero_ready/fx_hero_swing 那個寫實立繪）對上，
+     舊版是更早期一批 Q 版素材，跟現在角色完全不同人，Steve 截圖回報過才發現 */
+  hero_atk:    {img:'assets/spr_hero_atk.webp',    cols:6, rows:9, n:52, ar:1, fps:45},
   /* 2026-09-01：技能施法逐幀（gemini vids 圖生影片，參考圖 fx_hero_ready.webp，
      舉杖過頭引光→匯聚→小爆發，在畫面整個被光炸滿、黑底流失前就切掉，源片 2.0~6.0s 段，
      所以雪碧圖裡沒有那種全白畫面）。放技能時用這組取代 hero_atk，跟一般攻擊分開，

@@ -1281,7 +1281,7 @@ body.playing #pauseBtn{display:flex}
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
    這裡不能直接查 SPR 有沒有 key，見 preloadNearby() 那邊的說明） */
 const ATK_ONLY_SPR = new Set(['raccoon', 'bat', 'mush', 'rock', 'ghost', 'cactus', 'ice', 'flame', 'robot', 'boar', 'bee', 'ninja', 'gargoyle', 'bosstiger',
-  'firefly', 'thorn', 'owlmage', 'hedgehog', 'scorpion', 'camel', 'lizard', 'jelly', 'crab', 'octomage', 'coralfish', 'thundereagle', 'cloudghost', 'goblinminer', 'crystalbat', 'lavaworm', 'skeleton', 'ghostknight', 'mummy', 'gearspider', 'steamtank']);
+  'firefly', 'thorn', 'owlmage', 'hedgehog', 'scorpion', 'camel', 'lizard', 'jelly', 'crab', 'octomage', 'coralfish', 'thundereagle', 'cloudghost', 'goblinminer', 'crystalbat', 'lavaworm', 'skeleton', 'ghostknight', 'mummy', 'gearspider', 'steamtank', 'zapmouse']);
 /* ---------- 敵人：每隻怕不同的乘法表，打弱點兩倍傷害 ---------- */
 const MOBS = [
   {img:'assets/mob_slime.webp',  name:'黏黏怪',   hp:110, atk:10, weak:[2,3],   exp:24, drop:0.40, spr:'slime'},
@@ -1326,7 +1326,7 @@ const MOBS = [
   {img:'assets/mob_mummy.webp', name:'木乃伊', hp:1040, atk:38, weak:[9], exp:259, drop:0.82, spr:'mummy'},
   {img:'assets/mob_gearspider.webp', name:'齒輪蜘蛛', hp:1062, atk:38, weak:[3, 5], exp:264, drop:0.83, summon:true, spr:'gearspider'},
   {img:'assets/mob_steamtank.webp', name:'蒸汽坦克', hp:1085, atk:39, weak:[6], exp:269, drop:0.84, armor:0.75, mathTrait:'EVEN_SHIELD', spr:'steamtank'},
-  {img:'assets/mob_zapmouse.webp', name:'電磁飛鼠', hp:1108, atk:39, weak:[6, 7], exp:274, drop:0.85, fast:0.8},
+  {img:'assets/mob_zapmouse.webp', name:'電磁飛鼠', hp:1108, atk:39, weak:[6, 7], exp:274, drop:0.85, fast:0.8, spr:'zapmouse'},
   {img:'assets/mob_windspirit.webp', name:'風元精', hp:1130, atk:40, weak:[3], exp:279, drop:0.85, ranged:true},
   {img:'assets/mob_earthgolem.webp', name:'土元精', hp:1152, atk:40, weak:[5], exp:284, drop:0.86, armor:0.75},
   {img:'assets/mob_shadowwolf.webp', name:'暗影狼', hp:1175, atk:41, weak:[3], exp:289, drop:0.87},
@@ -1794,7 +1794,8 @@ const SPR = {
   ghostknight_atk: {img:'assets/spr_ghostknight_atk.webp', cols:6, rows:9, n:52, ar:1, fps:20},
   mummy_atk: {img:'assets/spr_mummy_atk.webp', cols:6, rows:9, n:52, ar:1, fps:18},
   gearspider_atk: {img:'assets/spr_gearspider_atk.webp', cols:6, rows:9, n:52, ar:1, fps:20},
-  steamtank_atk: {img:'assets/spr_steamtank_atk.webp', cols:6, rows:9, n:52, ar:1, fps:20}
+  steamtank_atk: {img:'assets/spr_steamtank_atk.webp', cols:6, rows:9, n:52, ar:1, fps:20},
+  zapmouse_atk: {img:'assets/spr_zapmouse_atk.webp', cols:6, rows:8, n:44, ar:1, fps:20}
 };
 /* ---------- 待機不跑逐幀（2026-08-23 效能量測結論） ----------
    量出來（CPU 節流 6 倍模擬中階手機，看主執行緒每秒被吃掉多少毫秒）：
@@ -2960,6 +2961,7 @@ const MOB_ATK = {
   mummy:{from:0, to:51, fps:18, hit:.71, back:16, rush:-55},       /* 前撲抓咬，符文光越到後段越亮 */
   gearspider:{from:0, to:51, fps:20, hit:.92, back:16, rush:-55},  /* summon:true，蒸氣越噴越大，命中點在尾段噴發瞬間 */
   steamtank:{from:0, to:51, fps:20, hit:.35, back:16, rush:-55},   /* armor:0.75，雙管開始冒火花那瞬間，之後持續噴到結尾 */
+  zapmouse:{from:0, to:43, fps:20, hit:.85, back:16, rush:-55},    /* fast:0.8，只取前2.2秒蓄力/俯衝段——後段全片翅膀被去背吃掉，見進度.md */
   cloudghost:{from:0, to:51, fps:15, hit:.65, back:20, rush:-70},   /* 蓄力→衝撞→雲霧旋渦纏繞 */
   goblinminer:{from:0, to:47, fps:15, hit:.80, back:12, rush:-45},  /* 舉鎬蓄力→大幅度掄鎬劈砍，原地揮動位移小 */
   crystalbat:{from:0, to:51, fps:15, hit:.60, back:16, rush:-55}    /* 展翅俯衝→水晶羽翼月牙斜劈 */

@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260903a">
+<link rel="stylesheet" href="assets/common.css?v=20260903b">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -927,8 +927,15 @@ body.arcade #ovFastLine,body.arcade #ovWeakWrap{display:none}
 .act small{font-size:11px;font-weight:700;opacity:.8}
 .act.atk{background:linear-gradient(180deg,#ffd08a,#f6905c);box-shadow:0 5px 0 #a9521b,0 10px 24px #0008}
 .act.dodge{background:linear-gradient(180deg,#bfe4ff,#6ea8ff);box-shadow:0 5px 0 #2b5c9e,0 10px 24px #0008}
+/* 2026-09-03：紅藥水鈕比攻擊/閃避窄，兩顆主要動作不被擠小；紅色一眼認出是回血 */
+.act.potion{flex:0 0 68px;min-height:76px;background:linear-gradient(180deg,#ffb3c6,#ff5f80);box-shadow:0 5px 0 #a91b3f,0 10px 24px #0008}
+.act.potion b{font-size:22px}
+.act.potion small{font-weight:800;color:#3a2400}
 .act:active{transform:translateY(4px)}
 .act:disabled{filter:grayscale(.7) brightness(.7);cursor:default}
+/* 2026-09-03：光圈亮起的那段時間，把上面那條灰階濾鏡蓋掉，不然金圈會被悶成灰色，
+   實測截圖幾乎看不出來——這段本來就是要玩家一眼看到「快好了、準備點」的提示 */
+.act.ringLive:disabled{filter:none}
 /* 冷卻：底下那條由左往右補回來 */
 .act i{position:absolute;left:0;bottom:0;height:5px;width:0;background:#ffffffcc}
 .act.cool i{transition:width linear}
@@ -1223,6 +1230,9 @@ body.playing #pauseBtn{display:flex}
     <div class="acts" id="acts">
       <button class="act atk" id="actAtk"><b>攻　擊</b><small id="atkCd">點一下打一次</small><span class="rhythmRing"></span></button>
       <button class="act dodge" id="actDodge"><b>閃　避</b><small id="dodgeCd">敵人出手前按</small></button>
+      <!-- 2026-09-03 Steve：像天堂一樣可以喝紅藥水回血，商店（index.html）用金幣買，
+           這裡消耗庫存喝掉。先只做娛樂模式（跟攻擊/閃避同一排，練習模式不出現）。 -->
+      <button class="act potion" id="actPotion"><b>🧪</b><small id="potionCd">x0</small></button>
     </div>
     <div class="row3">
       <div class="ult">
@@ -1321,7 +1331,7 @@ body.playing #pauseBtn{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260903a"></script>
+<script src="assets/common.js?v=20260903b"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -2756,20 +2766,28 @@ function cool(btn, ms, doneFlag){
   bar.style.width = '100%';
 
   /* 2026-09-01 第九輪：節奏光圈跟冷卻條共用同一組 setTimeout 時間軸，不另起計時器避免飄移。
-     光圈只在 CD 快結束的最後 0.3~0.5 秒亮起收縮，抓準收縮尾段點擊＝PERFECT（見 playerAttack）。 */
+     光圈只在 CD 快結束前那一段亮起收縮，抓準收縮尾段點擊＝PERFECT（見 playerAttack）。
+     2026-09-03 Steve回報「感受不出來有光圈窗口」，查出兩個根因一起修：
+     ①窗口比例被 CD 從 2 秒鎖死拖垮——原本卡在[300,500]是配合舊版420~520ms的CD訂的，
+       CD變2秒之後500ms只佔整段冷卻的25%，一下就過去。改成抓CD的40%（[400,900]之間），
+       比例跟以前接近，玩家有感覺「快好了」的醞釀時間。
+     ②視覺上被自己蓋掉——`.act:disabled`的filter:grayscale(.7) brightness(.7)蓋在整顆
+       按鈕上（含裡面的光圈），金色光圈被吃成灰撲撲一片，實測截圖幾乎看不出來。
+       光圈亮起的這段時間額外加`ringLive` class把filter蓋掉，讓金圈用原色跳出來。 */
   const ring = btn.querySelector('.rhythmRing');
   if(ring){
-    const ringWindowMs = Math.max(300, Math.min(500, ms));
+    const ringWindowMs = Math.max(400, Math.min(900, ms * 0.4));
     ring.style.setProperty('--rms', ringWindowMs + 'ms');
-    ring.classList.remove('arm', 'perfect'); void ring.offsetWidth;
+    ring.classList.remove('arm', 'perfect'); btn.classList.remove('ringLive'); void ring.offsetWidth;
     const openAt = performance.now() + Math.max(0, ms - ringWindowMs);
     btn._ringOpenAt = openAt; btn._ringCloseAt = openAt + ringWindowMs;
-    setTimeout(() => ring.classList.add('arm'), Math.max(0, ms - ringWindowMs));
+    setTimeout(() => { ring.classList.add('arm'); btn.classList.add('ringLive'); }, Math.max(0, ms - ringWindowMs));
   }
 
   setTimeout(() => {
     btn.disabled = false; bar.style.transition = 'none'; bar.style.width = '0';
     if(ring) ring.classList.remove('arm', 'perfect');
+    btn.classList.remove('ringLive');
     doneFlag();
   }, ms);
 }
@@ -2898,6 +2916,33 @@ function dodge(){
     F().classList.add('slowmo'); slowmoField(500, .55);
     setTimeout(() => F().classList.remove('slowmo'), 500);
   }
+}
+
+/* 2026-09-03 Steve：像天堂一樣可以買紅藥水喝來回血。商店在 index.html（花金幣買，
+   存進 Save.d.potions），這裡只管消耗庫存＋回血。先只做娛樂模式（跟攻擊/閃避同排，
+   練習模式不需要——答題本身就是攻擊，還沒有「戰鬥中會扣血扣到需要立即回復」的急迫感）。
+   短冷卻（1.5秒）不是為了防狂點（庫存本來就有限），是避免同一下手滑連點兩瓶。 */
+const POTION_COOLDOWN_MS = 1500;
+let potionReady = true;
+function usePotion(){
+  if(!running || paused || !arcade || locked || !potionReady) return;
+  if((Save.d.potions || 0) <= 0) return;
+  if(heroHp >= maxHp){ comboShout('血量已滿', '#8affc4'); return; }
+  Save.d.potions--; Save.put();
+  const heal = Math.round(maxHp * POTION_HEAL_PCT);
+  heroHp = Math.min(maxHp, heroHp + heal);
+  paintHeroBar();
+  dmgText('+' + heal, true);
+  logMsg('喝下 <b style="color:#ff5f80">🧪 紅藥水</b>，回復 <b>+' + heal + '</b> 點血量', 'item');
+  potionReady = false;
+  cool($('actPotion'), POTION_COOLDOWN_MS, () => { potionReady = true; paintPotionBtn(); });
+  paintPotionBtn();
+}
+function paintPotionBtn(){
+  const btn = $('actPotion'); if(!btn) return;
+  const n = Save.d.potions || 0;
+  $('potionCd').textContent = 'x' + n;      // cool()只動裡面那條<i>冷卻條，不碰這個字
+  if(potionReady) btn.disabled = n <= 0;
 }
 
 function answer(v, btn){
@@ -3448,6 +3493,7 @@ function useUlt(){
 let mobDieAt = 0;                    // 上一次播死亡動畫的時間，看門狗用
 function tick(){
   paintSkills();                     // 技能冷卻倒數跟著這個 100ms 的計時器跑
+  paintPotionBtn();                  // 藥水庫存/血滿狀態也跟著這個計時器同步，不用另外呼叫
   /* 看門狗：死亡動畫最長 0.9 秒，加上掉寶演出也不該超過 2.5 秒還掛著 .die。
      真的掛著就代表換怪的 timer 出事了，直接清掉，寧可少一段演出也不要對著空氣打怪 */
   if(mobDieAt && Date.now() - mobDieAt > 2500){
@@ -3509,6 +3555,7 @@ function start(){
   running = true; locked = true;
   ult = 0; combo = 0; finisherReady = false; comboVisualTier(0);
   skillBusyUntil = 0;
+  potionReady = true; paintPotionBtn();
   kills = 0; totalDmg = 0; right = 0; wrong = 0; fastest = null;
   earnGold = 0; earnExp = 0; drops = [];
   clearLog();
@@ -3588,6 +3635,7 @@ $('again').onclick = start;
 $('ultBtn').onclick = useUlt;
 $('actAtk').onclick = playerAttack;
 $('actDodge').onclick = dodge;
+$('actPotion').onclick = usePotion;
 document.addEventListener('keydown', e => {
   if(e.repeat) return;
   if(arcade && running){
@@ -3688,7 +3736,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260903a"></script>
-<script src="assets/lock.js?v=20260903a"></script>
+<script src="assets/audio.js?v=20260903b"></script>
+<script src="assets/lock.js?v=20260903b"></script>
 </body>
 </html>

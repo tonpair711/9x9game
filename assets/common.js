@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.14';
+const GAME_VERSION = '1.3.16';
 
 const $ = id => document.getElementById(id);
 
@@ -144,6 +144,7 @@ const SAVE_KEY = 'mul99_save';
 const DEFAULT_SAVE = {
   lv:1, exp:0, gold:0, hero:'royal', pname:'',   // pname＝玩家自己取的名字，空的就用角色本名
   scroll:0,                                      // 強化卷軸：打怪會掉，也能用金幣買
+  potions:0,                                     // 2026-09-03：紅藥水，商店用金幣買，戰鬥中喝來回血
   gear:{weapon:null, armor:null, helmet:null, boots:null, ring:null, charm:null},
   bag:[],
   loadout:{active:[], ult:null},                 // 2026-09-01第十輪：出戰技能配裝，只存key字串
@@ -209,6 +210,22 @@ const Save = {
     return ups;
   }
 };
+
+/* ---------- 商店：紅藥水（2026-09-03，照天堂的精神）----------
+   跟強化卷軸（scrollPrice，battle.html）同一套「固定價、不跟等級漲」邏輯，但這個要買得
+   起才有意義——卷軸是「存很久才買一次」的大額道具，藥水要是消耗品，價格落在打幾隻怪
+   金幣收入的量級（不是打一隻就買得起，也不是要存一整輪）。common.js 放這裡是因為
+   商店畫面在 index.html、消耗在 battle.html，兩邊都要用同一份定義。 */
+const POTION_PRICE = 80;           // 一瓶的價錢
+const POTION_HEAL_PCT = 0.35;      // 喝一瓶回滿血量的 35%
+function buyPotions(qty){
+  const cost = POTION_PRICE * qty;
+  if(Save.d.gold < cost) return false;
+  Save.d.gold -= cost;
+  Save.d.potions = (Save.d.potions || 0) + qty;
+  Save.put();
+  return true;
+}
 
 /* ---------- 可選角色 ----------
    王者有分解動作圖；其他是單張圖，攻擊動作用變形做 */

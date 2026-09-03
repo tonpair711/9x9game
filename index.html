@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260903a">
+<link rel="stylesheet" href="assets/common.css?v=20260903b">
 <style>
 /* ---------- 大廳改成底部五個分頁（2026-08-23 Steve：不要一頁滑到底，每一頁都要乾淨） ----------
    ① 開始（選模式＋登入帳號）② 玩什麼（練習就選題型／娛樂就看難度，再從這裡出擊）
@@ -258,6 +258,34 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
 }
 .gold b{display:block;font-size:10px;color:var(--dim);font-weight:500;letter-spacing:1px}
 .gold span{font-size:21px;font-weight:800;color:var(--gold2);font-variant-numeric:tabular-nums}
+
+/* ---------- 商店（2026-09-03）---------- */
+.shopGoldBar{width:fit-content;margin:0 auto 4px}
+.shopItem{
+  display:flex;gap:14px;align-items:center;padding:16px;border-radius:20px;
+  background:linear-gradient(135deg,#41285e,#20132f 70%);border:1px solid var(--line);
+  box-shadow:0 14px 36px #0009,inset 0 1px 0 #ffffff1a;
+}
+.shopIcon{
+  flex:none;width:56px;height:56px;border-radius:16px;display:flex;align-items:center;
+  justify-content:center;font-size:28px;background:linear-gradient(180deg,#ffb3c6,#ff5f80);
+  box-shadow:0 6px 16px #0008;
+}
+.shopInfo{flex:1;min-width:0}
+.shopInfo b{font-size:17px;font-weight:800;color:var(--gold2)}
+.shopInfo small{display:block;font-size:12px;color:var(--dim);margin-top:2px}
+.shopOwned{font-size:12px;color:var(--dim);margin-top:6px}
+.shopOwned b{color:var(--gold2)}
+.shopBuyRow{display:flex;gap:10px}
+.shopBuyBtn{
+  flex:1;min-height:56px;border-radius:16px;border:1px solid #a91b3f;cursor:pointer;
+  font-family:inherit;font-size:15px;font-weight:800;color:#3a0812;
+  background:linear-gradient(180deg,#ffb3c6,#ff6b8a);box-shadow:0 5px 0 #a91b3f,0 10px 20px #0008;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+}
+.shopBuyBtn small{font-size:11px;font-weight:700;opacity:.85}
+.shopBuyBtn:active{transform:translateY(3px)}
+.shopBuyBtn:disabled{filter:grayscale(.6) brightness(.75);cursor:default}
 
 /* ---------- ① 開始頁 ---------- */
 .modepanel{display:flex;flex-direction:column;gap:12px}
@@ -632,6 +660,25 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
     </div>
   </section>
 
+  <!-- s6：商店（2026-09-03，像天堂一樣花金幣買紅藥水，戰鬥中喝來回血）-->
+  <section class="step" id="s6">
+    <div class="sec"><h2>商店</h2><i></i></div>
+    <div class="gold shopGoldBar"><b>金幣</b><span id="shopGold">0</span></div>
+    <div class="shopItem">
+      <div class="shopIcon">🧪</div>
+      <div class="shopInfo">
+        <b>紅藥水</b>
+        <small>戰鬥中喝一瓶回復 35% 生命值</small>
+        <div class="shopOwned">目前持有 <b id="potionOwned">0</b> 瓶</div>
+      </div>
+    </div>
+    <div class="shopBuyRow">
+      <button class="shopBuyBtn" id="buyPotion1">買 1 瓶<small id="potionPrice1">80 金幣</small></button>
+      <button class="shopBuyBtn" id="buyPotion5">買 5 瓶<small id="potionPrice5">400 金幣</small></button>
+    </div>
+    <div class="charhint">👉 只有<b>娛樂模式</b>的戰鬥畫面會出現「🧪」喝藥水按鈕，練習模式暫時還沒有。</div>
+  </section>
+
   <!-- s5：玩哪一個，還是最後一步——選好角色後才進遊戲世界 -->
   <section class="step" id="s5">
     <div class="sec"><h2>主線冒險</h2><i></i></div>
@@ -683,7 +730,7 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260903a"></script>
+<script src="assets/common.js?v=20260903b"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 遊戲清單：要加新遊戲只改這一份，卡片與紀錄都會自己長出來 */
@@ -777,8 +824,10 @@ function gameCard(g){
    帳號登入 → 選角色／創角，這兩步是進遊戲世界前一定要先做完的事，
    玩法／出題設定是「進遊戲之後」才調的東西，不該排在創角前面擋路。
    不動 HTML 區塊順序（改動風險較大），只換這個索引對照表就重排了整個流程。 */
-const STEPS = ['s3','s4','s2','s5'];
-const STEP_NAME = ['帳號', '角色', '設定', '玩什麼'];
+/* 2026-09-03 Steve：新增「商店」一步（像天堂一樣花金幣買紅藥水），排在設定之後、
+   玩什麼之前——出戰前先看看要不要補貨，這步沒有任何守門條件，不想買直接按下一步就過。 */
+const STEPS = ['s3','s4','s2','s6','s5'];
+const STEP_NAME = ['帳號', '角色', '設定', '商店', '玩什麼'];
 let step = 0;
 
 function paintStepBar(){
@@ -812,7 +861,7 @@ function goStep(k){
      「設定」（s2）合併成同一步，不再需要單獨置中那套處理 */
   document.body.classList.toggle('thinStep', false);
   document.body.classList.toggle('denseStep', STEPS[step] === 's2');   // 見上面 .coin 那條 CSS
-  paintStepBar(); paintNav();
+  paintStepBar(); paintNav(); paintShop();
   window.scrollTo({top:0, behavior:'instant'});
 }
 /* 左上角「返回上一層」在大廳的意思是「上一步」，不是瀏覽器上一頁（見 common.js pagectrl） */
@@ -1133,6 +1182,22 @@ function paintPlayer(){
               : '<span style="color:#6b578a">' + names[k] + '：無</span>';
   }).join('');
 }
+/* ---------- 商店（2026-09-03，POTION_PRICE/buyPotions 定義在 common.js，兩頁共用）---------- */
+function paintShop(){
+  const gold = $('shopGold'); if(!gold) return;   // s6 區塊不存在（理論上不會）就跳過
+  gold.textContent = fmtN(Save.d.gold);
+  $('potionOwned').textContent = Save.d.potions || 0;
+  $('potionPrice1').textContent = fmtN(POTION_PRICE) + ' 金幣';
+  $('potionPrice5').textContent = fmtN(POTION_PRICE * 5) + ' 金幣';
+  $('buyPotion1').disabled = Save.d.gold < POTION_PRICE;
+  $('buyPotion5').disabled = Save.d.gold < POTION_PRICE * 5;
+}
+$('buyPotion1').onclick = () => {
+  if(buyPotions(1)){ paintShop(); paintPlayer(); Sfx.ok(2); }else Sfx.bad();
+};
+$('buyPotion5').onclick = () => {
+  if(buyPotions(5)){ paintShop(); paintPlayer(); Sfx.ok(2); }else Sfx.bad();
+};
 /* ---------- 玩法與題型 ---------- */
 function paintPlay(){
   const arc = Mode.isArcade();
@@ -1176,7 +1241,7 @@ $('clearAll').onclick = () => {
   Save.reset();
   try{ localStorage.removeItem(STORE_KEY + '_s' + curSlot()); localStorage.removeItem(sk(HISTORY_KEY)); }catch(e){}
   Stats.data = {}; History.data = [];
-  paintPlayer(); paintSlots(); paintGames(); paintStats();
+  paintPlayer(); paintSlots(); paintGames(); paintStats(); paintShop();
 };
 
 /* ---------- 開場 ---------- */
@@ -1197,7 +1262,7 @@ let jump = 0;
 try{ jump = +(sessionStorage.getItem('mul99_jump') || 0) || 0; sessionStorage.removeItem('mul99_jump'); }catch(e){}
 goStep(jump || 0);
 </script>
-<script src="assets/audio.js?v=20260903a"></script>
-<script src="assets/lock.js?v=20260903a"></script>
+<script src="assets/audio.js?v=20260903b"></script>
+<script src="assets/lock.js?v=20260903b"></script>
 </body>
 </html>

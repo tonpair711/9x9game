@@ -158,6 +158,13 @@ h1{
   box-shadow:0 4px 12px #0006;
 }
 .pcbtn:active{transform:translateY(2px)}
+/* 2026-09-03 Steve：返回鍵做明顯一點——加寬帶「返回」字、金色實心、比旁邊兩顆大 */
+.pcbtn.pcback{
+  width:auto;padding:0 14px 0 11px;gap:3px;border-radius:20px;font-size:15px;font-weight:800;
+  background:linear-gradient(180deg,var(--gold2),var(--gold));color:#3a2400;
+  border-color:#c98a1e;box-shadow:0 4px 12px #0007,0 0 0 1px #ffffff26 inset;letter-spacing:1px;
+}
+.pcbtn.pcback span{font-size:19px;font-weight:900;line-height:1}
 /* 版本號：跟按鈕同一排，故意做得很不顯眼（小、暗、無邊框）——
    平常沒人會注意，回報問題時才需要瞄一眼角落 */
 .pcver{
@@ -167,6 +174,8 @@ h1{
 @media (max-width:480px){
   .pagectrl{left:8px;top:8px;gap:5px}
   .pcbtn{width:32px;height:32px;font-size:15px}
+  .pcbtn.pcback{width:auto;height:32px;padding:0 12px 0 9px;font-size:13.5px}
+  .pcbtn.pcback span{font-size:17px}
   .pcver{font-size:9px}
 }
 .levels{display:flex;gap:8px;width:min(96vw,560px)}

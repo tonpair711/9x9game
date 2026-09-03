@@ -455,6 +455,12 @@ body.lowfx .shard{animation-duration:.35s}
   content:"🛡️";position:absolute;left:-6%;top:-8%;z-index:8;pointer-events:none;
   font-size:clamp(20px,4vw,30px);filter:drop-shadow(0 2px 4px #000a);
 }
+/* 2026-09-03第二十四輪：黃金哥布林——金色光暈＋頭上💰標記，遠遠一眼就看出這隻不一樣 */
+.mobwrap.bonus img{filter:drop-shadow(0 0 18px #ffd23d) drop-shadow(0 0 34px #ffb300aa) brightness(1.08)}
+.mobwrap.bonus::before{
+  content:"💰";position:absolute;left:50%;top:-18%;transform:translateX(-50%);z-index:9;pointer-events:none;
+  font-size:clamp(24px,5vw,36px);animation:warnPop .6s cubic-bezier(.2,1.6,.4,1) infinite alternate;
+}
 .bombIcon{
   position:absolute;left:50%;top:-16%;transform:translateX(-50%) scale(0);z-index:9;pointer-events:none;
   font-size:clamp(24px,5vw,36px);opacity:0;transition:transform .2s,opacity .2s;
@@ -931,6 +937,8 @@ body.arcade #ovFastLine,body.arcade #ovWeakWrap{display:none}
 .act.potion{flex:0 0 68px;min-height:76px;background:linear-gradient(180deg,#ffb3c6,#ff5f80);box-shadow:0 5px 0 #a91b3f,0 10px 24px #0008}
 .act.potion b{font-size:22px}
 .act.potion small{font-weight:800;color:#3a2400}
+.act.speedpot{background:linear-gradient(180deg,#bfe9ff,#4fa8ff);box-shadow:0 5px 0 #1a5fb4,0 10px 24px #0008}
+.act.speedpot.buffOn{background:linear-gradient(180deg,#fff6c2,#ffd23d);box-shadow:0 5px 0 #b8860b,0 10px 24px #0008}
 .act:active{transform:translateY(4px)}
 .act:disabled{filter:grayscale(.7) brightness(.7);cursor:default}
 /* 2026-09-03：光圈亮起的那段時間，把上面那條灰階濾鏡蓋掉，不然金圈會被悶成灰色，
@@ -1233,6 +1241,8 @@ body.playing #pauseBtn{display:flex}
       <!-- 2026-09-03 Steve：像天堂一樣可以喝紅藥水回血，商店（index.html）用金幣買，
            這裡消耗庫存喝掉。先只做娛樂模式（跟攻擊/閃避同一排，練習模式不出現）。 -->
       <button class="act potion" id="actPotion"><b>🧪</b><small id="potionCd">x0</small></button>
+      <!-- 2026-09-03第二十四輪：加速藥水，喝了接下來90秒CD打8折，商店（index.html）買 -->
+      <button class="act potion speedpot" id="actSpeedPot"><b>⚡</b><small id="speedPotCd">x0</small></button>
     </div>
     <div class="row3">
       <div class="ult">
@@ -1812,6 +1822,7 @@ const SPR = {
   hero_cast_iceshot8: {img:'assets/spr_hero_cast_iceshot8.webp', cols:6, rows:9, n:52, ar:1, fps:16},
   hero_cast_flame10: {img:'assets/spr_hero_cast_flame10.webp', cols:6, rows:9, n:52, ar:1, fps:16},
   hero_cast_inferno15: {img:'assets/spr_hero_cast_inferno15.webp', cols:6, rows:9, n:52, ar:1, fps:16},
+  hero_cast_ice20: {img:'assets/spr_hero_cast_ice20.webp', cols:6, rows:9, n:52, ar:1, fps:16},
   slime_idle:  {img:'assets/spr_slime_idle.webp',  cols:5, rows:4, n:16, ar:224/125, fps:8},
   slime_atk:   {img:'assets/spr_slime_atk.webp',   cols:6, rows:5, n:29, ar:224/125, fps:20},
   dragon_idle: {img:'assets/spr_dragon_idle.webp', cols:6, rows:4, n:24, ar:224/211, fps:10},
@@ -2502,7 +2513,7 @@ const SKILLS = [
    fx:{key:'fire', size:320, dy:6}, mult:2.0, desc:'火燄纏繞的一斬'},
   {key:'inferno15', name:'烈焰漩渦', icon:'🌋', lv:15, cd:10000, color:'#ff7a4d', castSpr:'hero_cast_inferno15',
    fx:{key:'whirl', size:400, hue:15, bright:1.3}, mult:2.2, desc:'一圈燒起來的漩渦'},
-  {key:'ice20', name:'冰霜爆裂', icon:'❄️', lv:20, cd:9000, color:'#6ea8ff',
+  {key:'ice20', name:'冰霜爆裂', icon:'❄️', lv:20, cd:9000, color:'#6ea8ff', castSpr:'hero_cast_ice20',
    fx:{key:'fire', size:320, dy:6, hue:168, sat:1.7, bright:1.1}, mult:2.6, desc:'凍結範圍內爆開'},
   {key:'shadowpoison25', name:'暗影毒襲', icon:'🐍', lv:25, cd:11000, color:'#b98bff',
    fx:{key:'poison', size:300, hue:-100, sat:1.4}, mult:2.9, desc:'從暗處竄出的毒牙'},
@@ -2568,7 +2579,7 @@ function useSkill(key){
   if((skillState[key] || 0) > performance.now()) return;
   if(skillBusy()) return;                                   // 2026-09-03 Steve：施法中不能再放下一個技能
   skillBusyUntil = performance.now() + CAST_MS;
-  skillState[key] = performance.now() + sk.cd * (HERO.cdMul || 1) * (1 - (P.cdr || 0) / 100);
+  skillState[key] = performance.now() + sk.cd * (HERO.cdMul || 1) * (1 - (P.cdr || 0) / 100) * speedMul();
 
   const f = F();
   f.style.setProperty('--sc', sk.color + '99');
@@ -2872,7 +2883,7 @@ function playerAttack(){
   const now = performance.now();
   const perfectHit = !!btn._ringCloseAt && now >= (btn._ringCloseAt - (btn._ringCloseAt - btn._ringOpenAt) * 0.3) && now <= btn._ringCloseAt + 60;
   atkReady = false;
-  cool(btn, D().cd, () => atkReady = true);   // 2026-09-03 Steve：CD 固定 2 秒，PERFECT 不再打折（只保留傷害/連擊加成），杜絕狂按
+  cool(btn, D().cd * speedMul(), () => atkReady = true);   // 2026-09-03 Steve：CD 固定 2 秒，PERFECT 不再打折（只保留傷害/連擊加成），杜絕狂按；加速藥水生效時再乘speedMul()打折
   hits++;
   combo += perfectHit ? 2 : 1;
   armComboDecay();
@@ -2956,6 +2967,34 @@ function paintPotionBtn(){
   const n = Save.d.potions || 0;
   $('potionCd').textContent = 'x' + n;      // cool()只動裡面那條<i>冷卻條，不碰這個字
   if(potionReady) btn.disabled = n <= 0;
+}
+
+/* 2026-09-03第二十四輪：加速藥水，跟紅藥水同一套UI/庫存模式，效果是接下來90秒攻擊/技能
+   CD打8折。跟Steve反映「5分鐘就膩」討論出的商店擴充第一步，SPEED_POTION_*常數在
+   common.js（兩頁共用）。cdMul()回傳目前該用的CD倍率，playerAttack()/useSkill()的
+   cool()呼叫都乘這個值——集中一個函式改，不用到處各自加判斷。 */
+let speedBuffUntil = 0;
+function speedMul(){ return (arcade && performance.now() < speedBuffUntil) ? SPEED_POTION_CD_MUL : 1; }
+const SPEEDPOT_COOLDOWN_MS = 1500;
+let speedPotReady = true;
+function useSpeedPotion(){
+  if(!running || paused || !arcade || locked || !speedPotReady) return;
+  if((Save.d.speedpotions || 0) <= 0) return;
+  Save.d.speedpotions--; Save.put();
+  speedBuffUntil = performance.now() + SPEED_POTION_MS;
+  comboShout('⚡ 加速中！', '#8fd6ff');
+  logMsg('喝下 <b style="color:#8fd6ff">⚡ 加速藥水</b>，接下來 <b>90 秒</b>攻擊與技能冷卻縮短 20%', 'item');
+  speedPotReady = false;
+  cool($('actSpeedPot'), SPEEDPOT_COOLDOWN_MS, () => { speedPotReady = true; paintSpeedPotBtn(); });
+  paintSpeedPotBtn();
+}
+function paintSpeedPotBtn(){
+  const btn = $('actSpeedPot'); if(!btn) return;
+  const n = Save.d.speedpotions || 0;
+  const left = Math.max(0, speedBuffUntil - performance.now());
+  $('speedPotCd').textContent = left > 0 ? Math.ceil(left/1000) + 's' : 'x' + n;
+  btn.classList.toggle('buffOn', left > 0);
+  if(speedPotReady) btn.disabled = n <= 0;
 }
 
 function answer(v, btn){
@@ -3315,12 +3354,17 @@ function killMob(){
   Sfx.win();
   kills++;
   Save.d.totalKill++;
-  const gold = Math.round((18 + wave*8 + (mob.boss ? 70 : 0)) * Math.pow(1.10, round - 1)
-                          * (1 + (HERO.gold || 0)));
+  let gold = Math.round((18 + wave*8 + (mob.boss ? 70 : 0)) * Math.pow(1.10, round - 1)
+                        * (1 + (HERO.gold || 0)));
+  if(mob.bonus) gold *= 8;   // 2026-09-03第二十四輪：黃金哥布林，8倍金幣獎勵
   const exp  = Math.round(mob.exp * Math.pow(1.15, round - 1));   // 經驗成長比血量快，見 setMob 的說明
   Save.d.gold += gold;
   earnGold += gold; earnExp += exp;
   const ups = Save.addExp(exp);
+  if(mob.bonus){
+    comboShout('💰 黃金哥布林！大量金幣！', '#ffd23d');
+    logMsg('打倒了 <b style="color:#ffd23d">💰 黃金哥布林</b>，獲得 <b>8 倍</b>金幣！', 'gold');
+  }
 
   deathBurst();
   mobDieAt = Date.now();
@@ -3394,7 +3438,7 @@ function killMob(){
 }
 /* 名字後面標出特性，玩家才知道為什麼這隻不一樣 */
 function mobLabel(){
-  return mob.name + (mob.armor ? ' 🛡' : '') + (mob.fast ? ' ⚡' : '')
+  return (mob.bonus ? '💰 ' : '') + mob.name + (mob.armor ? ' 🛡' : '') + (mob.fast ? ' ⚡' : '')
        + (mob.ranged ? ' 🎯' : '') + (mob.summon ? ' 🐝' : '')
        + (evenShield > 0 ? ' 🛡️x' + evenShield : '')
        + (shield > 0 ? ' 護盾 ' + shield : '');
@@ -3428,6 +3472,12 @@ function setMob(){
      所以血量走 1.06、經驗走 1.15——高關卡＝經驗效率高，不是變成肉山。 */
   mob.hp  = Math.round(mob.hp  * Math.pow(1.06, round - 1));
   mob.atk = Math.round(mob.atk * Math.pow(1.05, round - 1));
+  /* 2026-09-03第二十四輪：黃金哥布林突發事件——跟Gemini討論「5分鐘就膩」之後選的第一個
+     耐玩度機制，血量砍到3成（速戰速決）、打倒給8倍金幣，娛樂模式限定、Boss不算（Boss
+     本身就是階段性亮點，不該被蓋掉）。純粹疊在既有mob物件上（mob={...MOBS[wave]}那個
+     複製品，不動MOBS原始資料），不用另外開一套怪物/題目系統，風險最小。 */
+  mob.bonus = arcade && !mob.boss && Math.random() < 0.07;
+  if(mob.bonus) mob.hp = Math.max(1, Math.round(mob.hp * 0.3));
   mobHp = mob.hp;
   shield = 0; shieldMax = 0;
   evenShield = mob.mathTrait === 'EVEN_SHIELD' ? 2 : 0;   // 2026-09-01第十輪：換怪重設乘法特性狀態
@@ -3435,6 +3485,8 @@ function setMob(){
   mobMarkedUntil = 0;         // 換怪印記歸零，不能留到下一隻
   $('mobWrap').classList.remove('shielded');
   $('mobWrap').classList.toggle('evenshield', evenShield > 0);
+  $('mobWrap').classList.toggle('bonus', !!mob.bonus);
+  if(mob.bonus) comboShout('💰 黃金哥布林出現！', '#ffd23d');
   $('mobFlip').classList.toggle('flip', !!mob.flip);   // 背對主角的怪物：CSS 鏡像，不動原始圖檔
   const mel = $('mob');
   /* 2026-08-24 修「空戰鬥畫面」：`mobDie` 是 forwards 動畫，最後一格 opacity:0。
@@ -3507,6 +3559,7 @@ let mobDieAt = 0;                    // 上一次播死亡動畫的時間，看�
 function tick(){
   paintSkills();                     // 技能冷卻倒數跟著這個 100ms 的計時器跑
   paintPotionBtn();                  // 藥水庫存/血滿狀態也跟著這個計時器同步，不用另外呼叫
+  paintSpeedPotBtn();                // 加速藥水的倒數秒數也跟著這個100ms節奏更新
   /* 看門狗：死亡動畫最長 0.9 秒，加上掉寶演出也不該超過 2.5 秒還掛著 .die。
      真的掛著就代表換怪的 timer 出事了，直接清掉，寧可少一段演出也不要對著空氣打怪 */
   if(mobDieAt && Date.now() - mobDieAt > 2500){
@@ -3569,6 +3622,7 @@ function start(){
   ult = 0; combo = 0; finisherReady = false; comboVisualTier(0);
   skillBusyUntil = 0;
   potionReady = true; paintPotionBtn();
+  speedPotReady = true; speedBuffUntil = 0; paintSpeedPotBtn();
   kills = 0; totalDmg = 0; right = 0; wrong = 0; fastest = null;
   earnGold = 0; earnExp = 0; drops = [];
   clearLog();
@@ -3649,6 +3703,7 @@ $('ultBtn').onclick = useUlt;
 $('actAtk').onclick = playerAttack;
 $('actDodge').onclick = dodge;
 $('actPotion').onclick = usePotion;
+$('actSpeedPot').onclick = useSpeedPotion;
 document.addEventListener('keydown', e => {
   if(e.repeat) return;
   if(arcade && running){

@@ -676,7 +676,19 @@ body.atRoot .pagectrl .pcbtn[data-act="back"]{display:none}
       <button class="shopBuyBtn" id="buyPotion1">買 1 瓶<small id="potionPrice1">80 金幣</small></button>
       <button class="shopBuyBtn" id="buyPotion5">買 5 瓶<small id="potionPrice5">400 金幣</small></button>
     </div>
-    <div class="charhint">👉 只有<b>娛樂模式</b>的戰鬥畫面會出現「🧪」喝藥水按鈕，練習模式暫時還沒有。</div>
+    <div class="shopItem">
+      <div class="shopIcon">⚡</div>
+      <div class="shopInfo">
+        <b>加速藥水</b>
+        <small>戰鬥中喝一瓶，接下來 90 秒攻擊與技能冷卻縮短 20%</small>
+        <div class="shopOwned">目前持有 <b id="speedOwned">0</b> 瓶</div>
+      </div>
+    </div>
+    <div class="shopBuyRow">
+      <button class="shopBuyBtn" id="buySpeed1">買 1 瓶<small id="speedPrice1">150 金幣</small></button>
+      <button class="shopBuyBtn" id="buySpeed3">買 3 瓶<small id="speedPrice3">450 金幣</small></button>
+    </div>
+    <div class="charhint">👉 只有<b>娛樂模式</b>的戰鬥畫面會出現喝藥水按鈕，練習模式暫時還沒有。</div>
   </section>
 
   <!-- s5：玩哪一個，還是最後一步——選好角色後才進遊戲世界 -->
@@ -1191,12 +1203,23 @@ function paintShop(){
   $('potionPrice5').textContent = fmtN(POTION_PRICE * 5) + ' 金幣';
   $('buyPotion1').disabled = Save.d.gold < POTION_PRICE;
   $('buyPotion5').disabled = Save.d.gold < POTION_PRICE * 5;
+  $('speedOwned').textContent = Save.d.speedpotions || 0;
+  $('speedPrice1').textContent = fmtN(SPEED_POTION_PRICE) + ' 金幣';
+  $('speedPrice3').textContent = fmtN(SPEED_POTION_PRICE * 3) + ' 金幣';
+  $('buySpeed1').disabled = Save.d.gold < SPEED_POTION_PRICE;
+  $('buySpeed3').disabled = Save.d.gold < SPEED_POTION_PRICE * 3;
 }
 $('buyPotion1').onclick = () => {
   if(buyPotions(1)){ paintShop(); paintPlayer(); Sfx.ok(2); }else Sfx.bad();
 };
 $('buyPotion5').onclick = () => {
   if(buyPotions(5)){ paintShop(); paintPlayer(); Sfx.ok(2); }else Sfx.bad();
+};
+$('buySpeed1').onclick = () => {
+  if(buySpeedPotions(1)){ paintShop(); paintPlayer(); Sfx.ok(2); }else Sfx.bad();
+};
+$('buySpeed3').onclick = () => {
+  if(buySpeedPotions(3)){ paintShop(); paintPlayer(); Sfx.ok(2); }else Sfx.bad();
 };
 /* ---------- 玩法與題型 ---------- */
 function paintPlay(){

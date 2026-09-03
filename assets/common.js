@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.23';
+const GAME_VERSION = '1.3.25';
 
 const $ = id => document.getElementById(id);
 
@@ -145,6 +145,7 @@ const DEFAULT_SAVE = {
   lv:1, exp:0, gold:0, hero:'royal', pname:'',   // pname＝玩家自己取的名字，空的就用角色本名
   scroll:0,                                      // 強化卷軸：打怪會掉，也能用金幣買
   potions:0,                                     // 2026-09-03：紅藥水，商店用金幣買，戰鬥中喝來回血
+  speedpotions:0,                                // 2026-09-03第二十四輪：戰鬥加速藥水，喝了CD縮短一段時間
   gear:{weapon:null, armor:null, helmet:null, boots:null, ring:null, charm:null},
   bag:[],
   loadout:{active:[], ult:null},                 // 2026-09-01第十輪：出戰技能配裝，只存key字串
@@ -223,6 +224,22 @@ function buyPotions(qty){
   if(Save.d.gold < cost) return false;
   Save.d.gold -= cost;
   Save.d.potions = (Save.d.potions || 0) + qty;
+  Save.put();
+  return true;
+}
+
+/* ---------- 商店：戰鬥加速藥水（2026-09-03第二十四輪，天堂的「勇敢藥水」精神）----------
+   跟Gemini討論耐玩度後Steve要求商店多樣化，第一個補的第二種道具：喝一瓶接下來90秒內
+   一般攻擊/技能CD都縮短20%，價格比紅藥水貴一截（是「戰鬥前先買一瓶」的策略性消耗品，
+   不是保命用，所以定價拉開跟紅藥水的差距）。生效判定放在battle.html（要即時算performance.now()）。 */
+const SPEED_POTION_PRICE = 150;    // 一瓶的價錢，比紅藥水(80)貴，反映「整場戰鬥受益」的價值
+const SPEED_POTION_CD_MUL = 0.8;   // CD打8折＝縮短20%
+const SPEED_POTION_MS = 90000;     // 效果維持90秒
+function buySpeedPotions(qty){
+  const cost = SPEED_POTION_PRICE * qty;
+  if(Save.d.gold < cost) return false;
+  Save.d.gold -= cost;
+  Save.d.speedpotions = (Save.d.speedpotions || 0) + qty;
   Save.put();
   return true;
 }

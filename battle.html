@@ -1535,7 +1535,7 @@ addEventListener('load', () => setTimeout(() => {
   else preloadRest();
 }, 1200));
 /* 王者有分解動作就換圖；其他角色只有一張，改用變形表現動作 */
-function heroFrame(k){
+function heroFrame(k, castKey){
   const el = $('hero2');
   /* 王者有整組逐幀，走 Spr */
   if(HERO.frames && SPR.hero_idle){
@@ -1544,8 +1544,12 @@ function heroFrame(k){
                                      : Spr.off(el, HERO_FRAMES.ready);
     if(k === 'swing')      Spr.play(el, 'hero_atk', {from:12, to:32, fps:50, done:rest});
     else if(k === 'cast'){
+      /* 2026-09-03 Steve：20顆技能各自專屬施法動畫——skill.castSpr有定義且SPR裡真的
+         生好那個key才用專屬那組，沒有就退回共用的hero_skillcast，不會報錯（漸進式
+         生一隻補一隻，沒生完的技能維持原本表現）。 */
+      const key = (castKey && SPR[castKey]) ? castKey : 'hero_skillcast';
       el.classList.add('poseCast');
-      Spr.play(el, 'hero_skillcast', {done:() => { el.classList.remove('poseCast'); rest(); }});
+      Spr.play(el, key, {done:() => { el.classList.remove('poseCast'); rest(); }});
     }
     else if(k === 'hurt'){
       if(IDLE_SPRITE()) Spr.play(el, 'hero_idle', {from:0, to:1});
@@ -1652,7 +1656,7 @@ function heroSwing(onHit, tier){
    heroFrame('cast') 對他們會直接是 no-op（見 heroFrame 內的 HERO_FRAMES 分支），
    等於退回原本靜圖表現，不會報錯。 */
 const CAST_MS = 3250;                 // 52 幀 @ 16fps ≈ 3.25s
-function heroCast(onHit){
+function heroCast(onHit, castKey){
   const h = $('hero2');
   h.style.transform = '';
   h.style.transition = 'none';
@@ -1663,7 +1667,7 @@ function heroCast(onHit){
     {offset:1,   transform:'translateY(0) scale(1,1)'}
   ], {duration:CAST_MS, fill:'none'});
   h._swing = anim;
-  heroFrame('cast');
+  heroFrame('cast', castKey);
   setTimeout(() => onHit && onHit(), CAST_MS * .82);   // 光爆瞬間＝出招判定
 }
 function heroHurtAnim(){
@@ -1799,6 +1803,15 @@ const SPR = {
      所以雪碧圖裡沒有那種全白畫面）。放技能時用這組取代 hero_atk，跟一般攻擊分開，
      不再是「20 顆技能全部長一樣」 */
   hero_skillcast: {img:'assets/spr_hero_skillcast.webp', cols:6, rows:9, n:52, ar:1, fps:16},
+  /* 2026-09-03 Steve：20顆技能各自專屬施法動畫，第一隻先做疾風斬。跟hero_skillcast同規格
+     （52幀/6×9/16fps=3.25s）才能沿用CAST_MS不用另外算時間軸，見heroCast()/useSkill()。 */
+  hero_cast_gale2: {img:'assets/spr_hero_cast_gale2.webp', cols:6, rows:9, n:52, ar:1, fps:16},
+  hero_cast_whirl: {img:'assets/spr_hero_cast_whirl.webp', cols:6, rows:9, n:52, ar:1, fps:16},
+  hero_cast_mark: {img:'assets/spr_hero_cast_mark.webp', cols:6, rows:9, n:52, ar:1, fps:16},
+  hero_cast_heal: {img:'assets/spr_hero_cast_heal.webp', cols:6, rows:9, n:52, ar:1, fps:16},
+  hero_cast_iceshot8: {img:'assets/spr_hero_cast_iceshot8.webp', cols:6, rows:9, n:52, ar:1, fps:16},
+  hero_cast_flame10: {img:'assets/spr_hero_cast_flame10.webp', cols:6, rows:9, n:52, ar:1, fps:16},
+  hero_cast_inferno15: {img:'assets/spr_hero_cast_inferno15.webp', cols:6, rows:9, n:52, ar:1, fps:16},
   slime_idle:  {img:'assets/spr_slime_idle.webp',  cols:5, rows:4, n:16, ar:224/125, fps:8},
   slime_atk:   {img:'assets/spr_slime_atk.webp',   cols:6, rows:5, n:29, ar:224/125, fps:20},
   dragon_idle: {img:'assets/spr_dragon_idle.webp', cols:6, rows:4, n:24, ar:224/211, fps:10},
@@ -2475,19 +2488,19 @@ const skillBusy = () => performance.now() < skillBusyUntil;
    等級間距刻意拉開早期（2/3/4/6/8）跟後期（65/70/75/80），呼應天堂式升等曲線
    （早期幾秒升一級、後期要磨很久），新技能不會擠在同一段忽然全部解鎖。 */
 const SKILLS = [
-  {key:'gale2', name:'疾風斬', icon:'🌪️', lv:2, cd:5000, color:'#9be8ff',
+  {key:'gale2', name:'疾風斬', icon:'🌪️', lv:2, cd:5000, color:'#9be8ff', castSpr:'hero_cast_gale2',
    fx:{key:'whirl', size:240, sat:1.1}, mult:0.9, desc:'比普通攻擊快、CD 短的入門技'},
-  {key:'whirl', name:'旋風斬', icon:'🌀', lv:3,  cd:9000,  color:'#7fe6ff',
+  {key:'whirl', name:'旋風斬', icon:'🌀', lv:3,  cd:9000,  color:'#7fe6ff', castSpr:'hero_cast_whirl',
    fx:{key:'whirl', size:460, bright:1.35, sat:1.3}, mult:2.4, desc:'一圈掃過去的大傷害'},
-  {key:'mark',  name:'破魂突刺', icon:'💢', lv:4,  cd:7000,  color:'#ff8a8a',
+  {key:'mark',  name:'破魂突刺', icon:'💢', lv:4,  cd:7000,  color:'#ff8a8a', castSpr:'hero_cast_mark',
    fx:{key:'whirl', size:280, hue:-70, sat:1.6}, mult:1.1, markMs:4500, desc:'打上破綻，接旋風斬爆傷'},
-  {key:'heal',  name:'治療術', icon:'💚', lv:6,  cd:22000, color:'#8affc4',
+  {key:'heal',  name:'治療術', icon:'💚', lv:6,  cd:22000, color:'#8affc4', castSpr:'hero_cast_heal',
    fx:{key:'heal', size:340, dy:14, bright:1.25}, heal:0.3, desc:'回一大口血'},
-  {key:'iceshot8', name:'冰箭穿心', icon:'🧊', lv:8, cd:8000, color:'#8fd6ff',
+  {key:'iceshot8', name:'冰箭穿心', icon:'🧊', lv:8, cd:8000, color:'#8fd6ff', castSpr:'hero_cast_iceshot8',
    fx:{key:'fire', size:260, hue:180, sat:1.5}, mult:1.4, desc:'凍徹心扉的一箭'},
-  {key:'flame10', name:'烈焰斬', icon:'🔥', lv:10, cd:8000, color:'#ff8a3d',
+  {key:'flame10', name:'烈焰斬', icon:'🔥', lv:10, cd:8000, color:'#ff8a3d', castSpr:'hero_cast_flame10',
    fx:{key:'fire', size:320, dy:6}, mult:2.0, desc:'火燄纏繞的一斬'},
-  {key:'inferno15', name:'烈焰漩渦', icon:'🌋', lv:15, cd:10000, color:'#ff7a4d',
+  {key:'inferno15', name:'烈焰漩渦', icon:'🌋', lv:15, cd:10000, color:'#ff7a4d', castSpr:'hero_cast_inferno15',
    fx:{key:'whirl', size:400, hue:15, bright:1.3}, mult:2.2, desc:'一圈燒起來的漩渦'},
   {key:'ice20', name:'冰霜爆裂', icon:'❄️', lv:20, cd:9000, color:'#6ea8ff',
    fx:{key:'fire', size:320, dy:6, hue:168, sat:1.7, bright:1.1}, mult:2.6, desc:'凍結範圍內爆開'},
@@ -2571,7 +2584,7 @@ function useSkill(key){
       paintHeroBar();
       playFx(sk.fx.key, heroCenter(), sk.fx);
       dmgText('+' + back, true);
-    });
+    }, sk.castSpr);
   }else{
     heroCast(() => {
       /* 先讓招式看得見，再結算傷害：同一格同時噴命中火花會把技能特效蓋掉 */
@@ -2589,7 +2602,7 @@ function useSkill(key){
         if(sk.markMs) mobMarkedUntil = performance.now() + sk.markMs;
         if(applyHit(dmg, true, combo)) killMob();
       }, 150);
-    });
+    }, sk.castSpr);
   }
   paintSkills();
 }

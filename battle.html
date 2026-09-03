@@ -376,10 +376,18 @@ body{padding-bottom:16px}
   font-style:normal;font-size:15px;font-weight:800;color:#fff;background:#150c22f0;
 }
 .skill em:empty{display:none}
+/* 2026-09-03 Steve：20 顆技能全部顯示，未解鎖的變灰、右上角標「Lv X」，讓玩家一眼看到有 20 顆 */
+.skill i{
+  position:absolute;top:4px;right:5px;font-style:normal;font-size:10px;font-weight:800;
+  padding:1px 5px;border-radius:8px;background:#150c22dd;color:var(--gold2);
+  border:1px solid var(--line);letter-spacing:0;
+}
+.skill i:empty{display:none}
+.skill.locked b,.skill.locked small{opacity:.5}
 .skill:not(:disabled):hover{transform:translateY(-2px);border-color:var(--gold)}
 .skill:not(:disabled):active{transform:translateY(2px)}
 .skill:disabled{cursor:default}
-.skill.locked{opacity:.65}
+.skill.locked{opacity:.7}
 
 /* 精簡特效模式：把量測到會掉幀的那幾層關掉（星星、光點、影子、殘影、外框光暈） */
 body.lowfx .scene .stars,
@@ -1434,9 +1442,11 @@ let pendingFinal = false;           // 這次跳出來的彈窗是不是「10 �
 let stageRight = 0, stageWrong = 0, stageWrongList = [];   // 這一輪（最多10題）自己的對錯，跟整場累計的 right/wrong 分開算
 const DIFF_KEY = 'mul99_diff';
 const DIFFS = {
-  easy:   {time:6.6, dmg:0.70, cd:520, name:'悠閒'},
-  normal: {time:4.6, dmg:1.00, cd:460, name:'普通'},
-  hard:   {time:3.4, dmg:1.35, cd:420, name:'狠角色'}
+  /* 2026-09-03 Steve：普通攻擊 CD 一律鎖 2 秒，不准狂按。三個難度只差答題時間與傷害，
+     出手節奏一致（原本 420~520ms 太短、加上 PERFECT 打 6 折會變成連點）。 */
+  easy:   {time:6.6, dmg:0.70, cd:2000, name:'悠閒'},
+  normal: {time:4.6, dmg:1.00, cd:2000, name:'普通'},
+  hard:   {time:3.4, dmg:1.35, cd:2000, name:'狠角色'}
 };
 function difKey(){ try{ const d = localStorage.getItem(DIFF_KEY); return DIFFS[d] ? d : 'normal'; }catch(e){ return 'normal'; } }
 const D = () => DIFFS[difKey()];
@@ -2439,6 +2449,10 @@ function showMilestone(m){
    ——我們戰鬥畫面永遠只有一隻怪，沒有天堂/楓之谷那種一群小怪可以聚。 */
 let mobMarkedUntil = 0;
 const MARK_MULT = 1.9;              // 破綻沒被引爆時，旋風斬命中會自動觸發
+/* 2026-09-03 Steve：技能不能同時放，要等前一個施法動畫（heroCast，CAST_MS）跑完才能再放。
+   這是「全部技能鈕＋必殺技」共用的一道總鎖，跟每顆技能自己的 CD（skillState）是兩回事。 */
+let skillBusyUntil = 0;
+const skillBusy = () => performance.now() < skillBusyUntil;
 /* 2026-09-01 Steve 第一輪：技能要多一點，每 10 級學一個新技能。字面上「每10級」套到 Lv200
    會變成 20 顆技能鈕，手機畫面塞不下（`.skills` 當時還是同排等寬按鈕），先只做到 Lv10～80
    （8 顆新技能＋原本 3 顆＝11 顆）。**下面這段第二輪已經推翻「塞不下」的判斷**——
@@ -2501,11 +2515,9 @@ const SKILLS = [
 const skillState = {};              // key → 可以再用的時間點
 function paintSkills(){
   const box = $('skills');
-  const unlocked = SKILLS.filter(s => Save.d.lv >= s.lv);
-  const wantKeys = unlocked.map(s => s.key).join(',');
-  const curKeys = [...box.children].map(b => b.dataset.k).join(',');
-  if(curKeys !== wantKeys){
-    box.innerHTML = unlocked.map(s => {
+  /* 2026-09-03 Steve：全部 20 顆都畫出來（不再只畫解鎖的），未解鎖的靠下面的 .locked 處理 */
+  if(box.children.length !== SKILLS.length){
+    box.innerHTML = SKILLS.map(s => {
       return '<button class="skill" data-k="' + s.key + '">' +
         '<b>' + s.icon + ' ' + s.name + '</b><small>' + s.desc + '</small>' +
         '<i></i><em></em></button>';
@@ -2518,9 +2530,12 @@ function paintSkills(){
   [...box.children].forEach(b => {
     const sk = SKILLS.find(x => x.key === b.dataset.k);
     if(!sk) return;
+    const locked = Save.d.lv < sk.lv;
+    b.classList.toggle('locked', locked);
+    b.querySelector('i').textContent = locked ? ('Lv ' + sk.lv) : '';
     const left = Math.max(0, (skillState[sk.key] || 0) - performance.now());
-    b.disabled = left > 0 || !running;
-    b.querySelector('em').textContent = left > 0 ? Math.ceil(left/1000) + ' 秒' : '';
+    b.disabled = locked || left > 0 || !running || skillBusy();   // 未解鎖／冷卻中／施法中都壓住
+    b.querySelector('em').textContent = (!locked && left > 0) ? (Math.ceil(left/1000) + ' 秒') : '';
   });
 }
 function useSkill(key){
@@ -2528,6 +2543,8 @@ function useSkill(key){
   const sk = SKILLS.find(x => x.key === key);
   if(!sk || !running || Save.d.lv < sk.lv) return;
   if((skillState[key] || 0) > performance.now()) return;
+  if(skillBusy()) return;                                   // 2026-09-03 Steve：施法中不能再放下一個技能
+  skillBusyUntil = performance.now() + CAST_MS;
   skillState[key] = performance.now() + sk.cd * (HERO.cdMul || 1) * (1 - (P.cdr || 0) / 100);
 
   const f = F();
@@ -2824,7 +2841,7 @@ function playerAttack(){
   const now = performance.now();
   const perfectHit = !!btn._ringCloseAt && now >= (btn._ringCloseAt - (btn._ringCloseAt - btn._ringOpenAt) * 0.3) && now <= btn._ringCloseAt + 60;
   atkReady = false;
-  cool(btn, perfectHit ? D().cd * 0.6 : D().cd, () => atkReady = true);   // PERFECT取消收招硬直：這次冷卻打折
+  cool(btn, D().cd, () => atkReady = true);   // 2026-09-03 Steve：CD 固定 2 秒，PERFECT 不再打折（只保留傷害/連擊加成），杜絕狂按
   hits++;
   combo += perfectHit ? 2 : 1;
   armComboDecay();
@@ -3401,12 +3418,14 @@ async function nextMob(){
 function paintUlt(){
   $('ultBar').style.width = ult + '%';
   const btn = $('ultBtn');
-  btn.disabled = ult < 100 || !running;
-  btn.classList.toggle('ready', ult >= 100 && running);
+  btn.disabled = ult < 100 || !running || skillBusy();
+  btn.classList.toggle('ready', ult >= 100 && running && !skillBusy());
 }
 function useUlt(){
   if(paused) return;
   if(ult < 100 || !running || !mob) return;
+  if(skillBusy()) return;                     // 2026-09-03 Steve：施法中不能插必殺技
+  skillBusyUntil = performance.now() + 1800;  // 必殺演出約 0.9s 動畫＋0.9s 結算，鎖到跑完
   ult = 0; paintUlt(); locked = true;
   $('ultfx').classList.add('on');
   Sfx.win();
@@ -3489,6 +3508,7 @@ function start(){
   maxHp = P.hp; heroHp = P.hp;
   running = true; locked = true;
   ult = 0; combo = 0; finisherReady = false; comboVisualTier(0);
+  skillBusyUntil = 0;
   kills = 0; totalDmg = 0; right = 0; wrong = 0; fastest = null;
   earnGold = 0; earnExp = 0; drops = [];
   clearLog();

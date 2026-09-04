@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260904b">
+<link rel="stylesheet" href="assets/common.css?v=20260904c">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -1489,7 +1489,7 @@ body.playing #pauseBtn{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260904b"></script>
+<script src="assets/common.js?v=20260904c"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -3015,7 +3015,8 @@ function newQ(){
     return;
   }
   if(arcade) return newTurn();
-  QQ = makeQ(mob.weak);                       // 題型（乘法／加法／減法／注音／字母）是大廳與這裡都能選的
+  QQ = makeQ(mob.weak, QQ);                   // 題型（乘法／加法／減法／注音／字母）是大廳與這裡都能選的
+                                               // 傳上一題（QQ 舊值）進去，避免連兩題長得一樣
   qa = QQ.a; qb = QQ.b; ans = QQ.ans;
   const box = $('qbox');
   if(QQ.sym){
@@ -4367,7 +4368,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260904b"></script>
-<script src="assets/lock.js?v=20260904b"></script>
+<script src="assets/audio.js?v=20260904c"></script>
+<script src="assets/lock.js?v=20260904c"></script>
 </body>
 </html>

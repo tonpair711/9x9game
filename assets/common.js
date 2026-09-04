@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.31';
+const GAME_VERSION = '1.3.32';
 
 const $ = id => document.getElementById(id);
 
@@ -826,8 +826,21 @@ const ZHUYIN_LIST = [
 const ABC_LIST = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 /* 出一題。weak＝這隻怪害怕的乘法表（只有乘法題用得到，別的題型忽略）
+   prev＝上一題（有的話），只用來避免連續兩題長得一樣。
    回傳 {a, b, op, ans, text, key, weak}；text 已經是可以直接放進畫面的字串 */
-function makeQ(weak){
+function makeQ(weak, prev){
+  /* 2026-09-04 Steve：「出的題目常常在重複」。真正查出來的根因在 makeQOnce() 的乘法分支
+     ——很多怪物 weak 只有 1 個數字（例如 weak:[3]），原本 70% 機率都直接拿那個數字當被乘數，
+     打同一隻怪的十幾題有七成都是「3×?」，這才是「常常重複」的主因，不是隨機數運氣不好。
+     這裡加一層「跟上一題長得一樣就重骰」，最多重試 8 次（symbol 池 26～37 個、正常一兩次
+     就會換到不同的，不會卡住；重試完還是一樣也不硬等，直接放行，不無限迴圈）。 */
+  for(let tries = 0; tries < 8; tries++){
+    const q = makeQOnce(weak, prev);
+    if(!prev || q.key !== prev.key) return q;
+  }
+  return makeQOnce(weak, prev);
+}
+function makeQOnce(weak, prev){
   let t = Topic.get();
   if(!Topic.lang && Topic.isLang(t)) t = 'mul';   // 這一頁不支援語文題就照舊出乘法
   if(t === 'addsub') t = Math.random() < .5 ? 'add' : 'sub';
@@ -859,7 +872,14 @@ function makeQ(weak){
     op = '－'; ans = a - b;
   }else{
     const w = weak && weak.length ? weak : null;
-    a = (w && Math.random() < .7) ? w[(Math.random()*w.length)|0] : 2 + (Math.random()*8|0);
+    if(w && Math.random() < .7){
+      /* 弱點只有 1 個數字時，上一題已經打過就別再挑同一個——沒有別的弱點數字可換，
+         乾脆這題退回全範圍隨機，總比連續好幾題都「同一個數字×?」好 */
+      const alt = w.filter(x => x !== (prev && prev.a));
+      a = alt.length ? alt[(Math.random()*alt.length)|0] : 2 + (Math.random()*8|0);
+    }else{
+      a = 2 + (Math.random()*8|0);
+    }
     b = 2 + (Math.random()*8|0);
     op = '×'; ans = a * b;
   }

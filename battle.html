@@ -919,6 +919,51 @@ body.playing .combatLog{display:block}
 /* ---------- 娛樂模式的操作面板 ---------- */
 .acts{display:none;gap:10px;width:min(96vw,560px)}
 body.arcade .acts{display:flex}
+/* 舊的攻擊鈕（含 PERFECT 節奏光圈）在娛樂模式底下藏起來，改用勁舞團式音符列。
+   函式跟 CSS 都留著沒刪，只是 arcade 不再顯示/呼叫，練習模式不受影響（本來就不進 .acts）。 */
+body.arcade .act.atk{display:none}
+
+/* ---------- 節奏音符列（2026-09-04 第二十八輪，勁舞團式，取代攻擊鈕）----------
+   #noteLane 內固定 10 顆 .note 物件池（見 initNotePool()），下落動畫只用 transform:
+   translateY，不套 filter/box-shadow，效能成本比照第十六輪查出的教訓刻意避開。 */
+.noteWrap{display:none;flex-direction:column;gap:6px;width:min(96vw,560px)}
+body.arcade.playing .noteWrap{display:flex}
+.noteLane{
+  position:relative;height:132px;border-radius:14px;overflow:hidden;
+  background:linear-gradient(180deg,#1c1230,#120a1e);border:1px solid var(--line);
+}
+.noteLane .hitLine{
+  position:absolute;left:0;right:0;bottom:14px;height:3px;
+  background:linear-gradient(90deg,#ffe06600,#ffe066cc,#ffe06600);
+}
+.note{
+  position:absolute;top:-40px;width:15%;aspect-ratio:1/1;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;
+  background:linear-gradient(180deg,#7fe6ff,#3d9fd6);color:#0a1622;
+  border:1px solid #ffffff55;will-change:transform;
+}
+.note.lane1{background:linear-gradient(180deg,#ffe08a,#e0a020)}
+.note.lane2{background:linear-gradient(180deg,#ff9d9d,#d64a4a)}
+.note.judged{opacity:0}
+/* PERFECT/GOOD 命中時原地放一下亮光，靠 opacity/transform，不是 filter */
+.note.hitPerfect,.note.hitGood{animation:noteHit .22s ease-out forwards}
+@keyframes noteHit{0%{transform:translateY(var(--ny)) scale(1);opacity:1}100%{transform:translateY(var(--ny)) scale(1.7);opacity:0}}
+.laneKeys{display:flex;gap:10px;width:100%}
+.lanekey{
+  flex:1;min-height:68px;border-radius:16px;cursor:pointer;border:1px solid var(--line);
+  background:linear-gradient(180deg,#3a2456,#241638);color:var(--gold2);
+  font-size:26px;font-weight:900;font-family:inherit;
+}
+.lanekey:active{transform:translateY(3px)}
+.lanekey[data-lane="1"]{display:none}                 /* 只有困難(3軌)才顯示中間那顆 */
+body.lanes3 .lanekey[data-lane="1"]{display:block}
+body.lanes3 .note{width:10%}
+/* 出手預告期間（1.2秒內）音符停止生成，畫面兩側閃紅提示去按閃避 */
+.field.dodgeAlert{animation:dodgeAlertPulse .5s ease-in-out infinite}
+@keyframes dodgeAlertPulse{
+  0%,100%{box-shadow:inset 0 0 0 0 #ff3b3b00}
+  50%{box-shadow:inset 0 0 30px 6px #ff3b3b66}
+}
 body.arcade .qbox,body.arcade #ans{display:none}
 /* 娛樂模式沒有在答題，結算畫面「最快作答」「最該再練的乘法」這兩項練習模式才有意義的
    資料不該出現（2026-09-02 Steve指出） */
@@ -1305,6 +1350,19 @@ body.playing #pauseBtn{display:flex}
       <button class="hotslot" data-i="3"></button>
       <button class="hotedit" id="hotEdit" title="設定熱鍵" aria-label="設定熱鍵">⚙</button>
     </div>
+    <!-- 2026-09-04 第二十八輪：娛樂模式攻擊改成勁舞團式節奏音符，取代原本的攻擊鈕＋
+         PERFECT 光圈（那顆 #actAtk 還留著但 arcade 下藏起來，playerAttack() 不再被呼叫）。
+         音符 pool 10 顆固定在 #noteLane 底下，只用 transform:translateY 做下落動畫。 -->
+    <div class="noteWrap" id="noteWrap">
+      <div class="noteLane" id="noteLane">
+        <div class="hitLine"></div>
+      </div>
+      <div class="laneKeys" id="laneKeys">
+        <button class="lanekey" data-lane="0">◀</button>
+        <button class="lanekey" data-lane="1">▲</button>
+        <button class="lanekey" data-lane="2">▶</button>
+      </div>
+    </div>
     <!-- 娛樂模式的操作區（不出題時才顯示） -->
     <div class="acts" id="acts">
       <button class="act atk" id="actAtk"><b>攻　擊</b><small id="atkCd">點一下打一次</small><span class="rhythmRing"></span></button>
@@ -1333,11 +1391,13 @@ body.playing #pauseBtn{display:flex}
     連續答對會自動放魔法：<b>3 連火球術</b>、<b>5 連冰霜術</b>、<b>7 連落雷術</b>、<b>10 連聖光審判</b>（還會回血）。
   </p>
   <p class="tip" id="tipArcade" style="display:none">
-    不出題。按<b>攻擊</b>打人，敵人上方的黃條倒數完牠就撲上來，這時按<b>閃避</b>可以完全躲掉。<br>
+    不出題。方向<b>音符</b>會往下掉，卡準時機點對應的<b>方向鍵</b>就是一次攻擊——
+    <b>正中判定線傷害更高</b>，太早太晚也算命中但傷害較低，完全沒點到才算落空。<br>
+    敵人上方的黃條倒數完牠就撲上來，這時音符會暫停生成、畫面兩側閃紅，記得改按<b>閃避</b>躲掉。<br>
     <b>倒數剩最後半秒才按閃避是「完美閃避」</b>：多回必殺、下一擊變成加成反擊。<br>
     技能有連段：先放<b>破魂突刺</b>打上破綻，再放<b>旋風斬</b>會引爆額外傷害。<br>
-    敵人身上不定時會亮<b>金色破綻圈</b>，那時按攻擊必定爆擊還有額外傷害。<br>
-    連續打中不被打到會累積連擊，一樣會自動放魔法；<b>太久沒出手連擊會斷掉</b>，被打到也會歸零。
+    <b>連續正中判定線 8 次</b>會打出一套連續技，一次爆發大量傷害；沒點到音符連段會斷掉重新算。<br>
+    連續打中不被打到會累積連擊，一樣會自動放魔法；<b>太久沒出手連擊會斷掉</b>。
   </p>
   </div>
 </div>
@@ -1548,9 +1608,12 @@ const DIFF_KEY = 'mul99_diff';
 const DIFFS = {
   /* 2026-09-03 Steve：普通攻擊 CD 一律鎖 2 秒，不准狂按。三個難度只差答題時間與傷害，
      出手節奏一致（原本 420~520ms 太短、加上 PERFECT 打 6 折會變成連點）。 */
-  easy:   {time:6.6, dmg:0.70, cd:2000, name:'悠閒'},
-  normal: {time:4.6, dmg:1.00, cd:2000, name:'普通'},
-  hard:   {time:3.4, dmg:1.35, cd:2000, name:'狠角色'}
+  /* 2026-09-04 第二十八輪：勁舞團式節奏攻擊，三難度改差音符（lanes 軌道數／fallMs 下落
+     時間／noteRate 每秒生成顆數），time/dmg/cd 這幾個舊欄位跟怪物出手節奏/題目無關的
+     部分仍保留給練習模式與 D().time 共用 */
+  easy:   {time:6.6, dmg:0.70, cd:2000, name:'悠閒',   lanes:2, fallMs:2200, noteRate:0.8},
+  normal: {time:4.6, dmg:1.00, cd:2000, name:'普通',   lanes:2, fallMs:1800, noteRate:1.3},
+  hard:   {time:3.4, dmg:1.35, cd:2000, name:'狠角色', lanes:3, fallMs:1400, noteRate:1.8}
 };
 function difKey(){ try{ const d = localStorage.getItem(DIFF_KEY); return DIFFS[d] ? d : 'normal'; }catch(e){ return 'normal'; } }
 const D = () => DIFFS[difKey()];
@@ -1907,6 +1970,10 @@ const SPR = {
   hero_cast_flame10: {img:'assets/spr_hero_cast_flame10.webp', cols:6, rows:9, n:52, ar:1, fps:16},
   hero_cast_inferno15: {img:'assets/spr_hero_cast_inferno15.webp', cols:6, rows:9, n:52, ar:1, fps:16},
   hero_cast_ice20: {img:'assets/spr_hero_cast_ice20.webp', cols:6, rows:9, n:52, ar:1, fps:16},
+  /* 2026-09-04 第二十八輪：拳皇式連續技（節奏音符連段觸發用，見 triggerKofCombo()）。
+     跟 hero_cast_* 不同的是這兩支不是 useSkill() 那套 20 招表定義的，直接被 playKofSprite() 引用。 */
+  hero_kof_combo1: {img:'assets/spr_hero_kof_combo1.webp', cols:6, rows:5, n:29, ar:1, fps:16},
+  hero_kof_finisher: {img:'assets/spr_hero_kof_finisher.webp', cols:8, rows:8, n:61, ar:1, fps:16},
   slime_idle:  {img:'assets/spr_slime_idle.webp',  cols:5, rows:4, n:16, ar:224/125, fps:8},
   slime_atk:   {img:'assets/spr_slime_atk.webp',   cols:6, rows:5, n:29, ar:224/125, fps:20},
   dragon_idle: {img:'assets/spr_dragon_idle.webp', cols:6, rows:4, n:24, ar:224/211, fps:10},
@@ -3011,6 +3078,7 @@ function newTurn(){
   mobTimer = turnTime;
   telegraphed = false;
   locked = false;
+  F().classList.remove('dodgeAlert');    // 新回合恢復音符生成，兩側紅光提示先收掉
   if(mob.mathTrait === 'SPEED_BOMB') startBomb();   // 2026-09-01第十輪：這一回合就是拆彈限時
 }
 function cool(btn, ms, doneFlag){
@@ -3173,6 +3241,178 @@ function dodge(){
     setTimeout(() => F().classList.remove('slowmo'), 500);
   }
 }
+
+/* ---------- 節奏音符（2026-09-04 第二十八輪，勁舞團式，取代原本的攻擊鈕）----------
+   完全取代 playerAttack()／PERFECT 光圈那套（函式留著沒刪，arcade 下不再被呼叫）。
+   方向音符往 #noteLane 底部的判定線掉，玩家點 #laneKeys 對應方向鍵，卡準時機＝命中。
+   命中直接沿用全域 combo（照樣觸發 spellFor 自動魔法／armFinisher），另外累加
+   rhythmStreak（連續非 MISS），滿 8 觸發拳皇式連續技（triggerKofCombo）。
+   效能：10 顆 DOM 物件池（見 buildNotePool／resetNotePool），下落動畫只動 transform。 */
+const NOTE_POOL_SIZE = 10, MAX_LIVE_NOTES = 6, PERFECT_MS = 70, GOOD_MS = 160, KOF_STREAK = 8;
+let notePool = [], liveNotes = [], lastSpawnAt = 0, rhythmStreak = 0, comboFxUntil = 0;
+function buildNotePool(){
+  const wrap = $('noteLane');
+  for(let i = 0; i < NOTE_POOL_SIZE; i++){
+    const el = document.createElement('i');
+    el.className = 'note'; el.hidden = true;
+    wrap.appendChild(el);
+    notePool.push({el, inUse:false, judged:true, lane:-1, hitAt:0});
+  }
+}
+function resetNotePool(){
+  notePool.forEach(n => {
+    n.inUse = false; n.judged = true; n.lane = -1; n.hitAt = 0;
+    n.el.hidden = true; n.el.className = 'note'; n.el.style.transform = ''; n.el.style.left = '';
+  });
+  liveNotes = [];
+  lastSpawnAt = 0; rhythmStreak = 0; comboFxUntil = 0;
+  F().classList.remove('dodgeAlert');
+}
+function releaseNote(n){
+  n.inUse = false; n.el.hidden = true;
+  n.el.className = 'note'; n.el.style.transform = ''; n.el.style.removeProperty('--ny');
+  const idx = liveNotes.indexOf(n); if(idx >= 0) liveNotes.splice(idx, 1);
+}
+function retireNoteWithFx(n, cls){
+  n.judged = true;
+  const m = /,(-?[\d.]+)px\)$/.exec(n.el.style.transform);
+  n.el.style.setProperty('--ny', (m ? m[1] : '0') + 'px');
+  n.el.classList.add(cls);
+  setTimeout(() => releaseNote(n), 230);
+}
+function judgeMiss(n){
+  n.judged = true;
+  releaseNote(n);
+  combo = 0; comboVisualTier(0); finisherReady = false; rhythmStreak = 0;
+}
+/* 由 tick()（100ms）呼叫：該不該生一顆新音符 */
+function spawnTick(){
+  if(!running || paused || locked) return;
+  const now = performance.now();
+  if(now < comboFxUntil) return;                 // 連段演出中不生新音符
+  if(mobTimer <= 1.2) return;                     // 出手預告期讓玩家專心看閃避
+  if(liveNotes.length >= MAX_LIVE_NOTES) return;
+  const gapMs = 1000 / D().noteRate;
+  if(now - lastSpawnAt < gapMs) return;
+  const free = notePool.find(n => !n.inUse); if(!free) return;
+  lastSpawnAt = now;
+  /* 2 軌模式的可用軌道是 0（左）／2（右），跳過中間的 1（那顆 ▲ 鍵只有 3 軌困難模式才顯示）；
+     lane 的數字語意（0左/1上/2右）三種難度共用，只是可用「集合」不同，不能拿 D().lanes 當
+     連續 0..lanes-1 算，不然 2 軌模式會生出中間鍵接不到的音符（2026-09-04 Playwright 抓到）。 */
+  const al = D().lanes === 3 ? [0, 1, 2] : [0, 2];
+  const lane = al[Math.floor(Math.random() * al.length)];
+  free.inUse = true; free.judged = false; free.lane = lane;
+  free.hitAt = now + D().fallMs;
+  const ord = al.indexOf(lane), pct = 100 / al.length;
+  free.el.style.left = (ord * pct + pct / 2) + '%';
+  free.el.className = 'note lane' + lane;
+  free.el.textContent = lane === 0 ? '◀' : (lane === 1 ? '▲' : '▶');
+  free.el.style.transform = 'translate(-50%,-40px)';
+  free.el.hidden = false;
+  liveNotes.push(free);
+}
+/* 常駐 rAF 迴圈（頁面載入就跑，練習模式/非戰鬥時 liveNotes 是空的，成本可忽略） */
+function rafNotes(){
+  requestAnimationFrame(rafNotes);
+  if(!running || paused) return;
+  const now = performance.now();
+  if(now < comboFxUntil) return;                  // 連段演出中，音符位置整批凍住不動
+  const wrap = $('noteLane'); if(!wrap) return;
+  const laneH = wrap.clientHeight - 18;
+  for(const n of liveNotes){
+    if(n.judged) continue;
+    const p = 1 - (n.hitAt - now) / D().fallMs;
+    const y = Math.max(-40, Math.min(laneH, p * laneH));
+    n.el.style.transform = 'translate(-50%,' + y + 'px)';
+    if(now > n.hitAt + GOOD_MS) judgeMiss(n);
+  }
+}
+function hitLane(lane){
+  if(!running || paused || !arcade || locked) return;
+  const now = performance.now();
+  if(now < comboFxUntil) return;                  // 連段演出中鍵位先不判定
+  let best = null, bestD = Infinity;
+  for(const n of liveNotes){
+    if(n.judged || n.lane !== lane) continue;
+    const d = Math.abs(now - n.hitAt);
+    if(d < bestD){ bestD = d; best = n; }
+  }
+  if(!best || bestD > GOOD_MS) return;             // 空點：判定窗內沒音符，不算 MISS 不斷連段
+  const kind = bestD <= PERFECT_MS ? 'PERFECT' : 'GOOD';
+  retireNoteWithFx(best, kind === 'PERFECT' ? 'hitPerfect' : 'hitGood');
+  onRhythmHit(kind);
+}
+function onRhythmHit(kind){
+  const isPerfect = kind === 'PERFECT';
+  combo += isPerfect ? 2 : 1;
+  armComboDecay();
+  rhythmStreak++;
+  const dmg = Math.round(P.atk * (isPerfect ? 0.5 : 0.3) * (isPerfect ? 1.6 : 1) *
+    (1 + Math.min(combo, 10) * 0.05));
+  const isEven = combo % 2 === 0;
+  const tier = comboVisualTier(combo);
+  Sfx.ok(combo);
+  heroSwing(() => {
+    if(applyHit(dmg, isPerfect, false, kind + ' ', isEven)) return killMob();
+    comboAura(combo);
+    const sp = spellFor(combo);
+    if(sp) setTimeout(async () => { if(await castSpell(sp)) killMob(); }, 320);
+  }, tier);
+  armFinisher();
+  if(rhythmStreak >= KOF_STREAK) triggerKofCombo();
+}
+/* 連段滿 8 → 拳皇式連續技：凍住音符流 1.8 秒（把還在落的音符 hitAt 一起往後平移，
+   免得凍結結束那瞬間全部瞬間跌到判定線下），播連續技動畫，一次性爆發傷害。
+   若同時 finisherReady（combo>=8 的既有終結技門檻）就直接借終結技那套演出／傷害。 */
+/* 播王者的拳皇風連續技逐幀圖（沒有整組逐幀的角色，退回既有 heroSwing 揮擊表現，不報錯）。
+   totalMs 是那支逐幀圖實際長度（n/fps*1000），onBeat 在播到 82% 時觸發，跟 heroCast() 同一個
+   「光爆瞬間＝出招判定」比例，不共用 heroCast 是因為那支的 WAAPI bob 動畫固定 3.25 秒，
+   跟這兩支逐幀圖各自的實際長度（1.8s／3.8s）對不上。 */
+function playKofSprite(key, totalMs, onBeat){
+  if(HERO.frames && SPR.hero_idle && SPR[key]){
+    const h = $('hero2');
+    h.classList.add('poseCast');
+    Spr.play(h, key, {done:() => {
+      h.classList.remove('poseCast');
+      IDLE_SPRITE() ? Spr.play(h, 'hero_idle', {loop:true}) : Spr.off(h, HERO_FRAMES.ready);
+    }});
+    setTimeout(() => onBeat && onBeat(), totalMs * 0.82);
+  }else{
+    heroSwing(() => onBeat && onBeat(), 3);
+  }
+}
+function triggerKofCombo(){
+  const isEven = combo % 2 === 0;
+  const useFinisher = finisherReady;
+  /* 終結技逐幀圖比較長（3.8s），凍結窗口跟著拉長，不然音符流會在演出還沒播完就先恢復生成，
+     跟畫面搶注意力 */
+  const freezeMs = useFinisher ? 3800 : 1900, now = performance.now();
+  liveNotes.forEach(n => { if(!n.judged) n.hitAt += freezeMs; });
+  lastSpawnAt += freezeMs;
+  comboFxUntil = now + freezeMs;
+  rhythmStreak = 0;
+  camPush(true);
+  if(useFinisher){
+    comboShout('拳皇連續技！', '#ffb3ff');
+    playKofSprite('hero_kof_finisher', 3800, () => {
+      const dead = playFinisher(Math.round(P.atk * 3.5), isEven);
+      finisherReady = combo >= 8;
+      comboVisualTier(combo);
+      if(dead) killMob();
+    });
+  }else{
+    comboShout('連續技！', '#ffe066');
+    playKofSprite('hero_kof_combo1', 1900, () => {
+      const dmg = Math.round(P.atk * 3.5);
+      if(applyHit(dmg, true, false, '連段 ', isEven)) return killMob();
+      comboAura(combo);
+    });
+  }
+}
+$('laneKeys').addEventListener('click', e => {
+  const b = e.target.closest('.lanekey'); if(!b) return;
+  hitLane(+b.dataset.lane);
+});
 
 /* 2026-09-03 Steve：像天堂一樣可以買紅藥水喝來回血。商店在 index.html（花金幣買，
    存進 Save.d.potions），這裡只管消耗庫存＋回血。先只做娛樂模式（跟攻擊/閃避同排，
@@ -3815,14 +4055,20 @@ function tick(){
     }
   }
   /* 出手前 1.2 秒給預告：怪物繃緊＋頭上驚嘆號。
-     沒有預告的攻擊只會讓人覺得被偷打，有預告才有「看懂就躲得掉」的感覺 */
+     沒有預告的攻擊只會讓人覺得被偷打，有預告才有「看懂就躲得掉」的感覺
+     2026-09-04 第二十八輪：同一個窗口也是節奏音符「停止生成、提示去按閃避」的訊號
+     （spawnTick 自己判斷 mobTimer<=1.2 不再生新音符，這裡只負責畫面兩側閃紅）。 */
   if(mobTimer <= 1.2 && !telegraphed){
     telegraphed = true;
     warnMob();
+    F().classList.add('dodgeAlert');
   }
+  if(arcade) spawnTick();
   if(mobTimer <= 0 && !bombActive){    // 爆彈倒數期間暫停回合逾時出手判斷，避免雙重懲罰
     locked = true;
     wrong++; combo = 0; comboVisualTier(0); finisherReady = false;
+    rhythmStreak = 0;
+    [...liveNotes].forEach(n => releaseNote(n));   // 逾時沒打完的音符全部收掉，不留著跨回合判
     if(!arcade){
       Stats.mark(QQ.key, false);
       [...$('ans').children].forEach(b => { b.disabled = true; if(+b.textContent === ans) b.classList.add('right'); });
@@ -3846,6 +4092,8 @@ function start(){
   arcade = Mode.isArcade();
   document.body.classList.toggle('arcade', arcade);
   document.body.classList.add('playing');
+  document.body.classList.toggle('lanes3', arcade && D().lanes === 3);
+  resetNotePool();
   atkReady = true; dodgeReady = true; invuln = 0; hits = 0; taken = 0;
   turnTime = arcade ? D().time : ANSWER_TIME;
   HERO = heroOf(Save.d.hero);
@@ -3885,6 +4133,7 @@ function over(win){
   Voice.stop();
   document.body.classList.remove('paused');
   $('pausewin').classList.remove('on');
+  resetNotePool();               // rafNotes 靠 !running 早退，這裡順手清畫面，結算頁不留半空音符
   clearTimeout(comboDecayTimer);
   document.body.classList.remove('playing');
   Save.put();
@@ -3942,7 +4191,10 @@ $('actSpeedPot').onclick = useSpeedPotion;
 document.addEventListener('keydown', e => {
   if(e.repeat) return;
   if(arcade && running){
-    if(e.key === 'a' || e.key === 'A' || e.key === 'Enter'){ playerAttack(); return; }
+    /* 2026-09-04 第二十八輪：攻擊鈕換成節奏音符，桌機用左右（困難模式再加上）方向鍵對應軌道 */
+    if(e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A'){ hitLane(0); return; }
+    if(e.key === 'ArrowUp'    && D().lanes === 3){ hitLane(1); return; }
+    if(e.key === 'ArrowRight' || e.key === 'Enter'){ hitLane(D().lanes - 1); return; }
     if(e.key === 's' || e.key === 'S' || e.key === 'Shift'){ dodge(); return; }
     if(!paused && /^[1-4]$/.test(e.key)){                 // 桌機：1~4 發動對應熱鍵格
       const b = $('hotbar').querySelector('.hotslot[data-i="' + (+e.key - 1) + '"]');
@@ -3963,7 +4215,7 @@ function paintTip(){
   $('tipPractice').style.display = arc ? 'none' : 'block';
   $('tipArcade').style.display   = arc ? 'block' : 'none';
   $('helpKeys').innerHTML = arc
-    ? '<span><b>A</b> 攻擊</span><span><b>S</b> 閃避</span><span><b>空白鍵</b> 必殺技</span>'
+    ? '<span><b>←</b>／<b>→</b> 打音符</span><span><b>S</b> 閃避</span><span><b>1</b>～<b>4</b> 熱鍵技能</span><span><b>空白鍵</b> 必殺技</span>'
     : '<span><b>1</b>～<b>4</b> 選答案</span><span><b>空白鍵</b> 必殺技</span>';
 }
 /* 2026-09-04 第二十七輪：開任何介面（裝備／說明／熱鍵設定）都自動暫停，全部關掉才恢復。
@@ -4008,6 +4260,11 @@ function setPause(on, silent){
       if(skillBusyUntil)  skillBusyUntil  += dt;
       if(mobMarkedUntil)  mobMarkedUntil  += dt;
       if(speedBuffUntil)  speedBuffUntil  += dt;
+      /* 2026-09-04 第二十八輪：節奏音符也是 performance.now() 時間戳，一起平移，
+         不然暫停久了音符會全部瞬間跌到判定線下面判 MISS */
+      liveNotes.forEach(n => { if(!n.judged) n.hitAt += dt; });
+      lastSpawnAt += dt;
+      if(comboFxUntil) comboFxUntil += dt;
     }
     try{ fieldAnims().forEach(a => a.play()); }catch(e){}
     clearInterval(loop); loop = setInterval(tick, 100);
@@ -4059,6 +4316,8 @@ document.body.classList.toggle('arcade', Mode.isArcade());
 paintTip(); modeBadge();
 
 paintSkills();
+buildNotePool();
+requestAnimationFrame(rafNotes);   // 常駐迴圈，內部 !running/!arcade 時直接早退，成本可忽略
 versionBar('battle.html');
 startCoins();
 setTimeout(()=>heroFrame('ready'), 300);

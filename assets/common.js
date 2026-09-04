@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.25';
+const GAME_VERSION = '1.3.27';
 
 const $ = id => document.getElementById(id);
 
@@ -146,6 +146,9 @@ const DEFAULT_SAVE = {
   scroll:0,                                      // 強化卷軸：打怪會掉，也能用金幣買
   potions:0,                                     // 2026-09-03：紅藥水，商店用金幣買，戰鬥中喝來回血
   speedpotions:0,                                // 2026-09-03第二十四輪：戰鬥加速藥水，喝了CD縮短一段時間
+  hotkeys:['gale2','potion','speedpot',null],    // 2026-09-04第二十七輪：天堂式技能熱鍵列，4格，
+                                                   //   各元素＝技能key／'potion'／'speedpot'／null。
+                                                   //   保底邏輯 fixHotkeys() 在 battle.html（跟舊 fixLoadout 同一個理由）
   gear:{weapon:null, armor:null, helmet:null, boots:null, ring:null, charm:null},
   bag:[],
   loadout:{active:[], ult:null},                 // 2026-09-01第十輪：出戰技能配裝，只存key字串

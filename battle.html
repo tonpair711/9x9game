@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260903b">
+<link rel="stylesheet" href="assets/common.css?v=20260904a">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -1002,6 +1002,65 @@ body.arcade #ovFastLine,body.arcade #ovWeakWrap{display:none}
 /* 閃避成功的瞬間，角色會有一圈藍光（第十六輪拿掉drop-shadow只留brightness，理由同上） */
 #hero2.evade{filter:brightness(1.3)}
 
+/* ---------- 技能熱鍵列（2026-09-04 第二十七輪，天堂式）----------
+   4 格精選快捷＋一顆⚙設定鈕，橫向一排。擺在 .combat 最上面（攻擊大鈕之上），
+   跟 .acts 一樣只有娛樂模式顯示。技能書那條 4×5 格狀保留當完整清單。 */
+.hotbar{display:none;gap:6px;width:min(96vw,560px);margin-bottom:6px;align-items:stretch}
+body.arcade.playing .hotbar{display:flex}
+.hotslot{
+  flex:1;min-width:0;aspect-ratio:1/1;max-height:64px;position:relative;overflow:hidden;
+  border-radius:14px;border:1px solid var(--line);cursor:pointer;font-family:inherit;
+  background:linear-gradient(180deg,#2c1c44,#1c1230);color:var(--text);
+  display:flex;align-items:center;justify-content:center;font-size:24px;line-height:1;
+}
+.hotslot:active{transform:translateY(2px)}
+.hotslot.empty{border-style:dashed;color:#ffffff44;font-size:20px}
+.hotslot:disabled{cursor:default}
+.hotslot.lockedSlot{filter:grayscale(.7) brightness(.65)}
+.hotslot .lockmk{position:absolute;top:2px;right:3px;font-size:11px}
+.hotslot .lvmk{position:absolute;left:0;right:0;bottom:2px;font-size:9px;font-weight:800;color:var(--gold2)}
+.hotslot .qty{position:absolute;right:3px;bottom:2px;font-size:11px;font-weight:800;color:#fff;
+  text-shadow:0 1px 2px #000}
+.hotslot.dry .qty{color:#ff9b9b}
+.hotslot.buffOn{border-color:var(--gold);box-shadow:0 0 10px #ffd23d88}
+/* 冷卻遮罩：順時針半透明黑罩＋中央秒數 */
+.hotslot .cdmask{position:absolute;inset:0;pointer-events:none;
+  background:conic-gradient(#000000b0 var(--cd,0deg),#0000 0)}
+.hotslot .cdnum{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:17px;font-weight:900;color:#fff;text-shadow:0 1px 3px #000;pointer-events:none}
+.hotedit{
+  flex:0 0 34px;border-radius:12px;border:1px solid var(--line);cursor:pointer;
+  background:#20132f;color:var(--gold2);font-size:16px;font-family:inherit;
+}
+.hotedit:active{transform:translateY(2px)}
+
+/* 熱鍵設定面板：沿用 .modalwrap/.modalbox */
+.hotTargets{display:flex;gap:8px;justify-content:center;margin:4px 0 14px}
+.hotTargets .tg{
+  flex:1;max-width:76px;aspect-ratio:1/1;border-radius:14px;position:relative;cursor:pointer;
+  border:2px solid var(--line);background:#20132f;color:var(--text);
+  display:flex;align-items:center;justify-content:center;font-size:24px;font-family:inherit;
+}
+.hotTargets .tg.editing{border-color:var(--gold);box-shadow:0 0 12px #ffd23daa}
+.hotTargets .tg .clr{
+  position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;
+  border:1px solid var(--line);background:#3a2030;color:#fff;font-size:11px;line-height:1;cursor:pointer;
+}
+.hotPickHint{font-size:12px;color:var(--dim);margin-bottom:8px}
+.hotPickRow{display:flex;gap:6px;justify-content:center;margin-bottom:10px}
+.hotPickGrid{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.hotPick{
+  flex:0 0 calc(25% - 5px);min-width:0;min-height:46px;border-radius:12px;cursor:pointer;
+  border:1px solid var(--line);background:linear-gradient(180deg,#3a2456,#241638);
+  color:var(--text);font-family:inherit;padding:4px 2px;position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+}
+.hotPickRow .hotPick{flex:0 0 90px}
+.hotPick b{font-size:12px;font-weight:800;color:var(--gold2);text-align:center;line-height:1.2}
+.hotPick.locked{opacity:.45;cursor:default}
+.hotPick.locked i{position:absolute;top:3px;right:5px;font-size:10px;font-weight:800;color:var(--gold2)}
+.hotPick.on{border-color:var(--gold);box-shadow:0 0 10px #ffd23daa}
+
 /* ---------- 開始前的設定區 ---------- */
 .setup{display:flex;flex-direction:column;gap:10px;width:min(96vw,560px)}
 .setlab{font-size:12px;color:var(--dim);letter-spacing:1px;margin-bottom:-2px}
@@ -1080,12 +1139,15 @@ body.playing #pauseBtn{display:flex}
 .row3 .ult .ultlab{font-size:12px;font-weight:800;color:var(--gold2);letter-spacing:1px;flex:none}
 .row3 .ult .bar2{height:8px}
 .row3 .ult button{padding:8px 14px;font-size:14px;box-shadow:0 3px 0 #a97a12}
-.row3 .skills{width:auto}
+/* 2026-09-04 Steve：橫向捲動只看得到 3 顆，他「玩根本都沒看到」20 個技能。改成自動換行的
+   格狀排列，一次把 20 顆全部攤開（未解鎖的照樣變灰＋右上角 Lv 徽章），不用再往右滑。
+   說明文字（small）在這個格狀版收起來，靠圖示＋招式名辨識就夠，塞得下一排 4 顆。 */
+.row3 .skills{width:100%;flex-wrap:wrap;overflow:visible;justify-content:center;
+  mask-image:none;-webkit-mask-image:none}
 .row3 .skills:empty{display:none}
-/* 三顆技能等寬一排，字不要折行 */
-.row3 .skills .skill{min-height:52px;padding:5px 4px}
-.row3 .skills .skill b{font-size:13px;letter-spacing:0}
-.row3 .skills .skill small{font-size:9.5px;line-height:1.3}
+.row3 .skills .skill{flex:0 0 calc(25% - 6px);min-width:0;min-height:46px;padding:4px 3px}
+.row3 .skills .skill b{font-size:12px;letter-spacing:0;text-align:center;line-height:1.25}
+.row3 .skills .skill small{display:none}
 
 @media (max-width:520px){
   body{padding-bottom:96px}
@@ -1234,6 +1296,15 @@ body.playing #pauseBtn{display:flex}
 
   <!-- 操作區：攻擊／閃避一排，必殺技與兩顆技能併成第二排，手機拇指按得到 -->
   <div class="combat">
+    <!-- 2026-09-04 第二十七輪：技能熱鍵列（天堂式）。4 格精選快捷＋⚙設定鈕，
+         擺在攻擊大鈕之上，往下誤觸碰到的是藥水不是技能。 -->
+    <div class="hotbar" id="hotbar">
+      <button class="hotslot" data-i="0"></button>
+      <button class="hotslot" data-i="1"></button>
+      <button class="hotslot" data-i="2"></button>
+      <button class="hotslot" data-i="3"></button>
+      <button class="hotedit" id="hotEdit" title="設定熱鍵" aria-label="設定熱鍵">⚙</button>
+    </div>
     <!-- 娛樂模式的操作區（不出題時才顯示） -->
     <div class="acts" id="acts">
       <button class="act atk" id="actAtk"><b>攻　擊</b><small id="atkCd">點一下打一次</small><span class="rhythmRing"></span></button>
@@ -1289,6 +1360,19 @@ body.playing #pauseBtn{display:flex}
   </div>
 </div>
 
+<!-- 2026-09-04 第二十七輪：技能熱鍵設定面板 -->
+<div class="modalwrap" id="hotwin">
+  <div class="modalbox">
+    <button class="xbtn" id="hotClose" aria-label="關閉">✕</button>
+    <h2>設 定 熱 鍵</h2>
+    <div class="hotPickHint">先點上面一格，再點下面的技能或藥水放進去。</div>
+    <div class="hotTargets" id="hotTargets"></div>
+    <div class="hotPickRow" id="hotPickPotions"></div>
+    <div class="hotPickGrid" id="hotPickSkills"></div>
+    <button class="btn" id="hotOk" style="width:100%;margin-top:14px">完 成</button>
+  </div>
+</div>
+
 <div class="ultfx" id="ultfx">
   <div class="line"></div>
   <img id="ultBurst" src="assets/fx_slash_big.webp" alt="">
@@ -1341,7 +1425,7 @@ body.playing #pauseBtn{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260903b"></script>
+<script src="assets/common.js?v=20260904a"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -2352,15 +2436,16 @@ $('autoEq').onclick = () => {
   Sfx.ok(3);
   enhShout('換上 ' + changed.length + ' 件更好的裝備', '#ffe066');
 };
-$('bagBtn').onclick = () => { paintGear(); $('gearwin').classList.add('on'); };
-$('closeGear').onclick = () => $('gearwin').classList.remove('on');
+$('bagBtn').onclick = () => { paintGear(); panelOpen('gearwin'); };
+$('closeGear').onclick = () => panelClose('gearwin');
 $('resetSave').onclick = () => {
   if(!confirm('確定要清除存檔嗎？等級、金幣、裝備都會不見。')) return;
   Save.reset();
+  fixHotkeys(); paintHotbar();          // 清存檔後熱鍵列回到預設
   round = 1; wave = 0;
   P = Save.power(); maxHp = P.hp; heroHp = P.hp;
   paintGear(); setMob(); paintHeroBar();
-  $('gearwin').classList.remove('on');
+  panelClose('gearwin');
 };
 
 function paintHeroBar(){
@@ -2572,6 +2657,153 @@ function paintSkills(){
     b.querySelector('em').textContent = (!locked && left > 0) ? (Math.ceil(left/1000) + ' 秒') : '';
   });
 }
+
+/* ---------- 技能熱鍵列（2026-09-04 第二十七輪，天堂式）----------
+   Save.d.hotkeys＝4 格，各元素＝技能key／'potion'／'speedpot'／null。
+   點擊一律轉呼叫既有的 useSkill／usePotion／useSpeedPotion（那些函式已擋好
+   paused／running／arcade／locked／CD／等級），這裡不重複判斷、不繞過。 */
+const HOT_POTIONS = {
+  potion:   {icon:'🧪', name:'紅藥水',   qty:() => Save.d.potions,      ready:() => potionReady,   use:() => usePotion()},
+  speedpot: {icon:'⚡', name:'加速藥水', qty:() => Save.d.speedpotions, ready:() => speedPotReady, use:() => useSpeedPotion()}
+};
+function hotResolve(entry){
+  if(entry === 'potion' || entry === 'speedpot'){
+    const p = HOT_POTIONS[entry];
+    return {kind:'potion', key:entry, icon:p.icon, name:p.name};
+  }
+  const sk = SKILLS.find(x => x.key === entry);
+  return sk ? {kind:'skill', key:entry, icon:sk.icon, name:sk.name, sk} : null;
+}
+/* 保底：長度補到 4、丟掉不存在的技能 key、同一項只留第一個（比照舊 fixGear／fixLoadout） */
+function fixHotkeys(){
+  let h = Array.isArray(Save.d.hotkeys) ? Save.d.hotkeys.slice(0, 4) : [];
+  const seen = new Set();
+  h = h.map(e => {
+    if(e == null) return null;
+    if(e !== 'potion' && e !== 'speedpot' && !SKILLS.some(s => s.key === e)) return null;
+    if(seen.has(e)) return null;
+    seen.add(e); return e;
+  });
+  while(h.length < 4) h.push(null);
+  Save.d.hotkeys = h;
+}
+fixHotkeys();
+/* 升級解鎖新技能時，若熱鍵列還有空格，用「已解鎖、還沒在列上」的技能由低 Lv 往高補 */
+function autofillHotbar(){
+  const on = new Set(Save.d.hotkeys.filter(Boolean));
+  for(let i = 0; i < 4; i++){
+    if(Save.d.hotkeys[i] != null) continue;
+    const cand = SKILLS.find(s => Save.d.lv >= s.lv && !on.has(s.key));
+    if(!cand) break;
+    Save.d.hotkeys[i] = cand.key; on.add(cand.key);
+  }
+  Save.put();
+}
+function paintHotbar(){
+  [...$('hotbar').querySelectorAll('.hotslot')].forEach(b => {
+    const info = hotResolve(Save.d.hotkeys[+b.dataset.i]);
+    b.className = 'hotslot';
+    b.style.removeProperty('--cd');
+    if(!info){
+      b.classList.add('empty');
+      b.innerHTML = '＋';
+      b.disabled = false;                       // 空格可點：點了開設定面板
+      return;
+    }
+    if(info.kind === 'skill'){
+      const sk = info.sk;
+      const locked = Save.d.lv < sk.lv;
+      const left = Math.max(0, (skillState[sk.key] || 0) - performance.now());
+      const total = (sk.cd * ((typeof HERO !== 'undefined' && HERO.cdMul) || 1) *
+        (1 - ((typeof P !== 'undefined' && P.cdr) || 0) / 100)) || sk.cd;
+      let html = info.icon;
+      if(locked){
+        html += '<span class="lockmk">🔒</span><span class="lvmk">Lv ' + sk.lv + '</span>';
+        b.classList.add('lockedSlot');
+      }else if(left > 0){
+        b.style.setProperty('--cd', (Math.min(1, left / total) * 360) + 'deg');
+        html += '<span class="cdmask"></span><span class="cdnum">' + Math.ceil(left / 1000) + '</span>';
+      }
+      b.innerHTML = html;
+      b.disabled = locked || left > 0 || !running || skillBusy();
+    }else{
+      const p = HOT_POTIONS[info.key];
+      const n = p.qty();
+      b.innerHTML = info.icon + '<span class="qty">x' + n + '</span>';
+      if(n <= 0) b.classList.add('dry');
+      if(info.key === 'speedpot' && arcade && performance.now() < speedBuffUntil) b.classList.add('buffOn');
+      b.disabled = !running || n <= 0 || !p.ready();
+    }
+  });
+}
+$('hotbar').addEventListener('click', e => {
+  const b = e.target.closest('.hotslot'); if(!b) return;
+  const entry = Save.d.hotkeys[+b.dataset.i];
+  if(entry == null){ openHotwin(+b.dataset.i); return; }   // 空格 → 開設定並預選這格
+  const info = hotResolve(entry); if(!info) return;
+  if(info.kind === 'skill') useSkill(info.key);
+  else HOT_POTIONS[info.key].use();
+});
+$('hotEdit').onclick = () => openHotwin(-1);
+
+/* ---- 熱鍵設定面板 ---- */
+let hotEditSlot = -1;
+function openHotwin(preSlot){
+  hotEditSlot = (preSlot >= 0) ? preSlot : -1;
+  buildHotPicker();
+  panelOpen('hotwin');
+}
+function buildHotPicker(){
+  $('hotTargets').innerHTML = [0,1,2,3].map(i => {
+    const info = hotResolve(Save.d.hotkeys[i]);
+    return '<button class="tg' + (i === hotEditSlot ? ' editing' : '') + '" data-i="' + i + '">' +
+      (info ? info.icon : '<span style="opacity:.4">＋</span>') +
+      '<span class="clr" data-clr="' + i + '">✕</span></button>';
+  }).join('');
+  $('hotPickPotions').innerHTML = Object.keys(HOT_POTIONS).map(k => {
+    const p = HOT_POTIONS[k], on = Save.d.hotkeys.includes(k);
+    return '<button class="hotPick' + (on ? ' on' : '') + '" data-src="' + k + '">' +
+      '<span style="font-size:20px">' + p.icon + '</span><b>' + p.name + '</b></button>';
+  }).join('');
+  $('hotPickSkills').innerHTML = SKILLS.map(s => {
+    const locked = Save.d.lv < s.lv, on = Save.d.hotkeys.includes(s.key);
+    return '<button class="hotPick' + (locked ? ' locked' : '') + (on ? ' on' : '') +
+      '" data-src="' + s.key + '"' + (locked ? ' disabled' : '') + '>' +
+      '<span style="font-size:18px">' + s.icon + '</span><b>' + s.name + '</b>' +
+      (locked ? '<i>Lv ' + s.lv + '</i>' : '') + '</button>';
+  }).join('');
+}
+function flashHint(msg){
+  const h = $('hotwin').querySelector('.hotPickHint');
+  if(h._t) return;
+  const prev = h.textContent;
+  h.textContent = msg; h.style.color = '#ffb3c6';
+  h._t = setTimeout(() => { h.textContent = prev; h.style.color = ''; h._t = null; }, 1600);
+}
+function assignHot(src){
+  let slot = hotEditSlot;
+  if(slot < 0) slot = Save.d.hotkeys.indexOf(null);
+  if(slot < 0){ flashHint('先點上面一格要換掉的'); return; }
+  const old = Save.d.hotkeys.indexOf(src);
+  if(old >= 0 && old !== slot) Save.d.hotkeys[old] = null;   // 同一項不重複佔兩格
+  Save.d.hotkeys[slot] = src;
+  Save.put();
+  hotEditSlot = -1;
+  buildHotPicker(); paintHotbar();
+}
+$('hotTargets').onclick = e => {
+  const clr = e.target.closest('[data-clr]');
+  if(clr){ Save.d.hotkeys[+clr.dataset.clr] = null; Save.put(); buildHotPicker(); paintHotbar(); return; }
+  const t = e.target.closest('.tg'); if(!t) return;
+  hotEditSlot = +t.dataset.i; buildHotPicker();
+};
+$('hotPickPotions').onclick = $('hotPickSkills').onclick = e => {
+  const b = e.target.closest('.hotPick'); if(!b || b.disabled) return;
+  assignHot(b.dataset.src);
+};
+$('hotClose').onclick = $('hotOk').onclick = () => panelClose('hotwin');
+$('hotwin').onclick = e => { if(e.target === $('hotwin')) panelClose('hotwin'); };
+
 function useSkill(key){
   if(paused) return;
   const sk = SKILLS.find(x => x.key === key);
@@ -3361,6 +3593,7 @@ function killMob(){
   Save.d.gold += gold;
   earnGold += gold; earnExp += exp;
   const ups = Save.addExp(exp);
+  if(ups > 0) autofillHotbar();          // 升級解鎖新技能 → 熱鍵列有空格就自動遞補
   if(mob.bonus){
     comboShout('💰 黃金哥布林！大量金幣！', '#ffd23d');
     logMsg('打倒了 <b style="color:#ffd23d">💰 黃金哥布林</b>，獲得 <b>8 倍</b>金幣！', 'gold');
@@ -3558,6 +3791,7 @@ function useUlt(){
 let mobDieAt = 0;                    // 上一次播死亡動畫的時間，看門狗用
 function tick(){
   paintSkills();                     // 技能冷卻倒數跟著這個 100ms 的計時器跑
+  paintHotbar();                     // 熱鍵列的 CD 遮罩／藥水數量也跟同一個節奏
   paintPotionBtn();                  // 藥水庫存/血滿狀態也跟著這個計時器同步，不用另外呼叫
   paintSpeedPotBtn();                // 加速藥水的倒數秒數也跟著這個100ms節奏更新
   /* 看門狗：死亡動畫最長 0.9 秒，加上掉寶演出也不該超過 2.5 秒還掛著 .die。
@@ -3636,7 +3870,8 @@ function start(){
   $('mob').classList.remove('die','hit');
   $('shMob').classList.remove('gone','hit');
   paintHeroBar();
-  paintUlt(); paintSkills(); nextMob(); idleBreak();
+  fixHotkeys();
+  paintUlt(); paintSkills(); paintHotbar(); nextMob(); idleBreak();
   paused = false;
   document.body.classList.remove('paused');
   $('pausewin').classList.remove('on');
@@ -3709,6 +3944,11 @@ document.addEventListener('keydown', e => {
   if(arcade && running){
     if(e.key === 'a' || e.key === 'A' || e.key === 'Enter'){ playerAttack(); return; }
     if(e.key === 's' || e.key === 'S' || e.key === 'Shift'){ dodge(); return; }
+    if(!paused && /^[1-4]$/.test(e.key)){                 // 桌機：1~4 發動對應熱鍵格
+      const b = $('hotbar').querySelector('.hotslot[data-i="' + (+e.key - 1) + '"]');
+      if(b && !b.disabled) b.click();
+      return;
+    }
   }
   const n = +e.key;
   if(n >= 1 && n <= 4){ const b = $('ans').children[n-1]; b && b.click(); }
@@ -3726,25 +3966,49 @@ function paintTip(){
     ? '<span><b>A</b> 攻擊</span><span><b>S</b> 閃避</span><span><b>空白鍵</b> 必殺技</span>'
     : '<span><b>1</b>～<b>4</b> 選答案</span><span><b>空白鍵</b> 必殺技</span>';
 }
-const openModal = id => $(id).classList.add('on');
-const closeModal = id => $(id).classList.remove('on');
+/* 2026-09-04 第二十七輪：開任何介面（裝備／說明／熱鍵設定）都自動暫停，全部關掉才恢復。
+   用開啟計數處理疊開的情形；silent 讓 setPause 不要跳出「暫停中」那個彈窗。 */
+let openPanels = 0, uiAutoPaused = false;
+function panelOpen(id){
+  $(id).classList.add('on');
+  openPanels++;
+  if(running && !paused && !uiAutoPaused){ uiAutoPaused = true; setPause(true, true); }
+}
+function panelClose(id){
+  $(id).classList.remove('on');
+  openPanels = Math.max(0, openPanels - 1);
+  if(openPanels === 0 && uiAutoPaused){ uiAutoPaused = false; setPause(false, true); }
+}
+const openModal = id => panelOpen(id);
+const closeModal = id => panelClose(id);
 $('helpBtn').onclick  = () => { paintTip(); openModal('helpwin'); };
 $('helpClose').onclick = $('helpOk').onclick = () => closeModal('helpwin');
 $('helpwin').onclick = e => { if(e.target === $('helpwin')) closeModal('helpwin'); };
 
 /* ---------- 暫停 ----------
    把 tick 停掉、戰場上的動畫一起凍住；沒有正在打就不理它 */
-function setPause(on){
+let pauseClockAt = 0;
+function setPause(on, silent){
   if(!running) return;
   if(paused === on) return;
   paused = on;
   document.body.classList.toggle('paused', on);
-  $('pausewin').classList.toggle('on', on);
+  if(!silent) $('pausewin').classList.toggle('on', on);
   if(on){
+    pauseClockAt = performance.now();
     clearInterval(loop); loop = null;
     Voice.stop();                       // 暫停時把還在唸的題目也停掉
     try{ fieldAnims().forEach(a => a.pause()); }catch(e){}
   }else{
+    /* tick 內遞減的計時（mobTimer／炸彈／題目倒數）本來就靠 clearInterval 凍住；
+       這裡補償直接跟 performance.now() 比的那幾個，不然暫停久了技能 CD 會偷偷倒數完 */
+    const dt = performance.now() - pauseClockAt;
+    if(dt > 0){
+      for(const k in skillState) skillState[k] += dt;
+      if(skillBusyUntil)  skillBusyUntil  += dt;
+      if(mobMarkedUntil)  mobMarkedUntil  += dt;
+      if(speedBuffUntil)  speedBuffUntil  += dt;
+    }
     try{ fieldAnims().forEach(a => a.play()); }catch(e){}
     clearInterval(loop); loop = setInterval(tick, 100);
   }
@@ -3804,7 +4068,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260903b"></script>
-<script src="assets/lock.js?v=20260903b"></script>
+<script src="assets/audio.js?v=20260904a"></script>
+<script src="assets/lock.js?v=20260904a"></script>
 </body>
 </html>

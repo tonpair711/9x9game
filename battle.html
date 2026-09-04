@@ -264,7 +264,11 @@ body{padding-bottom:16px}
    只留地面那圈.gshadow橢圓陰影(#shHero/#shMob，本來就有，成本低很多)，角色本體不再
    常態套drop-shadow——命中／施法／閃避那幾個短暫的filter（poseSwing/poseHurt/poseCast/
    evade/casting）維持不動，那些是幾百毫秒的單次觸發，不是永遠在跑的成本 */
-#hero2{left:4%;height:62%;
+/* 2026-09-04 第二十九輪：--sprScale 補償「角色在自己那格逐幀圖裡佔多大」的落差。
+   詳見 Spr.on()/Spr.off()——同一顆角色的靜圖跟不同招式的逐幀圖，因為各自來源影片
+   裁切鬆緊不一，在固定 height 底下會顯得忽大忽小；每個 SPR 項目可選填 scale，
+   沒有就是 1（維持原樣，不動大多數素材）。 */
+#hero2{left:4%;height:calc(62% * var(--sprScale, 1));
   animation:heroIdle 2.6s ease-in-out infinite alternate}
 @keyframes heroIdle{from{transform:translateY(0) scale(1,1)}to{transform:translateY(-7px) scale(.99,1.02)}}
 /* 漂浮掛在外層 .mobwrap、受擊掛在 #mob 自己身上。
@@ -277,7 +281,7 @@ body{padding-bottom:16px}
    會被動畫的 transform 蓋掉；這層什麼動畫都不掛，純粹負責鏡像，才不會互相干擾 */
 .mobflip{height:100%;display:inline-block}
 .mobflip.flip{transform:scaleX(-1)}
-#mob{width:auto;height:100%;display:block;
+#mob{width:auto;height:calc(100% * var(--sprScale, 1));display:block;
   transform-origin:50% 100%}
 /* 逐幀素材自己就在呼吸，再疊 CSS 那套會變兩個節奏打架；受擊／死亡的還是要留 */
 #mob:not(.sprmode){animation:mobBreath 1.9s ease-in-out infinite alternate}
@@ -1950,6 +1954,15 @@ function slowmoField(ms, rate){
    這樣定位、drop-shadow、受擊／死亡那些既有 class 全部照舊能用。 */
 const PX1 = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 const SPR = {
+  /* 2026-09-04 第二十九輪：Steve回報「人物大小怪物大小動畫都不一致」——徹底查了一遍，
+     根因是每支怪物/角色逐幀動畫的來源影片裁切鬆緊不一：#hero2/#mob 都是固定
+     height(62%/56%)+width:auto（或sprmode的aspect-ratio），角色在自己那格畫面裡佔的
+     實際比例才是決定「看起來多大」的關鍵。寫Python量了全部60隻怪物的靜圖跟55組逐幀圖
+     （alpha bbox佔格子高度的比例），靜圖本身很一致(96~100%)，但攻擊逐幀圖落差很大
+     （50%~100%，2倍差距，gargoyle_atk/hedgehog_atk/robot_atk最誇張）。下面 scale 值
+     （只加在落差明顯的15隻怪+這輪新增的hero_kof_combo1）是量出來的補償倍率，
+     由 Spr.on()/Spr.off() 寫進 --sprScale 這個CSS變數，#hero2/#mob 的 height 用
+     calc(基準% * var(--sprScale,1)) 讀取，沒填scale的維持1不受影響。 */
   /* 2026-09-02 第十四輪：重生，同樣是舊Q版跟現行角色畫風不符的問題（跟hero_atk同一批） */
   hero_idle:   {img:'assets/spr_hero_idle.webp',   cols:5, rows:4, n:20, ar:1, fps:8},
   /* 2026-09-02：重生，跟角色現行畫風（fx_hero_ready/fx_hero_swing 那個寫實立繪）對上，
@@ -1972,12 +1985,12 @@ const SPR = {
   hero_cast_ice20: {img:'assets/spr_hero_cast_ice20.webp', cols:6, rows:9, n:52, ar:1, fps:16},
   /* 2026-09-04 第二十八輪：拳皇式連續技（節奏音符連段觸發用，見 triggerKofCombo()）。
      跟 hero_cast_* 不同的是這兩支不是 useSkill() 那套 20 招表定義的，直接被 playKofSprite() 引用。 */
-  hero_kof_combo1: {img:'assets/spr_hero_kof_combo1.webp', cols:6, rows:5, n:29, ar:1, fps:16},
+  hero_kof_combo1: {img:'assets/spr_hero_kof_combo1.webp', cols:6, rows:5, n:29, ar:1, fps:16, scale:1.09},
   hero_kof_finisher: {img:'assets/spr_hero_kof_finisher.webp', cols:8, rows:8, n:61, ar:1, fps:16},
   slime_idle:  {img:'assets/spr_slime_idle.webp',  cols:5, rows:4, n:16, ar:224/125, fps:8},
-  slime_atk:   {img:'assets/spr_slime_atk.webp',   cols:6, rows:5, n:29, ar:224/125, fps:20},
+  slime_atk:   {img:'assets/spr_slime_atk.webp',   cols:6, rows:5, n:29, ar:224/125, fps:20, scale:1.25},
   dragon_idle: {img:'assets/spr_dragon_idle.webp', cols:6, rows:4, n:24, ar:224/211, fps:10},
-  dragon_atk:  {img:'assets/spr_dragon_atk.webp',  cols:6, rows:5, n:30, ar:224/211, fps:14},
+  dragon_atk:  {img:'assets/spr_dragon_atk.webp',  cols:6, rows:5, n:30, ar:224/211, fps:14, scale:1.13},
   /* 2026-08-30：Gemini Vids 生的攻擊動畫，只有攻擊沒有待機（IDLE_SPRITE() 平常是關的，
      待機本來就是靜圖，這四隻不需要 _idle）。cw:224 ch:126 是整支影片沒裁切直接縮，
      跟原始 1920x1080 幾乎同比例，所以四隻 ar 都一樣 */
@@ -1996,10 +2009,10 @@ const SPR = {
      prompt（"wide full-body shot"、"do not zoom in, do not crop"）重生一次才正常，
      以後生怪物攻擊影片的 prompt 都要把這句加進去，不能只描述動作 */
   flame_atk:   {img:'assets/spr_flame_atk.webp',   cols:6, rows:9, n:52, ar:1, fps:14},
-  robot_atk:   {img:'assets/spr_robot_atk.webp',   cols:6, rows:8, n:48, ar:1, fps:16},
+  robot_atk:   {img:'assets/spr_robot_atk.webp',   cols:6, rows:8, n:48, ar:1, fps:16, scale:1.35},
   /* 2026-09-01 第三輪，繼續往下補：暴走野豬／蜂后／影武者貓，三隻都是第一次生就過關
      （wide full-body shot + do not zoom in 那句 prompt 有效）*/
-  boar_atk:    {img:'assets/spr_boar_atk.webp',    cols:6, rows:9, n:52, ar:1, fps:13},
+  boar_atk:    {img:'assets/spr_boar_atk.webp',    cols:6, rows:9, n:52, ar:1, fps:13, scale:1.29},
   bee_atk:     {img:'assets/spr_bee_atk.webp',     cols:6, rows:9, n:52, ar:1, fps:13},
   ninja_atk:   {img:'assets/spr_ninja_atk.webp',   cols:6, rows:9, n:52, ar:1, fps:13},
   /* 2026-09-01：石像守衛第三次才成功——來源圖角色頂滿整張畫布，模型圖生影片時會照著
@@ -2008,29 +2021,29 @@ const SPR = {
      很小、四周都是黑」的構圖焼進去，模型才不會自己拉近。抽幀時額外用 `--crop` 只切
      角色所在的那一小塊（不然雪碧圖會有一大堆浪費掉的黑邊）。這個做法之後遇到同樣
      「怎麼生都被拉近特寫」的怪物可以直接照抄 */
-  gargoyle_atk:{img:'assets/spr_gargoyle_atk.webp',cols:6, rows:9, n:52, ar:1, fps:15},
+  gargoyle_atk:{img:'assets/spr_gargoyle_atk.webp',cols:6, rows:9, n:52, ar:1, fps:15, scale:1.35},
   /* 2026-09-01：虎王石像（第一隻 Boss）。這隻 `flip:true`——來源圖跟這支逐幀影片
      都是「自然朝右」，不用先翻轉，遊戲既有的 `.mobflip{scaleX(-1)}` 包在 #mob 外面，
      連逐幀模式的 background 一起鏡像，不用另外處理 */
-  bosstiger_atk:{img:'assets/spr_bosstiger_atk.webp',cols:6, rows:9, n:52, ar:1, fps:15},
+  bosstiger_atk:{img:'assets/spr_bosstiger_atk.webp',cols:6, rows:9, n:52, ar:1, fps:15, scale:1.22},
   /* 2026-09-01 第四輪：紫金巨龍之後那 37 隻普通怪，開始一支一支補。這四隻第一次生就過關，
      但取樣時發現「前幾秒鏡頭拉太近／怪太大」，抽幀 --start 都往後移到已經正常縮小的
      那一段（不是每支影片一開場就是理想構圖，開檔案多看幾個時間點再決定區間） */
-  firefly_atk: {img:'assets/spr_firefly_atk.webp', cols:6, rows:8, n:43, ar:1, fps:13},
+  firefly_atk: {img:'assets/spr_firefly_atk.webp', cols:6, rows:8, n:43, ar:1, fps:13, scale:1.12},
   thorn_atk:   {img:'assets/spr_thorn_atk.webp',   cols:6, rows:9, n:52, ar:1, fps:13},
   owlmage_atk: {img:'assets/spr_owlmage_atk.webp', cols:6, rows:7, n:39, ar:1, fps:13},
-  hedgehog_atk:{img:'assets/spr_hedgehog_atk.webp',cols:6, rows:8, n:46, ar:1, fps:13},
+  hedgehog_atk:{img:'assets/spr_hedgehog_atk.webp',cols:6, rows:8, n:46, ar:1, fps:13, scale:1.35},
   /* 2026-09-01 第六輪：沙塵蠍／骸骨駱駝／沙丘蜥蜴／水母怪。水母那支圖生影片中途游動時
      整隻左右鏡像了一下（頭跑到右邊、觸手甩到左邊），但牠本來就沒有明確的「正面」，
      最後選的區間剛好落在牠回正、面對鏡頭的那段，不影響方向判斷，沒有另外處理 */
-  scorpion_atk:{img:'assets/spr_scorpion_atk.webp',cols:6, rows:8, n:46, ar:1, fps:13},
-  camel_atk:   {img:'assets/spr_camel_atk.webp',   cols:6, rows:8, n:45, ar:1, fps:15},
-  lizard_atk:  {img:'assets/spr_lizard_atk.webp',  cols:6, rows:8, n:46, ar:1, fps:13},
+  scorpion_atk:{img:'assets/spr_scorpion_atk.webp',cols:6, rows:8, n:46, ar:1, fps:13, scale:1.19},
+  camel_atk:   {img:'assets/spr_camel_atk.webp',   cols:6, rows:8, n:45, ar:1, fps:15, scale:1.35},
+  lizard_atk:  {img:'assets/spr_lizard_atk.webp',  cols:6, rows:8, n:46, ar:1, fps:13, scale:1.22},
   jelly_atk:   {img:'assets/spr_jelly_atk.webp',   cols:6, rows:8, n:46, ar:1, fps:13},
   /* 2026-09-01 第七輪：寄居蟹士兵／章魚法師／珊瑚魚人。章魚法師是遠程，沿用通用分支 */
-  crab_atk:      {img:'assets/spr_crab_atk.webp',      cols:6, rows:8, n:46, ar:1, fps:13},
+  crab_atk:      {img:'assets/spr_crab_atk.webp',      cols:6, rows:8, n:46, ar:1, fps:13, scale:1.22},
   octomage_atk:  {img:'assets/spr_octomage_atk.webp',  cols:6, rows:8, n:46, ar:1, fps:13},
-  coralfish_atk: {img:'assets/spr_coralfish_atk.webp', cols:6, rows:8, n:46, ar:1, fps:13},
+  coralfish_atk: {img:'assets/spr_coralfish_atk.webp', cols:6, rows:8, n:46, ar:1, fps:13, scale:1.23},
   /* 2026-09-02 第十一輪：雷鷹，紫金巨龍之後那批的下一隻。蓄力→展翅→爪光斜劈，
      打擊感在後段（第7~9列才出現月牙爪光），hit 比例比其他近戰怪晚很多 */
   thundereagle_atk: {img:'assets/spr_thundereagle_atk.webp', cols:6, rows:9, n:52, ar:1, fps:15},
@@ -2038,14 +2051,14 @@ const SPR = {
   goblinminer_atk: {img:'assets/spr_goblinminer_atk.webp', cols:6, rows:8, n:48, ar:1, fps:15},
   crystalbat_atk: {img:'assets/spr_crystalbat_atk.webp', cols:6, rows:9, n:52, ar:1, fps:15},
   lavaworm_atk: {img:'assets/spr_lavaworm_atk.webp', cols:6, rows:9, n:52, ar:1, fps:18},
-  skeleton_atk: {img:'assets/spr_skeleton_atk.webp', cols:6, rows:9, n:52, ar:1, fps:20},
+  skeleton_atk: {img:'assets/spr_skeleton_atk.webp', cols:6, rows:9, n:52, ar:1, fps:20, scale:1.16},
   ghostknight_atk: {img:'assets/spr_ghostknight_atk.webp', cols:6, rows:9, n:52, ar:1, fps:20},
   mummy_atk: {img:'assets/spr_mummy_atk.webp', cols:6, rows:9, n:52, ar:1, fps:18},
   gearspider_atk: {img:'assets/spr_gearspider_atk.webp', cols:6, rows:9, n:52, ar:1, fps:20},
   steamtank_atk: {img:'assets/spr_steamtank_atk.webp', cols:6, rows:9, n:52, ar:1, fps:20},
   zapmouse_atk: {img:'assets/spr_zapmouse_atk.webp', cols:6, rows:8, n:44, ar:1, fps:20},
   windspirit_atk: {img:'assets/spr_windspirit_atk.webp', cols:6, rows:9, n:52, ar:1, fps:20},
-  earthgolem_atk: {img:'assets/spr_earthgolem_atk.webp', cols:6, rows:8, n:48, ar:1, fps:18}
+  earthgolem_atk: {img:'assets/spr_earthgolem_atk.webp', cols:6, rows:8, n:48, ar:1, fps:18, scale:1.13}
 };
 /* ---------- 待機不跑逐幀（2026-08-23 效能量測結論） ----------
    量出來（CPU 節流 6 倍模擬中階手機，看主執行緒每秒被吃掉多少毫秒）：
@@ -2069,6 +2082,7 @@ const Spr = {
       el.style.aspectRatio = d.ar;
       el.style.backgroundImage = 'url(' + d.img + ')';
       el.style.backgroundSize = (d.cols*100) + '% ' + (d.rows*100) + '%';
+      el.style.setProperty('--sprScale', d.scale || 1);   // 見 #hero2/#mob 那條 CSS 的說明
     }
     return true;
   },
@@ -2077,6 +2091,7 @@ const Spr = {
       delete el.dataset.spr;
       el.classList.remove('sprmode');
       el.style.aspectRatio = el.style.backgroundImage = el.style.backgroundSize = '';
+      el.style.removeProperty('--sprScale');   // 換回靜圖，靜圖本來就大小一致，不需要補償
       this.stop(el);
     }
     el.src = src;

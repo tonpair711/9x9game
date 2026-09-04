@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.30';
+const GAME_VERSION = '1.3.31';
 
 const $ = id => document.getElementById(id);
 
@@ -913,7 +913,9 @@ const Voice = {
   on(q){ const m = this.get(); return m !== 'off' && (m === 'all' || !!(q && q.sym)); },
   el(clip){
     let a = this._cache[clip];
-    if(!a){ a = this._cache[clip] = new Audio('assets/voice/' + clip + '.mp3'); a.preload = 'auto'; }
+    /* 2026-09-04：檔名不變、內容換了（重錄語速）就一定要帶版號，不然玩家瀏覽器/Cloudflare
+       快取住舊音檔，聽到的還是沒修好的那版——跟 common.js/common.css 要 bump ?v= 同一個教訓。 */
+    if(!a){ a = this._cache[clip] = new Audio('assets/voice/' + clip + '.mp3?v=' + GAME_VERSION); a.preload = 'auto'; }
     return a;
   },
   stop(){

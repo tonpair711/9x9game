@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.35';
+const GAME_VERSION = '1.3.36';
 
 const $ = id => document.getElementById(id);
 
@@ -960,20 +960,29 @@ const Voice = {
           setTimeout(done, 2500);           // 音檔壞掉或被擋住也不能卡住整局
         });
         if(my !== this._seq) return;
-        await new Promise(res => setTimeout(res, 150));   // 字與字之間留空隙，不然黏在一起小朋友聽不清楚
+        /* 2026-09-05：原本150ms是「數字/運算詞/數字/等於」四段時代的間隔，四段每段都隔
+           150ms、加起來快半秒死靜音，是Steve回報「太慢、不順」的一部分原因。現在math題
+           只剩2段（見Voice.clips()），縮到70ms——段落間還留得出一點呼吸感，但不會拖。 */
+        await new Promise(res => setTimeout(res, 70));
       }catch(e){ return; }                  // 還沒互動過會被瀏覽器擋，安靜跳過
     }
     if(my === this._seq) this._cur = null;
   },
-  /* 把一題拆成要播的音檔清單 */
+  /* 把一題拆成要播的音檔清單。
+     2026-09-05：原本「數字／運算詞／數字／等於」四段分開合成再接起來，Steve回報
+     「不順、很AI聲音」——四段有三個接點，每個接點的語調都是斷開重來，接越多段越像
+     機器人朗讀。改成「數字+運算詞」合成同一段（nop_add_N／nop_sub_N／nop_mul_N，
+     跟後面的「數字+等於」neq_N），接點從3個砍到1個，只留最自然的「運算詞→數字」
+     那一個斷點。 */
   clips(q){
     if(!q) return [];
     if(q.sym) return [q.clip];
-    const OP = {'＋':'op_add', '－':'op_sub', '×':'op_mul'};
-    const num = v => (v >= 0 && v <= 100 && Number.isInteger(v)) ? ['n_' + v] : [];
-    const op = OP[q.op];
-    if(!op) return [];
-    return [...num(q.a), op, ...num(q.b), 'op_eq'];
+    const OPKEY = {'＋':'add', '－':'sub', '×':'mul'};
+    const k = OPKEY[q.op];
+    if(!k) return [];
+    const ok = v => v >= 0 && v <= 100 && Number.isInteger(v);
+    if(!ok(q.a) || !ok(q.b)) return [];
+    return ['nop_' + k + '_' + q.a, 'neq_' + q.b];
   },
   /* 唸題目。forced＝按喇叭手動重聽，這時不管開關是哪一段都要唸 */
   say(q, forced){

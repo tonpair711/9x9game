@@ -1449,7 +1449,10 @@ body.playing #pauseBtn{display:flex}
     <div class="power" id="power"></div>
     <div class="scrollbar" id="scrollBar"></div>
     <div class="slots" id="slots"></div>
-    <div class="autobar"><button id="autoEq">✨ 一鍵裝備（自動換上更好的）</button></div>
+    <div class="autobar">
+      <button id="autoEq">✨ 一鍵裝備（自動換上更好的）</button>
+      <button id="sellAll">💰 一鍵賣出（背包全部裝備）</button>
+    </div>
     <div class="baglist" id="baglist"></div>
     <button class="btn" id="closeGear" style="width:100%;margin-top:14px">關 閉</button>
     <button class="btn ghost" id="resetSave" style="width:100%;margin-top:8px;height:40px">清除存檔重新開始</button>
@@ -1615,6 +1618,8 @@ let stageNo = 1, stageQ = 0, stagePending = null;   // stagePending: null｜'cle
 let pendingFinal = false;           // 這次跳出來的彈窗是不是「10 關全破」的真正完結
 let stageRight = 0, stageWrong = 0, stageWrongList = [];   // 這一輪（最多10題）自己的對錯，跟整場累計的 right/wrong 分開算
 const DIFF_KEY = 'mul99_diff';
+// 2026-09-02第十九輪：Steve指定普通攻擊冷卻強制2.5秒，不再看難度／PERFECT打折，
+// cd欄位拿掉、改用下面獨立的ATK_CD常數（見playerAttack）
 const DIFFS = {
   /* 2026-09-03 Steve：普通攻擊 CD 一律鎖 2 秒，不准狂按。三個難度只差答題時間與傷害，
      出手節奏一致（原本 420~520ms 太短、加上 PERFECT 打 6 折會變成連點）。 */
@@ -1627,6 +1632,8 @@ const DIFFS = {
 };
 function difKey(){ try{ const d = localStorage.getItem(DIFF_KEY); return DIFFS[d] ? d : 'normal'; }catch(e){ return 'normal'; } }
 const D = () => DIFFS[difKey()];
+const ATK_CD = 2500;   // 普通攻擊冷卻固定2.5秒，硬性規定，難度／PERFECT都不影響
+const ULT_GAIN_MUL = 0.1;   // 2026-09-02第十九輪：Steve回報必殺充能太快，全部來源統一砍到原本的0.1倍
 let turnTime = ANSWER_TIME;        // 這一回合的倒數總長（兩種模式不一樣）
 let atkReady = true, dodgeReady = true, invuln = 0, hits = 0, taken = 0;
 let telegraphed = false;        // 這一回合的攻擊預告放過了沒
@@ -1825,6 +1832,7 @@ function heroSwing(onHit, tier){
 const CAST_MS = 3250;                 // 52 幀 @ 16fps ≈ 3.25s
 function heroCast(onHit, castKey){
   const h = $('hero2');
+  if(h._swing){ try{ h._swing.cancel(); }catch(e){} }   // 跟heroSwing()同一套防疊招保險
   h.style.transform = '';
   h.style.transition = 'none';
   const anim = h.animate([
@@ -2359,6 +2367,7 @@ function paintGear(){
   }).join('');
 
   $('autoEq').classList.toggle('no', !hasBetter());
+  $('sellAll').classList.toggle('no', !Save.d.bag.length);
 
   const sp = scrollPrice();
   $('scrollBar').innerHTML =
@@ -2548,26 +2557,32 @@ function paintHeroBar(){
    十位數節奏對齊）。100 連擊之後沿用最後一招、每 +10 連擊重播一次。
    vk 借既有 6 種特效圖（火／冰＝火加藍色調／雷／光／旋風／毒霧）配不同 --sc 濾色做出
    招式差異，沒有另外畫新素材，不用等 Gemini 額度 */
-/* 2026-09-01 第十輪：觸發門檻改成 Steve 指定的 3/5/9/13/17/22/29/35/42/55/65/75/85/95/100，
+/* 2026-09-02 第十九輪：Steve重新指定門檻為 3/5/9/12/16/25/35/45/55/65/75/85/95/105/125/145/165
+   （17個，取代第十輪那組15個），並指出連擊要能無限往上疊——真正的病灶其實不在這份門檻表，
+   是armFinisher()每次終結技觸發會把combo直接砍8層，連擊實際上衝不過15~16就被腰斬，
+   105/125/145/165這幾個後段門檻過去等於永遠打不到（見armFinisher()/finisherFiredAt說明，
+   這輪已經把「扣combo」改成「記錄觸發點」，combo不再被終結技動過）。
    跟等級解鎖的 20 顆主動技能（SKILLS）是兩套獨立系統，各自負責「連擊」與「升級」，
-   不互相綁定（Steve已確認要維持獨立，不要合併）。原本14招名字/效果保留，只挪動門檻；
-   多出來的第15招（95連擊）新增「九數禁咒」補在超越限界跟乘法神話之間。 */
+   不互相綁定（Steve已確認要維持獨立，不要合併）。原本15招名字/效果盡量保留＋挪動門檻，
+   新增125/145三個新招補在超越限界跟乘法神話（現在挪到165封頂）之間。 */
 const SPELLS = [
   {at:3,   key:'s3',   vk:'fire',    name:'火球術',   color:'#ff8a3d', mult:1.6,  mode:'fly'},
   {at:5,   key:'s5',   vk:'ice',     name:'冰霜術',   color:'#6ea8ff', mult:2.0,  mode:'fly'},
   {at:9,   key:'s9',   vk:'thunder', name:'落雷術',   color:'#c4b5fd', mult:2.6,  mode:'drop'},
-  {at:13,  key:'s13',  vk:'whirl',   name:'破魂旋斬', color:'#7fe6ff', mult:3.2,  mode:'fly'},
-  {at:17,  key:'s17',  vk:'holy',    name:'聖光審判', color:'#ffe9a8', mult:3.8,  mode:'drop', heal:15},
-  {at:22,  key:'s22',  vk:'ice',     name:'疾風狂斬', color:'#5cc8ff', mult:4.4,  mode:'fly'},
-  {at:29,  key:'s29',  vk:'poison',  name:'幻影無雙', color:'#b98bff', mult:5.0,  mode:'drop'},
-  {at:35,  key:'s35',  vk:'thunder', name:'隕石衝擊', color:'#ff8a3d', mult:5.8,  mode:'drop'},
-  {at:42,  key:'s42',  vk:'holy',    name:'王者降臨', color:'#ffd76a', mult:6.6,  mode:'drop', heal:30},
-  {at:55,  key:'s55',  vk:'fire',    name:'龍王破空', color:'#ff9d5c', mult:7.4,  mode:'fly'},
-  {at:65,  key:'s65',  vk:'whirl',   name:'時空崩裂', color:'#5cf0ff', mult:8.2,  mode:'drop'},
-  {at:75,  key:'s75',  vk:'poison',  name:'宇宙極光', color:'#c893ff', mult:9.0,  mode:'fly'},
-  {at:85,  key:'s85',  vk:'ice',     name:'超越限界', color:'#ffffff', mult:9.8,  mode:'drop'},
-  {at:95,  key:'s95',  vk:'holy',    name:'九數禁咒', color:'#fff2c2', mult:10.4, mode:'drop', heal:20},
-  {at:100, key:'s100', vk:'fire',    name:'乘法神話', color:'#ffe066', mult:11.0, mode:'drop', heal:40}
+  {at:12,  key:'s12',  vk:'whirl',   name:'破魂旋斬', color:'#7fe6ff', mult:3.2,  mode:'fly'},
+  {at:16,  key:'s16',  vk:'holy',    name:'聖光審判', color:'#ffe9a8', mult:3.8,  mode:'drop', heal:15},
+  {at:25,  key:'s25',  vk:'ice',     name:'疾風狂斬', color:'#5cc8ff', mult:4.6,  mode:'fly'},
+  {at:35,  key:'s35',  vk:'poison',  name:'幻影無雙', color:'#b98bff', mult:5.4,  mode:'drop'},
+  {at:45,  key:'s45',  vk:'thunder', name:'隕石衝擊', color:'#ff8a3d', mult:6.2,  mode:'drop'},
+  {at:55,  key:'s55',  vk:'holy',    name:'王者降臨', color:'#ffd76a', mult:7.0,  mode:'drop', heal:30},
+  {at:65,  key:'s65',  vk:'fire',    name:'龍王破空', color:'#ff9d5c', mult:7.8,  mode:'fly'},
+  {at:75,  key:'s75',  vk:'whirl',   name:'時空崩裂', color:'#5cf0ff', mult:8.6,  mode:'drop'},
+  {at:85,  key:'s85',  vk:'poison',  name:'宇宙極光', color:'#c893ff', mult:9.4,  mode:'fly'},
+  {at:95,  key:'s95',  vk:'ice',     name:'超越限界', color:'#ffffff', mult:10.2, mode:'drop'},
+  {at:105, key:'s105', vk:'holy',    name:'九數禁咒', color:'#fff2c2', mult:11.0, mode:'drop', heal:20},
+  {at:125, key:'s125', vk:'poison',  name:'熾焰滅殺', color:'#ff6ad5', mult:11.8, mode:'fly'},
+  {at:145, key:'s145', vk:'whirl',   name:'虛空終焉', color:'#8fd8ff', mult:12.6, mode:'drop'},
+  {at:165, key:'s165', vk:'fire',    name:'乘法神話', color:'#ffe066', mult:13.4, mode:'drop', heal:40}
 ];
 function spellFor(c){
   const early = HERO.spellEarly || 0;          // 法師提早兩連就放
@@ -2893,7 +2908,7 @@ $('hotClose').onclick = $('hotOk').onclick = () => panelClose('hotwin');
 $('hotwin').onclick = e => { if(e.target === $('hotwin')) panelClose('hotwin'); };
 
 function useSkill(key){
-  if(paused) return;
+  if(paused || castBusy) return;
   const sk = SKILLS.find(x => x.key === key);
   if(!sk || !running || Save.d.lv < sk.lv) return;
   if((skillState[key] || 0) > performance.now()) return;
@@ -2921,6 +2936,7 @@ function useSkill(key){
       /* 先讓招式看得見，再結算傷害：同一格同時噴命中火花會把技能特效蓋掉 */
       playFx(sk.fx.key, mobCenter(), sk.fx);
       setTimeout(() => {
+        castBusy = false;
         if(!running) return;
         /* 連段：旋風斬打中有破綻印記的目標會引爆，傷害大幅提高並消耗印記 */
         const combo = key === 'whirl' && mobMarkedUntil > performance.now();
@@ -3087,7 +3103,7 @@ function applyHit(dmg, isCrit, isWeak, label, isEven){
   setHp('mobHp', mobHp / mob.hp);
   $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
   if(brokeEvenShield){ dmgText('護盾破了！', true); ring(mobCenter(), 'dring', 170); }
-  ult = Math.min(100, ult + P.ult + (isCrit ? (HERO.critBack || 0) : 0));   // 疾風獵手爆擊多回一點
+  ult = Math.min(100, ult + (P.ult + (isCrit ? (HERO.critBack || 0) : 0)) * ULT_GAIN_MUL);   // 疾風獵手爆擊多回一點
   paintUlt();
   return mobHp <= 0;
 }
@@ -3144,7 +3160,7 @@ function armComboDecay(){
   clearTimeout(comboDecayTimer);
   if(combo <= 0) return;
   comboDecayTimer = setTimeout(() => {
-    if(combo > 0){ combo = 0; comboAura(0); comboShout('連擊中斷', '#a894c4'); comboVisualTier(0); finisherReady = false; }
+    if(combo > 0){ combo = 0; finisherFiredAt = 0; comboAura(0); comboShout('連擊中斷', '#a894c4'); comboVisualTier(0); finisherReady = false; }
   }, 3000);
 }
 
@@ -3153,6 +3169,11 @@ function armComboDecay(){
    第十輪順便在這裡統一畫「連擊數」常駐顯示——這裡是所有combo增減點唯一都會經過
    的函式，比在每個改combo的地方各自補一行畫面更新可靠。 */
 let finisherReady = false;   // combo 達到 8 的下一擊，強制觸發終結技（練習/娛樂模式都適用）
+// 2026-09-02第十九輪：Steve指定連擊要能無限往上疊，對應SPELLS/COMBO_MILESTONES
+// 一路到165連擊——原本終結技每次觸發會把combo直接扣8層，等於連擊永遠衝不過15~16
+// 就被砍斷，後面那些高連擊門檻的技能實際上永遠打不到。改成「扣層」變成「記住上次
+// 觸發時的連擊數」，combo本身不再被終結技動過，繼續一路往上疊。
+let finisherFiredAt = 0;
 function comboVisualTier(c){
   const t = c >= 8 ? 3 : c >= 4 ? 2 : 1;
   $('actAtk').classList.toggle('charged', t === 3);
@@ -3166,7 +3187,7 @@ function comboVisualTier(c){
   return t;
 }
 function armFinisher(){
-  if(combo >= 8 && !finisherReady) finisherReady = true;
+  if(combo - finisherFiredAt >= 8 && !finisherReady) finisherReady = true;
 }
 /* 終結技：combo 滿 8 後的下一擊 100% 觸發，扣 8 層 combo（允許疊到 16+ 連續觸發）。
    一般小怪直接秒殺、Boss 走 3 倍傷害，跟 spellFor()/COMBO_MILESTONES 各自獨立，
@@ -3200,7 +3221,7 @@ function finisherSwing(onHit){
 }
 
 function playerAttack(){
-  if(!running || paused || !arcade || locked || !atkReady) return;
+  if(!running || paused || !arcade || locked || !atkReady || castBusy) return;
   const btn = $('actAtk');
   const now = performance.now();
   const perfectHit = !!btn._ringCloseAt && now >= (btn._ringCloseAt - (btn._ringCloseAt - btn._ringOpenAt) * 0.3) && now <= btn._ringCloseAt + 60;
@@ -3224,8 +3245,7 @@ function playerAttack(){
   if(useFinisher){
     finisherSwing(() => {
       const dead = playFinisher(dmg, isEven);
-      combo = Math.max(0, combo - 8);          // 不管這一下有沒有打死怪，都要先扣層，
-      finisherReady = combo >= 8;               // 不然finisherReady會一路帶到下一隻怪身上
+      finisherFiredAt = combo; finisherReady = false;   // 只記觸發點，不再扣combo，連擊繼續往上疊
       comboVisualTier(combo);
       if(dead) killMob();
     });
@@ -3257,7 +3277,7 @@ function dodge(){
   setTimeout(() => h.classList.remove('evade'), 700);
   if(perfect){
     counterReady = true;
-    ult = Math.min(100, ult + 15); paintUlt();     // 比普通閃過(+8)多回一點
+    ult = Math.min(100, ult + 15 * ULT_GAIN_MUL); paintUlt();     // 比普通閃過(+8)多回一點
     comboShout('完美閃避！', '#8fd8ff');
     F().classList.add('slowmo'); slowmoField(500, .55);
     setTimeout(() => F().classList.remove('slowmo'), 500);
@@ -3522,8 +3542,7 @@ function answer(v, btn){
     if(useFinisher){
       finisherSwing(() => {
         const dead = playFinisher(dmg, isEven);
-        combo = Math.max(0, combo - 8);
-        finisherReady = combo >= 8;
+        finisherFiredAt = combo; finisherReady = false;
         comboVisualTier(combo);
         if(dead) return killMob();
         setTimeout(newQ, 460);
@@ -3546,7 +3565,7 @@ function answer(v, btn){
       }
     }, tier);
   }else{
-    wrong++; combo = 0; stageAdvance(false);
+    wrong++; combo = 0; finisherFiredAt = 0; stageAdvance(false);
     comboAura(0); comboVisualTier(0); finisherReady = false;
     Stats.mark(QQ.key, false);
     btn.classList.add('wrong');
@@ -3771,7 +3790,7 @@ function mobAttack(){
     if(arcade && performance.now() < invuln){        // 閃過了：不扣血
       // 完美閃避的必殺／慢動作已經在按下的當下給過了，這裡只補一般閃過的獎勵，不重複算
       dmgText(counterReady ? '完美閃避！' : '閃過！', true);
-      if(!counterReady){ ult = Math.min(100, ult + 8); paintUlt(); }
+      if(!counterReady){ ult = Math.min(100, ult + 8 * ULT_GAIN_MUL); paintUlt(); }
       Sfx.next();
       setTimeout(newQ, 520);
       return;
@@ -3781,8 +3800,8 @@ function mobAttack(){
     heroHurtAnim();
     const raw = mob.atk * (arcade ? D().dmg : 1) * (1 - (HERO.reduce || 0));
     heroHp = Math.max(0, heroHp - Math.max(1, Math.round(raw)));
-    if(HERO.hitUlt){ ult = Math.min(100, ult + HERO.hitUlt); paintUlt(); }   // 鐵壁衛士被打會回必殺
-    if(arcade) { combo = 0; comboAura(0); comboVisualTier(0); finisherReady = false; }
+    if(HERO.hitUlt){ ult = Math.min(100, ult + HERO.hitUlt * ULT_GAIN_MUL); paintUlt(); }   // 鐵壁衛士被打會回必殺
+    if(arcade) { combo = 0; finisherFiredAt = 0; comboAura(0); comboVisualTier(0); finisherReady = false; }
     paintHeroBar();
     Sfx.hurt();
     F().classList.remove('hurt'); void F().offsetWidth; F().classList.add('hurt');

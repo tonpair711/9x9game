@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260906c">
+<link rel="stylesheet" href="assets/common.css?v=20260906d">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -1492,7 +1492,7 @@ body.playing #pauseBtn{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260906c"></script>
+<script src="assets/common.js?v=20260906d"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -1623,7 +1623,11 @@ const ARCADE_ATK_MODE = 'button';
    換成「打死幾隻」。 */
 let STAGE_Q = 10;             // 2026-08-31 Steve：每幾隻一關可以讓玩家調整，開局時從 StageQ 設定重新讀一次
 const STAGE_MAX = 10;
-let stageNo = 1, stageQ = 0, stagePending = null;   // stagePending: null｜'clear'｜'finale'
+/* 2026-09-06：Steve回報「打死怪物都沒顯示是否繼續」——查到是 stageNo/stageQ 沒存檔，
+   玩到一半離開戰鬥畫面（回大廳、重整）就歸零，湊不滿一批10隻就永遠看不到彈窗
+   （現在1隻怪要答對10題才能擊敗，湊滿10隻＝100題正確，很難一次玩完不中斷）。
+   改成從 Save.d 讀（沒有就預設1/0），下面 start() 也不再把它們重置為1/0。 */
+let stageNo = Save.d.stageNo || 1, stageQ = Save.d.stageQ || 0, stagePending = null;   // stagePending: null｜'clear'｜'finale'
 let pendingFinal = false;           // 這次跳出來的彈窗是不是「10 關全破」的真正完結
 let stageRight = 0, stageWrong = 0, stageWrongList = [];   // 這一輪（最多STAGE_Q隻）自己的答題對錯統計，跟整場累計的 right/wrong 分開算
 
@@ -3057,6 +3061,7 @@ function stageKillAdvance(){
     stagePending = (Stage.get() === 'ask' || pendingFinal) ? 'finale' : 'clear';
     if(Cloud.logged()) History.add(stageRight, stageWrong);
   }
+  Save.d.stageQ = stageQ; Save.put();   // 2026-09-06：存檔，離開再回來不會歸零
 }
 function newQ(){
   /* 過關／全破的提示插在「下一題出現之前」，不管是哪個分支（答對／答錯／逾時）呼叫進來的，
@@ -3066,6 +3071,7 @@ function newQ(){
     stagePending = null;
     comboShout('第 ' + stageNo + ' 關　過關！', '#ffd76a');
     stageNo++;
+    Save.d.stageNo = stageNo; Save.put();
     setTimeout(newQ, 1100);
     return;
   }
@@ -4217,7 +4223,10 @@ function start(){
   clearLog();
   logMsg('冒險開始！');
   paintStageQ();               // 開局重讀一次，防止登入狀態在設定頁之後才改變
-  stageNo = 1; stageQ = 0; stagePending = null;
+  /* 2026-09-06：不再把 stageNo/stageQ 重置成1/0——這兩個現在存進 Save.d 了（見上面
+     宣告處），中途離開戰鬥畫面（回大廳、重整）再回來要接得回進度，不要每次重開都砍掉。
+     stagePending 是「這次要不要跳彈窗」的一次性旗標，繼續歸零沒關係。 */
+  stagePending = null;
   stageRight = 0; stageWrong = 0; stageWrongList = [];
   Save.d.playCount++; Save.put();
   $('over').classList.remove('on');
@@ -4282,6 +4291,7 @@ $('sfContinue').onclick = () => {
   if(pendingFinal) stageNo = 1; else stageNo++;
   stageQ = 0; stagePending = null; pendingFinal = false;
   stageRight = 0; stageWrong = 0; stageWrongList = [];
+  Save.d.stageNo = stageNo; Save.d.stageQ = stageQ; Save.put();
   running = true;
   newQ();
 };
@@ -4453,7 +4463,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260906c"></script>
-<script src="assets/lock.js?v=20260906c"></script>
+<script src="assets/audio.js?v=20260906d"></script>
+<script src="assets/lock.js?v=20260906d"></script>
 </body>
 </html>

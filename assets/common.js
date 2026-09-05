@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.39';
+const GAME_VERSION = '1.3.40';
 
 const $ = id => document.getElementById(id);
 
@@ -156,6 +156,9 @@ const DEFAULT_SAVE = {
                                                    //   fixLoadout()也放那邊，這裡只保底不讓欄位是undefined）
   round:1, wave:0,
   pStreak:0, pBossIdx:0,                         // 2026-09-05：練習模式過關模式的Boss輪替游標
+  stageNo:1, stageQ:0,                           // 2026-09-06：過關進度（第幾小關、這一批擊殺幾隻）
+                                                  // 原本沒存檔，中途離開回大廳/重整就歸零，導致玩家
+                                                  // 湊不滿一批就一直看不到「是否繼續」彈窗
   totalKill:0, playCount:0, lastPlay:''
 };
 const Save = {

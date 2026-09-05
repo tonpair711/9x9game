@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.34';
+const GAME_VERSION = '1.3.35';
 
 const $ = id => document.getElementById(id);
 
@@ -155,6 +155,7 @@ const DEFAULT_SAVE = {
                                                    // （SKILLS表格定義在battle.html，真正的補齊邏輯
                                                    //   fixLoadout()也放那邊，這裡只保底不讓欄位是undefined）
   round:1, wave:0,
+  pStreak:0, pBossIdx:0,                         // 2026-09-05：練習模式過關模式的Boss輪替游標
   totalKill:0, playCount:0, lastPlay:''
 };
 const Save = {
@@ -1003,13 +1004,15 @@ const Voice = {
   }
 };
 
-/* ---------- 每 10 題要不要跳出來問繼續（2026-08-31 Steve：要有節奏感，且要能關掉）----------
-   預設「ask」：每 10 題（1關）就跳出完整彈窗問要不要繼續。關掉（auto）就回到舊行為
-   ——10 題只顯示「過關」橫幅，自動接下一題，只有 10 關（100 題）全破才問。 */
+/* ---------- 每 10 隻要不要跳出來問繼續（2026-08-31 Steve：要有節奏感，且要能關掉）----------
+   預設「ask」：每 10 隻（1關）就跳出完整彈窗問要不要繼續。關掉（auto）就回到舊行為
+   ——10 隻只顯示「過關」橫幅，自動接下一隻，只有 10 關（100 隻）全破才問。
+   2026-09-05：從「每10題」改成「每10隻」（打死一隻怪才算過關，不再是答完幾題），
+   標籤文字跟著改，開關本身的行為/存檔 key 都沒變。 */
 const STAGE_ASK_KEY = 'mul99_stageAsk';
 const STAGE_ASK_MODES = [
-  {k:'ask',  n:'每10題都問',   d:'答完就問要不要繼續'},
-  {k:'auto', n:'10題只提示', d:'顯示過關，自動接著寫'}
+  {k:'ask',  n:'每10隻都問',   d:'打死就問要不要繼續'},
+  {k:'auto', n:'10隻只提示', d:'顯示過關，自動接著打'}
 ];
 const Stage = {
   get(){ try{ const v = localStorage.getItem(STAGE_ASK_KEY); return STAGE_ASK_MODES.some(m=>m.k===v) ? v : 'ask'; }catch(e){ return 'ask'; } },
@@ -1028,9 +1031,10 @@ const Stage = {
   }
 };
 
-/* ---------- 每一關要答幾題（2026-08-31 Steve：登入帳號才能調，10～100 題自由調整）----------
+/* ---------- 每一關要打死幾隻怪（2026-08-31 Steve：登入帳號才能調，10～100 隻自由調整）----------
    跟下面的 History／錯題記錄同一組「登入才有的功能」，戰鬥頁自己判斷 Cloud.logged()
-   決定要不要讓這個設定生效，這裡只管存取，不管要不要顯示。 */
+   決定要不要讓這個設定生效，這裡只管存取，不管要不要顯示。
+   2026-09-05：意義從「每一關要答幾題」改成「每一關要打死幾隻」，key/存取邏輯沒變。 */
 const STAGE_QCOUNT_KEY = 'mul99_stageQCount';
 const StageQ = {
   get(){

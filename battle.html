@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260905b">
+<link rel="stylesheet" href="assets/common.css?v=20260905c">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -1315,15 +1315,15 @@ body.playing #pauseBtn{display:flex}
       <div id="rangebar"></div>
     </div>
     <div id="stagewrap">
-      <div class="setlab">每 <b id="stagelabQ">10</b> 題答完要不要問繼續</div>
+      <div class="setlab">每打死 <b id="stagelabQ">10</b> 隻怪要不要問繼續</div>
       <div id="stagebar"></div>
-      <div class="setlab" style="margin-top:10px">每一關要答幾題（登入才能調整）</div>
+      <div class="setlab" style="margin-top:10px">每一關要打死幾隻怪（登入才能調整）</div>
       <div class="stageqrow" id="stageqrow">
         <button type="button" id="stageqMinus" class="stageqbtn">－</button>
-        <b id="stageqVal">10 題一關</b>
+        <b id="stageqVal">10 隻一關</b>
         <button type="button" id="stageqPlus" class="stageqbtn">＋</button>
       </div>
-      <div class="charhint" id="stageqLoginHint">👉 登入帳號才能調整關卡題數，目前固定 10 題一關</div>
+      <div class="charhint" id="stageqLoginHint">👉 登入帳號才能調整關卡怪物數，目前固定每 10 隻一關</div>
     </div>
     <div id="diffwrap">
       <div class="setlab">娛樂模式的難度</div>
@@ -1492,7 +1492,7 @@ body.playing #pauseBtn{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260905b"></script>
+<script src="assets/common.js?v=20260905c"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -1567,6 +1567,12 @@ const MOBS = [
   {img:'assets/mob_bossqueenspider.webp', name:'蛛后', hp:2014, atk:49, weak:[5, 7, 9], exp:483, drop:1, boss:true},
   {img:'assets/mob_bossstorm.webp', name:'雷霆巨神', hp:2200, atk:52, weak:[3, 4, 9], exp:520, drop:1, boss:true}
 ];
+/* 2026-09-05：練習模式過關模式——「每擊敗 5 隻一般怪，第 6 隻強制是 Boss」的怪物來源。
+   跟 MOBS 原始陣列分開算，不動 MOBS 本身（娛樂模式仍照原本 wave 依序輪整個 MOBS）。
+   REG_MOBS／BOSS_MOBS 只是把同一份資料依 boss 旗標篩成兩堆，練習模式另外用
+   pStreak／pBossIdx 這兩個游標決定下一隻要從哪一堆抽、抽第幾隻。 */
+const REG_MOBS = MOBS.filter(m => !m.boss);
+const BOSS_MOBS = MOBS.filter(m => m.boss);
 /* ---------- 裝備掉落率（2026-08-23 Steve 指定：一律壓在 10% 以下） ----------
    原本是直接吃 MOBS 每一筆的 `drop`（0.40～0.80），等於小怪也有四到八成掉裝備，
    結果背包一直塞滿、每一件都不稀罕、也撐不起「要不要拿去賭 +7」這個決定。
@@ -1608,15 +1614,37 @@ let arcade = false, QQ = null;
    開關切換要不要啟用——新設計定案後把這個改回 'rhythm' 或直接刪掉舊分支即可，不用重寫。
    'button' = 舊攻擊鈕＋PERFECT光圈（目前線上）｜'rhythm' = 音符軌道（第二十八輪那套）。 */
 const ARCADE_ATK_MODE = 'button';
-/* ---------- 練習模式「10 題一關」（2026-08-29 Steve）----------
-   跟原本打怪的血量／升等／掉裝備完全脫鉤：不管這一題有沒有打死誰，
-   單純每答完 10 題（不論對錯）算過一關，10 關是一次「今天的練習」。
-   純粹是練習節奏的里程碑，不是難度限制——怪物無限輪替、升等、掉寶都照舊在底下跑。 */
-let STAGE_Q = 10;             // 2026-08-31 Steve：每幾題一關可以讓玩家調整，開局時從 StageQ 設定重新讀一次
+/* ---------- 練習模式「10 隻一關」（2026-08-29 起，2026-09-05 改成打死制）----------
+   2026-08-29 原意：跟血量／升等／掉裝備完全脫鉤，單純每答完 10 題（不論對錯）算過一關，
+   純粹是練習節奏的里程碑，不是難度限制。
+   2026-09-05 改版：「關」的定義換成「打死一隻怪＝1關」（見下方 mobCorrect/mobTarget、
+   stageKillAdvance()、pStreak/pBossIdx 那組過關模式），10 關還是一次「今天的練習」，
+   彈窗機制（stagePending/stageNo/STAGE_Q這套）完全沿用沒動，只是觸發時機從「答完幾題」
+   換成「打死幾隻」。 */
+let STAGE_Q = 10;             // 2026-08-31 Steve：每幾隻一關可以讓玩家調整，開局時從 StageQ 設定重新讀一次
 const STAGE_MAX = 10;
 let stageNo = 1, stageQ = 0, stagePending = null;   // stagePending: null｜'clear'｜'finale'
 let pendingFinal = false;           // 這次跳出來的彈窗是不是「10 關全破」的真正完結
-let stageRight = 0, stageWrong = 0, stageWrongList = [];   // 這一輪（最多10題）自己的對錯，跟整場累計的 right/wrong 分開算
+let stageRight = 0, stageWrong = 0, stageWrongList = [];   // 這一輪（最多STAGE_Q隻）自己的答題對錯統計，跟整場累計的 right/wrong 分開算
+
+/* 2026-09-05：練習模式「過關模式」——跟 Steve 逐輪確認過的設計（見 進度.md 同日那段）：
+   ①擊敗＝純答對題數（一般怪10題、Boss15題），不看HP，HP條留當裝飾（每答對一題掃一塊）
+   ②答錯照舊被反擊扣血，不影響已累積的正確題數（不用連續）
+   ③每擊敗5隻一般怪，第6隻強制是Boss，10隻Boss依序輪流（輪完從頭）
+   ④單一隻怪（不管一般/Boss）＝1關，每擊敗10隻彈一次全螢幕彈窗選繼續/休息
+   （沿用原本「10題一關」的 stageNo/STAGE_Q/stagePending 那套彈窗機制，只是把「答完10題」
+   改成「打死10隻」——stageRight/stageWrong 還是每題都記，finale彈窗的答對/答錯數字不受影響）
+   ⑤只改練習模式，娛樂模式（arcade）完全不動——沿用原本 wave 依序輪整個 MOBS、HP傷害制擊敗。 */
+let mobCorrect = 0, mobTarget = 10;    // 這一隻怪目前答對幾題／需要幾題（練習模式才有意義）
+let pStreak = Save.d.pStreak || 0, pBossIdx = Save.d.pBossIdx || 0;
+                                        // pStreak：這一輪已擊敗幾隻一般怪（0~4，滿5換Boss）
+                                        // pBossIdx：下一隻Boss要從 BOSS_MOBS 拿第幾隻（輪完歸零重算）
+function mobDead(){ return arcade ? (mobHp <= 0) : (mobCorrect >= mobTarget); }
+function mobBarFrac(){ return arcade ? Math.max(0, mobHp / mob.hp) : Math.max(0, 1 - mobCorrect / mobTarget); }
+function mobHpLabel(){
+  return arcade ? (mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp))
+                : (mobLabel() + '　' + mobCorrect + '/' + mobTarget + ' 正確');
+}
 const DIFF_KEY = 'mul99_diff';
 // 2026-09-02第十九輪：Steve指定普通攻擊冷卻強制2.5秒，不再看難度／PERFECT打折，
 // cd欄位拿掉、改用下面獨立的ATK_CD常數（見playerAttack）
@@ -1671,6 +1699,11 @@ function preload(list){
   }
 }
 let HERO = heroOf(Save.d.hero);
+/* ⚠ 2026-09-05：練習模式的怪物來源改用 pickPracticeMob()（REG_MOBS/BOSS_MOBS + pStreak/
+   pBossIdx），跟這裡用 wave 直接查 MOBS[i] 不是同一份清單了——練習模式下這裡預抓的圖
+   不一定是下一隻真的要出場的怪。只是效能優化（沒抓到頂多晚一點才顯示，圖片載入本身
+   有 retry/剪影備援，見 `$('mob').addEventListener('error', ...)`），不是功能性 bug，
+   先不動；真的要精準預抓要另外照 pickPracticeMob() 的邏輯抓「下一隻」，之後有空再補。 */
 function preloadNearby(){
   const i = Math.min(MOBS.length - 1, (Save.d.wave || 0));
   preload([MOBS[i] && MOBS[i].img, MOBS[i+1] && MOBS[i+1].img]);
@@ -2263,7 +2296,8 @@ function bossIntro(){
       shake(); camPush(true);
       beep(70, .38, 'sawtooth', .16);
       beep(150, .22, 'square', .1);
-      nm.innerHTML = mob.name + '<small>弱點：' + (mob.weak || []).join('、') + ' 的乘法表</small>';
+      nm.innerHTML = mob.name + '<small>弱點：' + (mob.weak || []).join('、') + ' 的乘法表</small>'
+        + (arcade ? '' : '<small>需答對 ' + mobTarget + ' 題才能擊敗！</small>');   // 2026-09-05：Boss事前告知
       nm.classList.remove('on'); void nm.offsetWidth; nm.classList.add('on');
     }, 500);
 
@@ -2981,13 +3015,13 @@ function castSpell(sp){
       const dmg = Math.round(P.atk * sp.mult * (P.spell || 1) + 6);
       mobHp = Math.max(0, mobHp - dmg);
       totalDmg += dmg;
-      hitEffect(true, true, mobHp <= 0);
+      hitEffect(true, true, mobDead());
       const fx = SPELL_FX[imgKey];
       if(fx) playFx(fx.key, mobCenter(), fx);
       camPush(true);
       dmgText(sp.name + ' -' + dmg, true);
-      setHp('mobHp', mobHp / mob.hp);
-      $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
+      setHp('mobHp', mobBarFrac());
+      $('mobHpText').textContent = mobHpLabel();
       if(sp.heal){
         heroHp = Math.min(maxHp, heroHp + sp.heal);
         paintHeroBar();
@@ -2996,28 +3030,33 @@ function castSpell(sp){
       f.classList.remove('casting');
       Char.react(true, true, sp.name + '！');
       Char.cat(true);
-      resolve(mobHp <= 0);
+      resolve(mobDead());
     }, 700);
   });
 }
 
 /* ---------- 出題 ---------- */
-/* 答完（不論對錯）一題，往 10 題一關的進度走一步。ok 為 undefined 表示逾時（不算對也不算錯，
-   但一樣往關卡進度走，逾時本來就會 combo=0 走到 wrong 分支之外的第三條路，見 tick()） */
+/* 答完（不論對錯）一題，記錄這一輪自己的對錯數（結算彈窗用）。ok 為 undefined 表示逾時
+   （不算對也不算錯）。2026-09-05 起：「過幾題算過一關」已經改成 stageKillAdvance()
+   （打死一隻怪才算過關，見下方），這裡只剩單純記錄答對/答錯統計，不再碰 stageQ。 */
 function stageAdvance(ok){
   if(arcade) return;                  // 娛樂模式沒有題目，不算關卡
   if(ok === true) stageRight++;
   else if(ok === false){ stageWrong++; if(QQ) stageWrongList.push(QQ.text + ' ＝ ' + QQ.ans); }
+  paintTop();
+}
+/* 2026-09-05：新版「過關」進度——單一隻怪（不管一般/Boss）＝1關，打死一隻就呼叫一次。
+   沿用原本 stageNo/STAGE_Q/stagePending 那套彈窗機制與 Stage 開關，只是觸發條件從
+   「答完10題」換成「打死10隻」，History 記的還是 stageRight/stageWrong 這兩個答題統計。 */
+function stageKillAdvance(){
+  if(arcade) return;
   stageQ++;
   if(stageQ >= STAGE_Q){
     stageQ = 0;
     pendingFinal = stageNo >= STAGE_MAX;
-    /* 2026-08-31 Steve：每 10 題要問一次要不要繼續，不是只顯示橫幅自動接下一題——
-       這個開關存在 Stage（common.js），關掉才回到舊行為（10題橫幅、100題才問） */
     stagePending = (Stage.get() === 'ask' || pendingFinal) ? 'finale' : 'clear';
-    if(Cloud.logged()) History.add(stageRight, stageWrong);   // 沒登入不留這筆，跟結算彈窗的顯示邏輯一致
+    if(Cloud.logged()) History.add(stageRight, stageWrong);
   }
-  paintTop();
 }
 function newQ(){
   /* 過關／全破的提示插在「下一題出現之前」，不管是哪個分支（答對／答錯／逾時）呼叫進來的，
@@ -3079,7 +3118,7 @@ function applyHit(dmg, isCrit, isWeak, label, isEven){
       dmgText('護盾破了！', true);
       ring(mobCenter(), 'dring', 170);
     }
-    $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
+    $('mobHpText').textContent = mobHpLabel();
     return false;
   }
   /* 2026-09-01 第十輪：偶數護盾（mathTrait='EVEN_SHIELD'）——不是血量式，是層數。
@@ -3097,15 +3136,16 @@ function applyHit(dmg, isCrit, isWeak, label, isEven){
   }
   mobHp = Math.max(0, mobHp - dmg);
   totalDmg += dmg;
-  hitEffect(isCrit, isWeak, mobHp <= 0);
-  camPush(isCrit || mobHp <= 0);
+  const dead = mobDead();
+  hitEffect(isCrit, isWeak, dead);
+  camPush(isCrit || dead);
   dmgText((label || (isCrit ? '爆擊 ' : '')) + '-' + dmg, isWeak || isCrit);
-  setHp('mobHp', mobHp / mob.hp);
-  $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
+  setHp('mobHp', mobBarFrac());
+  $('mobHpText').textContent = mobHpLabel();
   if(brokeEvenShield){ dmgText('護盾破了！', true); ring(mobCenter(), 'dring', 170); }
   ult = Math.min(100, ult + (P.ult + (isCrit ? (HERO.critBack || 0) : 0)) * ULT_GAIN_MUL);   // 疾風獵手爆擊多回一點
   paintUlt();
-  return mobHp <= 0;
+  return dead;
 }
 
 /* ── 娛樂模式：不出題，自己按攻擊與閃避 ──
@@ -3520,6 +3560,7 @@ function answer(v, btn){
 
   if(v === ans){
     right++; stageAdvance(true);
+    if(!arcade) mobCorrect++;   // 2026-09-05：練習模式擊敗＝答對題數累計，答錯不清零、不用連續
     if(fastest === null || took < fastest) fastest = took;
     combo++;
     if(took <= 2.5) combo += 2;                 // 2026-09-01 第九輪：快答加成，鼓勵熟練不鼓勵拖時間
@@ -3677,7 +3718,7 @@ function summonGuards(){
   w.classList.add('shielded');
   dmgText('召喚護衛！', true);
   ring(mobCenter(), 'dring', 150);
-  $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
+  $('mobHpText').textContent = mobHpLabel();
 }
 
 /* 2026-09-01 第十輪：快答爆彈（mathTrait='SPEED_BOMB'）——換題/換回合當下就開始倒數，
@@ -3937,17 +3978,24 @@ function killMob(){
     paintTop();
   }, 500);
 
+  /* 2026-09-05：練習模式過關模式——單一隻怪（不管一般/Boss）＝1關，這裡呼叫一次
+     stageKillAdvance()（沿用原本10題一關那套彈窗機制，只是觸發條件從「答完10題」
+     改成「打死10隻」）；一般怪額外＋1算進「滿5隻換Boss」的streak，Boss打完歸零。
+     這兩件事都要在 nextMob()／setMob() 選下一隻怪之前算好。 */
+  if(!arcade){
+    stageKillAdvance();
+    if(!mob.boss){ pStreak++; Save.d.pStreak = pStreak; }
+  }
+
   setTimeout(()=>{
     $('mob').classList.remove('die','hit');
     $('shMob').classList.remove('gone','hit');
     wave++;
     if(wave >= MOBS.length){ round++; wave = 0; }
     Save.d.round = round; Save.d.wave = wave; Save.put();
-    /* 2026-09-02 第十一輪：Steve回報娛樂模式打死Boss就整場結束、跳「全部打倒了」結算卡，
-       逼玩家點「再挑戰一次」重開——這會把連擊/combo/連殺全部砍斷，跟「娛樂模式應該無限
-       打下去」的預期衝突。練習模式維持原樣（打Boss算一次階段性完賽，有它自己的意義），
-       只有娛樂模式改成打死Boss跟打死一般怪一樣，直接nextMob()續打，不跳結算畫面。 */
-    if(mob.boss && !arcade){ return over(true); }
+    /* 2026-09-05：Steve確認改成不結束——練習模式打死Boss現在跟娛樂模式一樣直接
+       nextMob()續打下一輪，不再跳「全部打倒了」結算卡（配合「每6隻一循環」的新設計，
+       舊的「Boss=階段性完賽」用意已經被新的過關/里程碑彈窗取代）。 */
     nextMob();
   }, 1400);
 }
@@ -3979,8 +4027,24 @@ $('mob').addEventListener('error', () => {
     }
   }
 });
+/* 2026-09-05：練習模式怪物來源（娛樂模式維持 MOBS[wave] 原班不動）。
+   一般怪照舊借用 wave 當游標（wave 本身照原邏輯每殺一隻＋1、跟 round 一起算難度成長，
+   不因為這裡改了選怪來源而動），只是改到只在 REG_MOBS（50隻）裡繞；滿5隻改抽Boss，
+   Boss 依 pBossIdx 依序輪流（10隻輪完歸零從頭），兩個游標都存進 Save 才不會重整頁面就重算。 */
+function pickPracticeMob(){
+  if(pStreak >= 5){
+    const m = {...BOSS_MOBS[pBossIdx % BOSS_MOBS.length]};
+    pBossIdx = (pBossIdx + 1) % BOSS_MOBS.length;
+    pStreak = 0;
+    Save.d.pBossIdx = pBossIdx; Save.d.pStreak = pStreak; Save.put();
+    return m;
+  }
+  return {...REG_MOBS[wave % REG_MOBS.length]};
+}
 function setMob(){
-  mob = {...MOBS[wave]};
+  mob = arcade ? {...MOBS[wave]} : pickPracticeMob();
+  mobCorrect = 0;
+  mobTarget = mob.boss ? 15 : 10;
   /* 關卡成長：**血量／攻擊跟經驗刻意脫鉤**。
      玩家的戰力大致是線性成長（等級＋裝備），怪物血量若也用 1.15 指數，
      第 60 輪會變成幾十萬血、玩家打不動；但經驗需要指數才追得上 200 級的需求。
@@ -4029,8 +4093,8 @@ function setMob(){
   if(mob.spr && SPR[mob.spr + '_idle'] && IDLE_SPRITE()) Spr.play(mel, mob.spr + '_idle', {loop:true});
   else Spr.off(mel, mob.img);    // 圖是漸進載的，直接指定就好，瀏覽器沒載好會自己補
   preloadNearby();               // 順手把下一隻先抓起來
-  setHp('mobHp', 1);
-  $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
+  setHp('mobHp', mobBarFrac());
+  $('mobHpText').textContent = mobHpLabel();
   applyScene();
   paintTop();
 }
@@ -4059,14 +4123,14 @@ function useUlt(){
     const dmg = Math.round(mob.hp * 0.3 + P.atk * 2.2);
     mobHp = Math.max(0, mobHp - dmg);
     totalDmg += dmg;
-    hitEffect(true, true, mobHp <= 0);
+    hitEffect(true, true, mobDead());
     playFx('fire', mobCenter(), {size:380, fps:24});
     dmgText('-' + dmg, true);
-    setHp('mobHp', mobHp / mob.hp);
-    $('mobHpText').textContent = mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
+    setHp('mobHp', mobBarFrac());
+    $('mobHpText').textContent = mobHpLabel();
     shake();
     $('ultfx').classList.remove('on');
-    if(mobHp <= 0) return killMob();
+    if(mobDead()) return killMob();
     setTimeout(newQ, 500);
   }, 900);
 }
@@ -4345,12 +4409,14 @@ Topic.bar($('topicbar'), () => paintRangeVis());
 Range.bar($('rangebar'), () => Topic.bar($('topicbar'), () => paintRangeVis()));
 paintRangeVis();
 Stage.bar($('stagebar'));
-/* 每一關要答幾題：登入才能調（10～100，10 一階）。沒登入固定 10 題，按鈕整排藏起來只留提示 */
+/* 每一關要打死幾隻怪：登入才能調（10～100，10 一階）。沒登入固定 10 隻，按鈕整排藏起來只留提示。
+   2026-09-05：從「每幾題一關」改成「每擊敗幾隻一關」，數值意義變了但機制（10～100可調、
+   登入才顯示）沒變，見 stageKillAdvance()。 */
 function paintStageQ(){
   const logged = Cloud.logged();
   document.body.classList.toggle('stageqGuest', !logged);
   STAGE_Q = logged ? StageQ.get() : 10;
-  $('stageqVal').textContent = STAGE_Q + ' 題一關';
+  $('stageqVal').textContent = STAGE_Q + ' 隻一關';
   $('stagelabQ').textContent = STAGE_Q;
   $('stageqMinus').disabled = STAGE_Q <= 10;
   $('stageqPlus').disabled = STAGE_Q >= 100;
@@ -4387,7 +4453,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260905b"></script>
-<script src="assets/lock.js?v=20260905b"></script>
+<script src="assets/audio.js?v=20260905c"></script>
+<script src="assets/lock.js?v=20260905c"></script>
 </body>
 </html>

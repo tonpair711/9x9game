@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.36';
+const GAME_VERSION = '1.3.37';
 
 const $ = id => document.getElementById(id);
 
@@ -973,10 +973,14 @@ const Voice = {
      「不順、很AI聲音」——四段有三個接點，每個接點的語調都是斷開重來，接越多段越像
      機器人朗讀。改成「數字+運算詞」合成同一段（nop_add_N／nop_sub_N／nop_mul_N，
      跟後面的「數字+等於」neq_N），接點從3個砍到1個，只留最自然的「運算詞→數字」
-     那一個斷點。 */
+     那一個斷點。
+     2026-09-06：乘法題 a,b 固定 2~9（見 makeQOnce()），只有 64 種組合，改成整句
+     「A 乘以 B 等於」一次送給 edge-tts 合成（`mulsent_A_B.mp3`）——完全沒有接點，
+     比兩段式更順。加減法範圍 10~100 可調沒辦法全部預錄整句，維持兩段式。 */
   clips(q){
     if(!q) return [];
     if(q.sym) return [q.clip];
+    if(q.op === '×' && q.a >= 2 && q.a <= 9 && q.b >= 2 && q.b <= 9) return ['mulsent_' + q.a + '_' + q.b];
     const OPKEY = {'＋':'add', '－':'sub', '×':'mul'};
     const k = OPKEY[q.op];
     if(!k) return [];

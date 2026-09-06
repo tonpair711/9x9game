@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260907a">
+<link rel="stylesheet" href="assets/common.css?v=20260907b">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -1590,7 +1590,7 @@ body:not(.arcade) .skillsToggle{display:none}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260907a"></script>
+<script src="assets/common.js?v=20260907b"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -1701,7 +1701,7 @@ let mob = null, mobHp = 0;
 let qa = 1, qb = 1, ans = 0, qStart = 0, locked = true, running = false;
 let ult = 0, combo = 0, kills = 0, totalDmg = 0, right = 0, wrong = 0, fastest = null;
 let earnGold = 0, earnExp = 0, drops = [];
-let mobTimer = ANSWER_TIME, loop = null;
+let mobTimer = ANSWER_TIME;
 /* ── 兩種模式（Steve 2026-08-22）──
    練習模式：出題，答對出手（原本的玩法）
    娛樂模式：不出題，自己按攻擊與閃避，敵人倒數完就撲上來 */
@@ -4327,7 +4327,42 @@ function warnMob(){
   setTimeout(() => { m.remove(); w.classList.remove('warn'); }, 1250);
   Sfx.tick && Sfx.tick();
 }
-const paintTimer = () => $('mobTimer').style.transform = 'scaleX(' + (mobTimer/turnTime) + ')';
+/* 2026-09-07 打磨計畫 地基④：戰鬥主迴圈從 setInterval(100ms) 改成 rAF 固定步長。
+   tick() 本身完全不動（它仍代表「又過了 100ms」），只換驅動方式：
+   - rAF 跟螢幕更新同步，不會像 setInterval 那樣自己一個節奏、跟畫面錯開造成微頓
+   - 切到背景分頁時 rAF 會自動停（setInterval 會被瀏覽器降頻到 1 秒還繼續跑，
+     mobTimer 就照跑但每格 100ms→實際 1000ms，切回來計時全亂）。配合下面的
+     visibilitychange 自動暫停，切回來是乾淨的暫停畫面，不會瞬間暴衝。
+   - 累加真實 dt，每滿 100ms 跑一次 tick；單幀 dt > 500ms（長卡頓/剛從背景回來）
+     只補一格，最多連補 5 格，杜絕「補算暴衝」。 */
+let _loopRaf = null, _tickAcc = 0, _loopLast = 0;
+function _loopFrame(now){
+  if(_loopRaf === null) return;
+  let dt = now - _loopLast;
+  _loopLast = now;
+  if(dt > 500) dt = 100;
+  _tickAcc += dt;
+  let guard = 0;
+  while(_tickAcc >= 100 && guard++ < 5){ tick(); _tickAcc -= 100; }
+  _loopRaf = requestAnimationFrame(_loopFrame);
+}
+function startLoop(){
+  if(_loopRaf !== null) return;
+  _loopLast = performance.now(); _tickAcc = 0;
+  _loopRaf = requestAnimationFrame(_loopFrame);
+}
+function stopLoop(){
+  if(_loopRaf !== null) cancelAnimationFrame(_loopRaf);
+  _loopRaf = null;
+}
+
+let _timerLastSx = -1;
+function paintTimer(){
+  const sx = turnTime ? mobTimer / turnTime : 0;
+  if(Math.abs(sx - _timerLastSx) < 0.002) return;   // 值沒變就不寫 DOM（每秒省下約 10 次無謂的 style 寫入）
+  _timerLastSx = sx;
+  $('mobTimer').style.transform = 'scaleX(' + sx + ')';
+}
 
 function start(){
   arcade = Mode.isArcade();
@@ -4367,13 +4402,13 @@ function start(){
   paused = false;
   document.body.classList.remove('paused');
   $('pausewin').classList.remove('on');
-  clearInterval(loop); loop = setInterval(tick, 100);
+  startLoop();
   Fx.recheck();                 // 開打才是真正吃效能的時候，這時再量一次
   Sfx.next();
   $('start').textContent = '重 新 開 始';
 }
 function over(win){
-  running = false; paused = false; clearInterval(loop); loop = null;
+  running = false; paused = false; stopLoop();
   Voice.stop();
   document.body.classList.remove('paused');
   $('pausewin').classList.remove('on');
@@ -4510,7 +4545,7 @@ function setPause(on, silent){
   if(!silent) $('pausewin').classList.toggle('on', on);
   if(on){
     pauseClockAt = performance.now();
-    clearInterval(loop); loop = null;
+    stopLoop();
     Voice.stop();                       // 暫停時把還在唸的題目也停掉
     try{ fieldAnims().forEach(a => a.pause()); }catch(e){}
   }else{
@@ -4529,7 +4564,7 @@ function setPause(on, silent){
       if(comboFxUntil) comboFxUntil += dt;
     }
     try{ fieldAnims().forEach(a => a.play()); }catch(e){}
-    clearInterval(loop); loop = setInterval(tick, 100);
+    startLoop();
   }
 }
 $('pauseBtn').onclick  = () => setPause(true);
@@ -4540,6 +4575,12 @@ document.addEventListener('keydown', e => {
     if($('helpwin').classList.contains('on')) closeModal('helpwin');
     else if(running) setPause(!paused);
   }
+});
+/* 2026-09-07 打磨計畫（邊界防護）：切到別的分頁／鎖屏／切 App 時，戰鬥自動暫停。
+   rAF 主迴圈本來切背景就會停，這裡再補「凍住場上動畫＋停語音＋跳暫停畫面」，切回來
+   是乾淨的暫停狀態由小朋友自己點繼續，不會回來發現血條/計時對不上或音效還在background偷播。 */
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden && running && !paused) setPause(true);
 });
 Mode.readonly($('modebar'));
 Stage.bar($('stagebar'));
@@ -4576,7 +4617,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260907a"></script>
-<script src="assets/lock.js?v=20260907a"></script>
+<script src="assets/audio.js?v=20260907b"></script>
+<script src="assets/lock.js?v=20260907b"></script>
 </body>
 </html>

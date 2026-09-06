@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260906e">
+<link rel="stylesheet" href="assets/common.css?v=20260906f">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -1245,6 +1245,13 @@ body.playing #pauseBtn{display:flex}
 .row3 .skills .skill{flex:0 0 calc(25% - 6px);min-width:0;min-height:46px;padding:4px 3px}
 .row3 .skills .skill b{font-size:12px;letter-spacing:0;text-align:center;line-height:1.25}
 .row3 .skills .skill small{display:none}
+/* 2026-09-06：技能欄收合切換鈕——預設只顯示已解鎖技能，這顆鈕才展開看全部20顆 */
+.skillsToggle{
+  width:100%;text-align:center;padding:6px;margin-bottom:2px;border-radius:10px;
+  border:1px solid var(--line);background:#20132f;color:var(--dim);font-size:12px;
+  font-family:inherit;cursor:pointer;
+}
+.skillsToggle:active{transform:translateY(1px)}
 
 @media (max-width:520px){
   body{padding-bottom:96px}
@@ -1436,7 +1443,12 @@ body.playing #pauseBtn{display:flex}
         <div class="bar2"><i id="ultBar"></i></div>
         <button id="ultBtn" disabled>王者裁決</button>
       </div>
-      <!-- 主動技能：兩顆就好，多了手機按不完（冷卻時底下那條會補回來） -->
+      <!-- 2026-09-06 Steve回報「技能欄都沒收合，所以整個版面最上方都卡住了」：
+           2026-09-04把20顆技能全部攤開（含未解鎖）常駐顯示，等級越高、解鎖越多，
+           這塊格狀區越長，把整個戰鬥版面往下擠壓。改成預設只顯示「已解鎖」的技能
+           （未解鎖的收進去，按這顆鈕才展開看全部20顆＋Lv門檻），已解鎖數量少的
+           早中期不會佔滿版面。 -->
+      <button class="skillsToggle" id="skillsToggle">查看全部技能 ▾</button>
       <div class="skills" id="skills"></div>
     </div>
   </div>
@@ -1579,7 +1591,7 @@ body.playing #pauseBtn{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260906e"></script>
+<script src="assets/common.js?v=20260906f"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -1864,6 +1876,13 @@ function heroFrame(k, castKey){
     if(ready[HERO.img]) el.src = HERO.img;
     el.classList.toggle('poseSwing', k === 'swing' || k === 'after');
     el.classList.toggle('poseHurt', k === 'hurt');
+    /* 2026-09-06 Steve回報「星辰術士（沒有逐幀素材的角色）攻擊/受擊看起來都一樣、
+       沒變化」——這條路本來只換濾鏡色調（poseSwing/poseHurt），角色本體圖片完全
+       不動，跟王者有整組逐幀揮擊動畫比起來差很多。不生新素材（省Gemini影片額度），
+       改用現成的 playFx()／FXS 特效庫，在攻擊瞬間補一圈法術光暈、受擊瞬間補一圈
+       受傷閃光，讓沒有逐幀圖的角色也有明確的「打中了/被打了」視覺回饋。 */
+    if(k === 'swing') playFx('whirl', heroCenter(), {size:170, dy:-14, hue:190, sat:1.3, fps:26});
+    else if(k === 'hurt') playFx('fire', heroCenter(), {size:150, dy:-10, hue:-30, sat:.35, bright:.75, fps:22});
   }
 }
 
@@ -2891,11 +2910,19 @@ const SKILLS = [
    20顆全部出現不會擠爆版面。配裝相關UI（🎯按鈕／視窗／equip/unequip）整組拿掉，
    舊存檔裡殘留的 loadout 欄位留著不動（無害，不再讀取）。 */
 const skillState = {};              // key → 可以再用的時間點
+/* 2026-09-06 Steve回報「技能欄都沒收合，所以整個版面最上方都卡住了」：2026-09-04把
+   20顆技能全部攤開常駐顯示（含未解鎖），等級越高解鎖越多，這塊格狀區越長，把整個
+   戰鬥版面往下擠壓。改成預設只顯示「已解鎖」的技能，未解鎖的收進 skillsToggle 那顆
+   鈕，按了才展開看全部20顆＋Lv門檻（滿足2026-09-03「要能看到20顆」的原意，只是
+   從「常駐」改成「要看才展開」）。 */
+let skillsExpanded = false;
 function paintSkills(){
   const box = $('skills');
-  /* 2026-09-03 Steve：全部 20 顆都畫出來（不再只畫解鎖的），未解鎖的靠下面的 .locked 處理 */
-  if(box.children.length !== SKILLS.length){
-    box.innerHTML = SKILLS.map(s => {
+  const list = skillsExpanded ? SKILLS : SKILLS.filter(s => Save.d.lv >= s.lv);
+  const keys = list.map(s => s.key).join(',');
+  if(box.dataset.keys !== keys){
+    box.dataset.keys = keys;
+    box.innerHTML = list.map(s => {
       return '<button class="skill" data-k="' + s.key + '">' +
         '<b>' + s.icon + ' ' + s.name + '</b><small>' + s.desc + '</small>' +
         '<i></i><em></em></button>';
@@ -2916,6 +2943,11 @@ function paintSkills(){
     b.querySelector('em').textContent = (!locked && left > 0) ? (Math.ceil(left/1000) + ' 秒') : '';
   });
 }
+$('skillsToggle').onclick = () => {
+  skillsExpanded = !skillsExpanded;
+  $('skillsToggle').textContent = skillsExpanded ? '收合技能 ▴' : '查看全部技能 ▾';
+  paintSkills();
+};
 
 /* ---------- 技能熱鍵列（2026-09-04 第二十七輪，天堂式）----------
    Save.d.hotkeys＝4 格，各元素＝技能key／'potion'／'speedpot'／null。
@@ -4581,7 +4613,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260906e"></script>
-<script src="assets/lock.js?v=20260906e"></script>
+<script src="assets/audio.js?v=20260906f"></script>
+<script src="assets/lock.js?v=20260906f"></script>
 </body>
 </html>

@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260906g">
+<link rel="stylesheet" href="assets/common.css?v=20260906h">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -657,6 +657,8 @@ body.lowfx .shard{animation-duration:.35s}
   display:none;align-items:center;justify-content:center;box-shadow:0 3px 0 #7a4a00;
 }
 .qbox.hasvoice .spk{display:flex}
+/* 2026-09-06 Steve：不用剛好點到喇叭，點整個題目框都能重聽一次 */
+.qbox.hasvoice{cursor:pointer}
 .qbox .spk:active{transform:translateY(calc(-50% + 3px));box-shadow:0 1px 0 #7a4a00}
 .qbox .spk.on{animation:spkpulse .5s ease}
 @keyframes spkpulse{50%{transform:translateY(-50%) scale(1.18)}}
@@ -1019,6 +1021,8 @@ body.lanes3 .note{width:10%}
   50%{box-shadow:inset 0 0 30px 6px #ff3b3b66}
 }
 body.arcade .qbox,body.arcade #ans{display:none}
+/* 2026-09-06 Steve：開打前不要出現「準備好了嗎？」那個空框，題目框／答案框都等開打才亮 */
+body:not(.playing) #qbox,body:not(.playing) #ans{display:none}
 /* 娛樂模式沒有在答題，結算畫面「最快作答」「最該再練的乘法」這兩項練習模式才有意義的
    資料不該出現（2026-09-02 Steve指出） */
 body.arcade #ovFastLine,body.arcade #ovWeakWrap{display:none}
@@ -1163,8 +1167,6 @@ body.arcade.playing .hotbar{display:flex}
 /* ---------- 開始前的設定區 ---------- */
 .setup{display:flex;flex-direction:column;gap:10px;width:min(96vw,560px)}
 .setlab{font-size:12px;color:var(--dim);letter-spacing:1px;margin-bottom:-2px}
-body.arcade #topicwrap{display:none}
-body.arcade #rangewrap{display:none}
 body.arcade #stagewrap{display:none}
 body:not(.arcade) #diffwrap{display:none}
 body.playing .setup{display:none}
@@ -1176,7 +1178,6 @@ body.playing #start{display:none}
    開打就把標題、版本切換列、開打前的設定區收掉，只留右上角的暫停與說明。
    玩法說明從畫面底下那張大卡片，改成右上角「？」點開的彈窗。 */
 body.playing h1,
-body.playing .vers,
 body.playing #modeBadge{display:none}
 body.playing .tipwrap{display:none}
 .tipwrap{display:none}                    /* 說明文字只活在彈窗裡，不再佔畫面 */
@@ -1293,7 +1294,6 @@ body.playing .combat{display:flex}
 </head>
 <body>
 <h1>勇 者 出 擊</h1>
-<div class="vers"></div>
 
 <div class="wrap">
   <div class="topbar">
@@ -1371,14 +1371,8 @@ body.playing .combat{display:flex}
 
   <div class="setup" id="setup">
     <div id="modebar"></div>
-    <div id="topicwrap">
-      <div class="setlab">練習模式要出哪種題目</div>
-      <div id="topicbar"></div>
-    </div>
-    <div id="rangewrap">
-      <div class="setlab">加減法數字範圍</div>
-      <div id="rangebar"></div>
-    </div>
+    <!-- 2026-09-06 Steve：題型（九九乘法／加減…）與加減法範圍統一在大廳選好，
+         戰鬥頁不再重複給一次選單，開打前畫面保持乾淨。原 #topicwrap／#rangewrap 已移除。 -->
     <!-- 2026-09-06 Steve：「是每打死1隻怪物答對10題就問是否繼續，不是你現在這樣」——
          拿掉原本「每一關要打死幾隻怪(登入才能調整)」那組可調整UI，固定每打死1隻就問，
          這裡只剩「要不要問」的開關（每次都問/只提示）。 -->
@@ -1397,8 +1391,8 @@ body.playing .combat{display:flex}
   </div>
 
   <div class="qbox" id="qbox">
-    <div class="q" id="q">準備好了嗎？</div>
-    <button class="spk" id="spkBtn" type="button" title="再唸一次" aria-label="再唸一次">🔊</button>
+    <div class="q" id="q"></div>
+    <button class="spk" id="spkBtn" type="button" title="再聽一次" aria-label="再聽一次">🔊</button>
     <div class="weak" id="weakTip"></div>
   </div>
 
@@ -1592,7 +1586,7 @@ body.playing .combat{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260906g"></script>
+<script src="assets/common.js?v=20260906h"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -4578,21 +4572,19 @@ document.addEventListener('keydown', e => {
   }
 });
 Mode.readonly($('modebar'));
-function paintRangeVis(){ $('rangewrap').style.display = Topic.needsRange() ? '' : 'none'; }
-Topic.bar($('topicbar'), () => paintRangeVis());
-Range.bar($('rangebar'), () => Topic.bar($('topicbar'), () => paintRangeVis()));
-paintRangeVis();
 Stage.bar($('stagebar'));
-/* 2026-09-06：「每一關要打死幾隻怪」可調整UI已拿掉，STAGE_Q固定為1（見上面宣告），
-   paintStageQ()／stageqMinus／stageqPlus／stageqGuest 這組跟著移除，不用開局呼叫。 */
-/* 喇叭：再唸一次，不扣分也不重算時間 */
-$('spkBtn').onclick = (e) => {
-  e.stopPropagation();
-  if(!QQ) return;
+/* 2026-09-06 Steve：題型／加減法範圍統一在大廳選好，戰鬥頁不再重複給一次選單
+   （Topic.bar／Range.bar／paintRangeVis 連同 #topicwrap／#rangewrap 一起拿掉）。
+   「每一關要打死幾隻怪」可調整UI更早之前也已拿掉，STAGE_Q固定為1。 */
+/* 喇叭：再聽一次，不扣分也不重算時間。點那顆圓鈕、或點整個題目框都算 */
+function replayQ(){
+  if(!QQ || !$('qbox').classList.contains('hasvoice')) return;
   const b = $('spkBtn');
   b.classList.remove('on'); void b.offsetWidth; b.classList.add('on');
   Voice.say(QQ, true);
-};
+}
+$('spkBtn').onclick = (e) => { e.stopPropagation(); replayQ(); };
+$('qbox').onclick = replayQ;
 $('difbar').onclick = (e) => {
   const d = e.target.closest('.lv'); if(!d) return;
   try{ localStorage.setItem(DIFF_KEY, d.dataset.d); }catch(err){}
@@ -4605,7 +4597,7 @@ paintTip(); modeBadge();
 paintSkills();
 buildNotePool();
 requestAnimationFrame(rafNotes);   // 常駐迴圈，內部 !running/!arcade 時直接早退，成本可忽略
-versionBar('battle.html');
+/* 2026-09-06 Steve：戰鬥頁不要小遊戲切換列（.vers 已從 DOM 移除），要換遊戲回大廳 */
 startCoins();
 setTimeout(()=>heroFrame('ready'), 300);
 paintGear();
@@ -4614,7 +4606,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260906g"></script>
-<script src="assets/lock.js?v=20260906g"></script>
+<script src="assets/audio.js?v=20260906h"></script>
+<script src="assets/lock.js?v=20260906h"></script>
 </body>
 </html>

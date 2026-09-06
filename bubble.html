@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260906i">
+<link rel="stylesheet" href="assets/common.css?v=20260906j">
 <style>
 body{gap:8px}
 .wrap{width:min(96vw,560px);display:flex;flex-direction:column;gap:8px}
@@ -143,7 +143,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;z-index:3}
   <button class="btn ghost" style="margin-top:8px;width:100%;height:44px" onclick="location.href='index.html'">回大廳</button>
 </div></div>
 
-<script src="assets/common.js?v=20260906i"></script>
+<script src="assets/common.js?v=20260906j"></script>
 <script>
 Topic.bar($('topicbar'));
 Mode.readonly($('modebar'));
@@ -428,6 +428,7 @@ function hitCheck(b){
     burst(b.x, b.y, 26, '#d9f4ff');
     burst(b.x, b.y, 14, b.c1);
     combo++; okCount++; bestCombo = Math.max(bestCombo, combo);
+    if(!Mode.isArcade()) ComboMagic.show(combo, '連破');   // 2026-09-06：連段自動魔法，練習模式限定
     const gain = 12 + combo * 3;
     score += gain;
     fl.className = 'flash ok'; setTimeout(()=>{fl.className='flash';}, 460);
@@ -520,7 +521,7 @@ lastT = performance.now();
 schedule();
 document.addEventListener('visibilitychange', schedule);
 </script>
-<script src="assets/audio.js?v=20260906i"></script>
-<script src="assets/lock.js?v=20260906i"></script>
+<script src="assets/audio.js?v=20260906j"></script>
+<script src="assets/lock.js?v=20260906j"></script>
 </body>
 </html>

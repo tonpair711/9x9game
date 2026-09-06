@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260906i">
+<link rel="stylesheet" href="assets/common.css?v=20260906j">
 <style>
 body{padding-bottom:20px}
 .wrap{width:min(96vw,600px);display:flex;flex-direction:column;gap:10px}
@@ -175,7 +175,7 @@ body{padding-bottom:20px}
   </p>
 </div>
 
-<script src="assets/common.js?v=20260906i"></script>
+<script src="assets/common.js?v=20260906j"></script>
 <script>
 /* 每種寶石的單價就是乘法的一個因數（2～9），消掉幾顆就是另一個因數 */
 /* 只留 5 種，30 格才連得起來；單價刻意用 3~8，題目才練得到中高段的乘法表 */
@@ -195,6 +195,7 @@ const totalW = SYMS.reduce((a,s)=>a+s.w,0);
 let grid = [], colEls = [], cellEls = [];
 let credit = 300, bet = 1, spinning = false, auto = false;
 let winTotal = 0, chain = 0, qOk = 0, qBad = 0;
+let magicCombo = 0;   // 2026-09-06：連續答對計數，給連段自動魔法用（跨 spin 累積，答錯歸零）
 let jp = {G:270945.07, A:35599.01, N:10952.08, I:2202.28};
 
 const pick = () => {
@@ -349,6 +350,10 @@ async function spin(){
 
       const count = c.cells.length;
       const ok = await askQuiz(count, c.sym.v);
+      if(!Mode.isArcade()){                         // 2026-09-06：連段自動魔法，練習模式限定
+        if(ok){ magicCombo++; ComboMagic.show(magicCombo, '連消'); }
+        else magicCombo = 0;
+      }
       const base = count * c.sym.v * bet;
       const got = Math.round(ok ? base * mult : base * mult * 0.5);
       winTotal += got;
@@ -410,7 +415,7 @@ startCoins();
 build();
 render();
 </script>
-<script src="assets/audio.js?v=20260906i"></script>
-<script src="assets/lock.js?v=20260906i"></script>
+<script src="assets/audio.js?v=20260906j"></script>
+<script src="assets/lock.js?v=20260906j"></script>
 </body>
 </html>

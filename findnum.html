@@ -356,7 +356,7 @@ h1{
   <button type="button" class="pcbtn" onclick="location.reload()" aria-label="重新整理" title="重新整理">⟳</button>
   <!-- 這頁不吃 common.js，沒有 GAME_VERSION 常數可以引用，版號寫死在這裡——
        以後在 common.js 改 GAME_VERSION 記得回來手動同步這個數字 -->
-  <span class="pcver" title="目前版本，回報問題時可以附上這個號碼">v1.3.45</span>
+  <span class="pcver" title="目前版本，回報問題時可以附上這個號碼">v1.3.46</span>
 </div>
 <img class="hero" id="hero" src="assets/princess.webp" alt="" loading="lazy" decoding="async" fetchpriority="low">
 <div class="say" id="say"></div>
@@ -523,6 +523,46 @@ function pickQ(L){
 }
 function arcadeNow(){
   try{ return localStorage.getItem('mul99_mode') === 'arcade'; }catch(e){ return false; }
+}
+/* 連段自動魔法（2026-09-06 Steve：所有練習小遊戲都要套用）。這頁不吃 common.js，
+   門檻表得自帶一份——正本在 assets/common.js 的 SPELLS，改那邊記得同步這裡。 */
+const FN_SPELLS = [
+  [3,'火球術','#ff8a3d'],[5,'冰霜術','#6ea8ff'],[9,'落雷術','#c4b5fd'],[12,'破魂旋斬','#7fe6ff'],
+  [16,'聖光審判','#ffe9a8'],[25,'疾風狂斬','#5cc8ff'],[35,'幻影無雙','#b98bff'],[45,'隕石衝擊','#ff8a3d'],
+  [55,'王者降臨','#ffd76a'],[65,'龍王破空','#ff9d5c'],[75,'時空崩裂','#5cf0ff'],[85,'宇宙極光','#c893ff'],
+  [95,'超越限界','#ffffff'],[105,'九數禁咒','#fff2c2'],[125,'熾焰滅殺','#ff6ad5'],[145,'虛空終焉','#8fd8ff'],
+  [165,'乘法神話','#ffe066']
+];
+let _fnMagicEl = null, _fnMagicFlash = null;
+function fnComboMagic(combo){
+  const last = FN_SPELLS[FN_SPELLS.length - 1];
+  let hit = FN_SPELLS.find(s => s[0] === combo);
+  if(!hit && combo > last[0] && (combo - last[0]) % 10 === 0) hit = last;
+  if(!hit) return false;
+  if(!_fnMagicEl){
+    const st = document.createElement('style');
+    st.textContent =
+      '.fnmagic{position:fixed;left:50%;top:36%;z-index:120;pointer-events:none;opacity:0;' +
+      'font-weight:900;font-size:clamp(22px,6.4vw,42px);color:#fff;white-space:nowrap;letter-spacing:1px;' +
+      'text-shadow:0 2px 0 rgba(0,0,0,.35),0 0 20px var(--fmc,#fff);transform:translate(-50%,-50%) scale(.7)}' +
+      '.fnmagic.on{animation:fnmagic 1s cubic-bezier(.2,1.5,.4,1)}' +
+      '@keyframes fnmagic{0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}' +
+      '18%{opacity:1;transform:translate(-50%,-50%) scale(1.06)}72%{opacity:1}' +
+      '100%{opacity:0;transform:translate(-50%,-64%) scale(1)}}' +
+      '.fnmagicFlash{position:fixed;inset:0;z-index:119;pointer-events:none;opacity:0;mix-blend-mode:screen;' +
+      'background:radial-gradient(circle at 50% 42%,var(--fmc,#fff) 0%,transparent 62%)}' +
+      '.fnmagicFlash.on{animation:fnmagicFlash .55s ease-out}' +
+      '@keyframes fnmagicFlash{0%{opacity:0}22%{opacity:.8}100%{opacity:0}}';
+    document.head.appendChild(st);
+    _fnMagicEl = document.createElement('div'); _fnMagicEl.className = 'fnmagic';
+    _fnMagicFlash = document.createElement('div'); _fnMagicFlash.className = 'fnmagicFlash';
+    document.body.append(_fnMagicFlash, _fnMagicEl);
+  }
+  _fnMagicEl.style.setProperty('--fmc', hit[2]);
+  _fnMagicFlash.style.setProperty('--fmc', hit[2]);
+  _fnMagicEl.textContent = combo + ' 連擊！' + hit[1];
+  [_fnMagicEl, _fnMagicFlash].forEach(el => { el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); });
+  return true;
 }
 function newQuestion(){
   const L = LEVELS[lv];
@@ -730,6 +770,7 @@ function tap(y, x, d){
   clearHint(); armHint();
   if(c.v === ans){
     combo++; maxCombo = Math.max(maxCombo, combo); right++;
+    const magicCast = !arcadeNow() && fnComboMagic(combo);   // 2026-09-06：連段自動魔法，練習模式限定
     const mult = combo >= 10 ? 4 : combo >= 6 ? 3 : combo >= 3 ? 2 : 1;
     const got = 10 * mult;
     score += got;
@@ -744,7 +785,7 @@ function tap(y, x, d){
       sparks(rect, 14, '#ffe9a8');
       boardEl.classList.remove('dim');
     }, 260);
-    if(combo >= 3){
+    if(combo >= 3 && !magicCast){   // 命中魔法門檻就讓具名魔法出場，不再疊一份陽春「N 連擊！」
       $('comboFx').textContent = combo + ' 連擊！';
       $('comboFx').classList.remove('on'); void $('comboFx').offsetWidth;
       $('comboFx').classList.add('on');
@@ -910,7 +951,7 @@ for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) grid[y][x] = newCell((y+1)*(x+1)
 paint();
 tick(true);
 </script>
-<script src="assets/audio.js?v=20260906i"></script>
-<script src="assets/lock.js?v=20260906i"></script>
+<script src="assets/audio.js?v=20260906j"></script>
+<script src="assets/lock.js?v=20260906j"></script>
 </body>
 </html>

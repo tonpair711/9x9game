@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.45';
+const GAME_VERSION = '1.3.46';
 
 const $ = id => document.getElementById(id);
 
@@ -1362,3 +1362,85 @@ function loginBox(onDone, startMode){
     el.onkeydown = (e) => { if(e.key === 'Enter') $$('lgGo').click(); });
   setTimeout(() => $$('lgName').focus(), 60);
 }
+
+/* ---------- 連段自動魔法（2026-09-06 Steve：所有練習小遊戲都要套用）----------
+   原本只有 battle.html（勇者出擊）有這套「連續答對 combo 到門檻自動放越來越強的具名魔法」。
+   Steve 要求 findnum／racing／memory／cloudjump／bubble／gems 的練習模式也一起有。
+   門檻表從 battle.html 搬到這裡當唯一正本，battle.html 改成引用同一份（免得兩邊各改各的，
+   程式註解裡早就抱怨過這個坑）。
+   - battle.html：`spellFor(combo, HERO.spellEarly)` 拿到招式後走自己的 castSpell()（有傷害、
+     能秒殺怪、吃 fx_*.webp 特效圖）。
+   - 小遊戲：只呼叫 `ComboMagic.show(combo, '連擊詞')`——命中門檻才放，純視覺（整螢幕元素色閃
+     ＋置中大字招式名，CSS 自帶不吃素材圖），不影響各遊戲的計分與輸贏。 */
+const SPELLS = [
+  {at:3,   key:'s3',   vk:'fire',    name:'火球術',   color:'#ff8a3d', mult:1.6,  mode:'fly'},
+  {at:5,   key:'s5',   vk:'ice',     name:'冰霜術',   color:'#6ea8ff', mult:2.0,  mode:'fly'},
+  {at:9,   key:'s9',   vk:'thunder', name:'落雷術',   color:'#c4b5fd', mult:2.6,  mode:'drop'},
+  {at:12,  key:'s12',  vk:'whirl',   name:'破魂旋斬', color:'#7fe6ff', mult:3.2,  mode:'fly'},
+  {at:16,  key:'s16',  vk:'holy',    name:'聖光審判', color:'#ffe9a8', mult:3.8,  mode:'drop', heal:15},
+  {at:25,  key:'s25',  vk:'ice',     name:'疾風狂斬', color:'#5cc8ff', mult:4.6,  mode:'fly'},
+  {at:35,  key:'s35',  vk:'poison',  name:'幻影無雙', color:'#b98bff', mult:5.4,  mode:'drop'},
+  {at:45,  key:'s45',  vk:'thunder', name:'隕石衝擊', color:'#ff8a3d', mult:6.2,  mode:'drop'},
+  {at:55,  key:'s55',  vk:'holy',    name:'王者降臨', color:'#ffd76a', mult:7.0,  mode:'drop', heal:30},
+  {at:65,  key:'s65',  vk:'fire',    name:'龍王破空', color:'#ff9d5c', mult:7.8,  mode:'fly'},
+  {at:75,  key:'s75',  vk:'whirl',   name:'時空崩裂', color:'#5cf0ff', mult:8.6,  mode:'drop'},
+  {at:85,  key:'s85',  vk:'poison',  name:'宇宙極光', color:'#c893ff', mult:9.4,  mode:'fly'},
+  {at:95,  key:'s95',  vk:'ice',     name:'超越限界', color:'#ffffff', mult:10.2, mode:'drop'},
+  {at:105, key:'s105', vk:'holy',    name:'九數禁咒', color:'#fff2c2', mult:11.0, mode:'drop', heal:20},
+  {at:125, key:'s125', vk:'poison',  name:'熾焰滅殺', color:'#ff6ad5', mult:11.8, mode:'fly'},
+  {at:145, key:'s145', vk:'whirl',   name:'虛空終焉', color:'#8fd8ff', mult:12.6, mode:'drop'},
+  {at:165, key:'s165', vk:'fire',    name:'乘法神話', color:'#ffe066', mult:13.4, mode:'drop', heal:40}
+];
+/* combo＝目前連續答對數；early＝提早幾連就放（battle.html 法師 HERO.spellEarly，小遊戲傳 0）。
+   超過最後一個門檻之後，每 +10 連擊重播最強那招。命中門檻回招式物件，否則 null。 */
+function spellFor(c, early){
+  const ce = c + (early || 0);
+  if(ce < SPELLS[0].at) return null;
+  const last = SPELLS[SPELLS.length - 1];
+  const sp = (ce > last.at)
+    ? ((ce - last.at) % 10 === 0 ? last : null)
+    : SPELLS.find(s => s.at === ce);
+  return sp ? {...sp, word: ce + ' 連擊！' + sp.name} : null;
+}
+
+const ComboMagic = {
+  _ready: false,
+  _init(){
+    if(this._ready) return;
+    this._ready = true;
+    const st = document.createElement('style');
+    st.textContent =
+      '.cmagic-flash{position:fixed;inset:0;z-index:80;pointer-events:none;opacity:0;' +
+      'background:radial-gradient(circle at 50% 42%,var(--cmc,#fff) 0%,transparent 62%);' +
+      'mix-blend-mode:screen}' +
+      '.cmagic-flash.on{animation:cmagicFlash .55s ease-out}' +
+      '@keyframes cmagicFlash{0%{opacity:0}22%{opacity:.8}100%{opacity:0}}' +
+      '.cmagic-word{position:fixed;left:50%;top:36%;z-index:81;pointer-events:none;opacity:0;' +
+      'font-weight:900;font-size:clamp(22px,6.4vw,42px);color:#fff;white-space:nowrap;' +
+      'letter-spacing:1px;text-shadow:0 2px 0 rgba(0,0,0,.35),0 0 20px var(--cmc,#fff);' +
+      'transform:translate(-50%,-50%) scale(.7)}' +
+      '.cmagic-word.on{animation:cmagicWord 1s cubic-bezier(.2,1.5,.4,1)}' +
+      '@keyframes cmagicWord{0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}' +
+      '18%{opacity:1;transform:translate(-50%,-50%) scale(1.06)}' +
+      '72%{opacity:1}100%{opacity:0;transform:translate(-50%,-64%) scale(1)}}';
+    document.head.appendChild(st);
+    this._flash = document.createElement('div'); this._flash.className = 'cmagic-flash';
+    this._word  = document.createElement('div'); this._word.className  = 'cmagic-word';
+    document.body.append(this._flash, this._word);
+  },
+  /* 命中門檻就放具名魔法（純視覺）。回傳有沒有放，讓呼叫端決定要不要略過自己的陽春連擊字。 */
+  show(combo, word){
+    const sp = spellFor(combo);
+    if(!sp) return false;
+    this._init();
+    const col = sp.color;
+    this._flash.style.setProperty('--cmc', col);
+    this._word.style.setProperty('--cmc', col);
+    this._word.textContent = combo + ' ' + (word || '連擊') + '！' + sp.name;
+    [this._flash, this._word].forEach(el => {
+      el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+    });
+    try{ if(typeof Sfx !== 'undefined' && Sfx.ok) Sfx.ok(combo); }catch(e){}
+    return true;
+  }
+};

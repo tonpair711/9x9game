@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260906i">
+<link rel="stylesheet" href="assets/common.css?v=20260906j">
 <style>
 .board.pass{background:linear-gradient(180deg,#d6ffe6,#4ade80 70%);border-color:#12603a;color:#08331c}
 .board.block{background:linear-gradient(180deg,#ffd9d9,#f87171 70%);border-color:#6b1414;color:#3a0808}
@@ -255,7 +255,7 @@ body{gap:8px}
   <button class="btn ghost" style="margin-top:8px;width:100%;height:44px" onclick="location.href='index.html'">回大廳</button>
 </div></div>
 
-<script src="assets/common.js?v=20260906i"></script>
+<script src="assets/common.js?v=20260906j"></script>
 <script>
 Topic.bar($('topicbar'));
 Mode.readonly($('modebar'));
@@ -420,6 +420,7 @@ function judge(){
 
   if(ok){
     combo++; okCount++; bestCombo = Math.max(bestCombo, combo);
+    if(!Mode.isArcade()) ComboMagic.show(combo, '連擊');   // 2026-09-06：連段自動魔法，練習模式限定
     const gain = 10 + combo * 2;
     score += gain;
     car.classList.remove('go'); void car.offsetWidth; car.classList.add('go');
@@ -502,7 +503,7 @@ startCoins();
 setLane(1);
 paint();
 </script>
-<script src="assets/audio.js?v=20260906i"></script>
-<script src="assets/lock.js?v=20260906i"></script>
+<script src="assets/audio.js?v=20260906j"></script>
+<script src="assets/lock.js?v=20260906j"></script>
 </body>
 </html>

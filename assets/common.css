@@ -3,9 +3,26 @@
   --bg:#120b1c; --panel:#1d1230; --line:#573a7d;
   --gold:#f6c453; --gold2:#ffe9a8; --text:#f6efff; --dim:#a894c4;
   --ok:#4ade80; --bad:#f87171; --p1:#f6c453; --p2:#6ea8ff;
+  /* 2026-09-07 打磨計畫地基①：設計 token 起手式。既有色碼不動，這裡只補「尺度」類
+     的共用變數（圓角／動畫時間／緩動／間距／層級），讓後續 GameShell 等改動有一套
+     統一的詞彙可用，不要每個檔各寫一組 magic number。 */
+  --radius-sm:10px; --radius-md:14px; --radius-lg:20px; --radius-pill:99px;
+  --dur-fast:.12s; --dur-base:.22s; --dur-slow:.4s;
+  --ease-bounce:cubic-bezier(.175,.885,.32,1.275);   /* UI 彈出／飄字的彈性緩動 */
+  --ease-snap:cubic-bezier(.34,1.56,.64,1);          /* 按鈕放開回彈（沿用既有 .btn 的曲線）*/
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px;
+  --z-hud:40; --z-overlay:20; --z-modal:80; --z-toast:90; --z-fx:9;
 }
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html,body{overflow-x:hidden}
+/* 2026-09-07 打磨計畫（手機原生手感）：全站數字等寬，倒數／分數跳動時整條 UI 不會左右
+   抽動；預設不可選字（遊戲文字被反白選起來很出戲），只有輸入框與角落版本號留可選。 */
+body{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+input,textarea{-webkit-user-select:text;user-select:text}
+/* 觸控裝置點按鈕不要有 300ms 延遲、不要雙擊放大；但保留捲動（不是 none）。 */
+button,a,.btn,.lv,.st,[role="button"],[data-tap]{touch-action:manipulation}
 /* ⚠ 2026-08-23 Steve 回報：電腦滑鼠滾輪完全滾不動整個網頁。
    實測抓出來是這行原本掛在 html,body 上的 overscroll-behavior-y:contain 造成的——
    本意是防手機下拉刷新，結果連桌機滑鼠滾輪的捲動一起吃掉了（Chromium 的已知邊界案例，
@@ -276,7 +293,11 @@ h1{
 .modebar button i{font-size:22px;font-style:normal;line-height:1;margin-bottom:2px;filter:grayscale(.5) opacity(.7)}
 .modebar button b{font-size:15px;font-weight:800;letter-spacing:1px}
 .modebar button small{font-size:11px;opacity:.85}
-.modebar button:hover{transform:translateY(-2px);border-color:#8a63c9}
+/* 2026-09-07 打磨計畫：hover 效果只給真的有滑鼠的裝置。觸控裝置點下去會觸發 :hover
+   並「卡住」（transform 停在 -2px）直到點別處才復原，看起來像 bug。 */
+@media (hover:hover){
+  .modebar button:hover{transform:translateY(-2px);border-color:#8a63c9}
+}
 .modebar button.on{
   background:linear-gradient(180deg,#523775,#2c1b42);border-color:var(--gold);color:var(--text);
   box-shadow:0 0 0 2px #f6c45333,0 10px 24px #0009;

@@ -18,7 +18,13 @@ body{
   min-height:100dvh;color:var(--text);
   font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
   background:radial-gradient(90% 60% at 50% -10%,#4b2a6b 0%,#1c1029 55%,var(--bg) 100%);
-  display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px 10px 28px;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  /* 2026-09-06 Steve回報「最上方要留空一些，因為手機本身會有東西擋住」：
+     左上角固定的 .pagectrl（←返回／⟳／🎨）用 position:fixed 蓋在內容上面，
+     不佔文件流的空間；原本 padding-top 只有 12px，蓋不過 pagectrl 實際佔的高度
+     （36px按鈕+10px位移+安全區域），標題／版本切換列會被蓋到一部分。改成用
+     safe-area-inset-top 算出實際要留的空間，手機瀏海/狀態列也一起算進去。 */
+  padding:calc(52px + env(safe-area-inset-top,0px)) 10px 28px;
 }
 body::before{
   content:"";position:fixed;inset:-20%;z-index:-2;pointer-events:none;
@@ -226,7 +232,10 @@ h1{
 
 /* ---------- 手機（小朋友多半用手機玩，這裡把觸控目標放大、版本列改成一行可滑） ---------- */
 @media (max-width:520px){
-  body{padding:8px 8px 76px;gap:8px;-webkit-user-select:none;user-select:none}
+  /* 2026-09-06：這條窄螢幕override蓋掉了上面body{padding-top:...}那條給pagectrl
+     留的空間（踩過的坑：改上面那條沒注意到還有這裡在420行前面又設一次），
+     手機（本來就是這條media query鎖定的對象）反而是最需要這個間距的裝置。 */
+  body{padding:calc(52px + env(safe-area-inset-top,0px)) 8px 76px;gap:8px;-webkit-user-select:none;user-select:none}
   h1{font-size:clamp(16px,4.6vw,20px);letter-spacing:2px}
 
   /* 手機省效能：整片背景的漸層一直在慢慢飄，一秒六十次重畫一整個畫面，

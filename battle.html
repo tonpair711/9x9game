@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260906f">
+<link rel="stylesheet" href="assets/common.css?v=20260906g">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -24,6 +24,8 @@ body{padding-bottom:16px}
 }
 .topbar .chip b{color:var(--dim);font-weight:500;font-size:11px;margin-right:4px}
 .topbar .grow{flex:1}
+/* 2026-09-06：商店/裝備/？/⏸ 包成一組，.topbar 換行時整組一起換，不會拆散剩單顆 */
+.topIcons{display:flex;gap:8px;flex:none}
 
 /* 戰場 */
 .field{
@@ -1165,16 +1167,6 @@ body.arcade #topicwrap{display:none}
 body.arcade #rangewrap{display:none}
 body.arcade #stagewrap{display:none}
 body:not(.arcade) #diffwrap{display:none}
-/* 每一關要答幾題：登入才能調（2026-08-31 Steve） */
-.stageqrow{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:6px}
-.stageqrow b{font-size:16px;min-width:96px;text-align:center;color:var(--ink,#fff)}
-.stageqbtn{width:40px;height:40px;border-radius:50%;border:1px solid #ffffff33;
-  background:#ffffff14;color:inherit;font-size:20px;cursor:pointer}
-.stageqbtn:disabled{opacity:.35;cursor:not-allowed}
-#stageqLoginHint{font-size:12px;color:var(--dim);margin-top:6px;text-align:center;display:none}
-body.stageqGuest #stageqLoginHint{display:block}
-body.stageqGuest .stageqbtn{display:none}
-body.stageqGuest #stageqVal{opacity:.6}
 body.playing .setup{display:none}
 /* 開打之後「開始冒險」就收起來，戰鬥畫面才乾淨；
    要重來走右上角暫停裡的「結束這一場」，或結算畫面的「再挑戰一次」 */
@@ -1230,7 +1222,13 @@ body.playing #pauseBtn{display:flex}
 
 /* ---------- 操作區重排：攻擊／閃避一排，必殺技與兩顆技能併成第二排 ----------
    手機拇指按得到的範圍就是畫面下緣那一塊，五顆按鈕擠在一起比散開好按。 */
-.combat{display:flex;flex-direction:column;gap:7px;width:min(96vw,560px)}
+.combat{display:none;flex-direction:column;gap:7px;width:min(96vw,560px)}
+/* 2026-09-06 Steve回報「排版都擠在一起了」：查出根因——整組戰鬥操作區（必殺技／
+   技能列／熱鍵列）從頁面一載入就常駐顯示，跟按「開始冒險」之前的設定畫面（.setup）
+   疊在同一個畫面上，兩份內容都攤開自然擠成一團。`.setup`/`#start` 本來就有
+   `body.playing`才隱藏自己那組規則，`.combat`卻沒有對應規則跟著藏起來。
+   照樣補上：沒開打之前完全不需要看到必殺技/技能，開打了才顯示。 */
+body.playing .combat{display:flex}
 .row3{display:flex;flex-direction:column;gap:7px}
 .row3 .ult{padding:6px 10px;gap:9px}
 .row3 .ult .ultlab{font-size:12px;font-weight:800;color:var(--gold2);letter-spacing:1px;flex:none}
@@ -1256,6 +1254,7 @@ body.playing #pauseBtn{display:flex}
 @media (max-width:520px){
   body{padding-bottom:96px}
   .topbar{gap:5px;flex-wrap:wrap}
+  .topIcons{gap:5px}
   .topbar .chip{padding:6px 8px;font-size:12.5px;white-space:nowrap}
   .topbar .bagbtn{padding:10px 10px;font-size:13px}
   /* 「裝備」兩個字在手機收起來，只留圖示，右上角才擠得下說明與暫停 */
@@ -1304,14 +1303,20 @@ body.playing #pauseBtn{display:flex}
     <div class="chip goldchip"><b>金幣</b><span id="gold">0</span></div>
     <div class="chip"><b>關卡</b><span id="stage">1-1</span></div>
     <div class="grow"></div>
-    <!-- 2026-09-06：商店只在娛樂模式出現（練習模式不需要，藥水本來就只有娛樂模式在喝）。
-         ⚠ 不能寫行內 style="display:none"——行內樣式的優先權蓋過任何 CSS class 規則，
-         下面 body.arcade #shopBtn{display:...} 那條會完全失效。改用一個獨立 class 讓
-         CSS 規則接管顯示/隱藏。 -->
-    <button class="chip bagbtn shopbtnHide" id="shopBtn">🛒<span class="lb"> 商店</span></button>
-    <button class="chip bagbtn" id="bagBtn">🎒<span class="lb"> 裝備</span> <i class="dot2" id="bagDot"></i></button>
-    <button class="chip iconbtn" id="helpBtn" title="怎麼玩" aria-label="怎麼玩">？</button>
-    <button class="chip iconbtn" id="pauseBtn" title="暫停" aria-label="暫停">⏸</button>
+    <!-- 2026-09-06 Steve回報「排版都擠在一起了」：手機寬度不夠放下全部chip時，
+         .topbar原本flex-wrap讓每一顆各自決定要不要換行，結果常常是「商店/裝備」
+         留在第一行、只有「？」自己被擠到第二行、孤零零一顆——把這幾顆圖示鈕包成
+         一個子容器，整組要嘛留在同一行、要嘛整組一起換行，不會拆散剩單顆。 -->
+    <div class="topIcons">
+      <!-- 2026-09-06：商店只在娛樂模式出現（練習模式不需要，藥水本來就只有娛樂模式在喝）。
+           ⚠ 不能寫行內 style="display:none"——行內樣式的優先權蓋過任何 CSS class 規則，
+           下面 body.arcade #shopBtn{display:...} 那條會完全失效。改用一個獨立 class 讓
+           CSS 規則接管顯示/隱藏。 -->
+      <button class="chip bagbtn shopbtnHide" id="shopBtn">🛒<span class="lb"> 商店</span></button>
+      <button class="chip bagbtn" id="bagBtn">🎒<span class="lb"> 裝備</span> <i class="dot2" id="bagDot"></i></button>
+      <button class="chip iconbtn" id="helpBtn" title="怎麼玩" aria-label="怎麼玩">？</button>
+      <button class="chip iconbtn" id="pauseBtn" title="暫停" aria-label="暫停">⏸</button>
+    </div>
   </div>
 
   <div class="field" id="field">
@@ -1374,16 +1379,12 @@ body.playing #pauseBtn{display:flex}
       <div class="setlab">加減法數字範圍</div>
       <div id="rangebar"></div>
     </div>
+    <!-- 2026-09-06 Steve：「是每打死1隻怪物答對10題就問是否繼續，不是你現在這樣」——
+         拿掉原本「每一關要打死幾隻怪(登入才能調整)」那組可調整UI，固定每打死1隻就問，
+         這裡只剩「要不要問」的開關（每次都問/只提示）。 -->
     <div id="stagewrap">
-      <div class="setlab">每打死 <b id="stagelabQ">10</b> 隻怪要不要問繼續</div>
+      <div class="setlab">打死一隻怪要不要問繼續</div>
       <div id="stagebar"></div>
-      <div class="setlab" style="margin-top:10px">每一關要打死幾隻怪（登入才能調整）</div>
-      <div class="stageqrow" id="stageqrow">
-        <button type="button" id="stageqMinus" class="stageqbtn">－</button>
-        <b id="stageqVal">10 隻一關</b>
-        <button type="button" id="stageqPlus" class="stageqbtn">＋</button>
-      </div>
-      <div class="charhint" id="stageqLoginHint">👉 登入帳號才能調整關卡怪物數，目前固定每 10 隻一關</div>
     </div>
     <div id="diffwrap">
       <div class="setlab">娛樂模式的難度</div>
@@ -1591,7 +1592,7 @@ body.playing #pauseBtn{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260906f"></script>
+<script src="assets/common.js?v=20260906g"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -1713,14 +1714,17 @@ let arcade = false, QQ = null;
    開關切換要不要啟用——新設計定案後把這個改回 'rhythm' 或直接刪掉舊分支即可，不用重寫。
    'button' = 舊攻擊鈕＋PERFECT光圈（目前線上）｜'rhythm' = 音符軌道（第二十八輪那套）。 */
 const ARCADE_ATK_MODE = 'button';
-/* ---------- 練習模式「10 隻一關」（2026-08-29 起，2026-09-05 改成打死制）----------
+/* ---------- 練習模式「打死1隻＝1關」（2026-08-29起，2026-09-05改成打死制，
+   2026-09-06固定批次為1）----------
    2026-08-29 原意：跟血量／升等／掉裝備完全脫鉤，單純每答完 10 題（不論對錯）算過一關，
    純粹是練習節奏的里程碑，不是難度限制。
    2026-09-05 改版：「關」的定義換成「打死一隻怪＝1關」（見下方 mobCorrect/mobTarget、
-   stageKillAdvance()、pStreak/pBossIdx 那組過關模式），10 關還是一次「今天的練習」，
-   彈窗機制（stagePending/stageNo/STAGE_Q這套）完全沿用沒動，只是觸發時機從「答完幾題」
-   換成「打死幾隻」。 */
-let STAGE_Q = 10;             // 2026-08-31 Steve：每幾隻一關可以讓玩家調整，開局時從 StageQ 設定重新讀一次
+   stageKillAdvance()、pStreak/pBossIdx 那組過關模式）。
+   2026-09-06 Steve：「是每打死1隻怪物答對10題就問是否繼續，不是你現在這樣」——原本
+   STAGE_Q（每幾隻問一次）可以登入調整成10~100，跟這個新要求直接衝突，改成固定
+   STAGE_Q=1（每打死1隻就問），拿掉「每一關要打死幾隻怪」那組可調整UI（StageQ模組
+   已從common.js移除，見那邊的說明）。 */
+const STAGE_Q = 1;
 const STAGE_MAX = 10;
 /* 2026-09-06：Steve回報「打死怪物都沒顯示是否繼續」——查到是 stageNo/stageQ 沒存檔，
    玩到一半離開戰鬥畫面（回大廳、重整）就歸零，湊不滿一批10隻就永遠看不到彈窗
@@ -2916,9 +2920,16 @@ const skillState = {};              // key → 可以再用的時間點
    鈕，按了才展開看全部20顆＋Lv門檻（滿足2026-09-03「要能看到20顆」的原意，只是
    從「常駐」改成「要看才展開」）。 */
 let skillsExpanded = false;
+/* 2026-09-06 Steve：「練習模式就不需要這麼多技能」——擊敗現在只看答對題數不看HP
+   （見mobDead()），20顆技能造成的傷害對練習模式的輸贏其實不再有實質影響，留著
+   全部20顆只是選擇障礙+版面負擔。練習模式砍到只留前5顆（gale2/whirl/mark/heal/
+   iceshot8，涵蓋一般攻擊/大招/連段/回血/元素攻擊幾種基本手感），娛樂模式（arcade）
+   不受影響，維持完整20顆。 */
+const SKILLS_PRACTICE_MAX = 5;
 function paintSkills(){
   const box = $('skills');
-  const list = skillsExpanded ? SKILLS : SKILLS.filter(s => Save.d.lv >= s.lv);
+  const pool = arcade ? SKILLS : SKILLS.slice(0, SKILLS_PRACTICE_MAX);
+  const list = skillsExpanded ? pool : pool.filter(s => Save.d.lv >= s.lv);
   const keys = list.map(s => s.key).join(',');
   if(box.dataset.keys !== keys){
     box.dataset.keys = keys;
@@ -2979,12 +2990,16 @@ function fixHotkeys(){
   Save.d.hotkeys = h;
 }
 fixHotkeys();
-/* 升級解鎖新技能時，若熱鍵列還有空格，用「已解鎖、還沒在列上」的技能由低 Lv 往高補 */
+/* 升級解鎖新技能時，若熱鍵列還有空格，用「已解鎖、還沒在列上」的技能由低 Lv 往高補。
+   2026-09-06：練習模式技能砍到只留前 SKILLS_PRACTICE_MAX 顆（見 paintSkills()），
+   這裡也要跟著只從那個縮小版清單裡挑，不然練習模式玩家升級升到Lv10時會自動補進
+   技能面板根本看不到的第6顆技能，熱鍵跟面板兜不起來。 */
 function autofillHotbar(){
+  const pool = arcade ? SKILLS : SKILLS.slice(0, SKILLS_PRACTICE_MAX);
   const on = new Set(Save.d.hotkeys.filter(Boolean));
   for(let i = 0; i < 4; i++){
     if(Save.d.hotkeys[i] != null) continue;
-    const cand = SKILLS.find(s => Save.d.lv >= s.lv && !on.has(s.key));
+    const cand = pool.find(s => Save.d.lv >= s.lv && !on.has(s.key));
     if(!cand) break;
     Save.d.hotkeys[i] = cand.key; on.add(cand.key);
   }
@@ -4372,7 +4387,6 @@ function start(){
   earnGold = 0; earnExp = 0; drops = [];
   clearLog();
   logMsg('冒險開始！');
-  paintStageQ();               // 開局重讀一次，防止登入狀態在設定頁之後才改變
   /* 2026-09-06：不再把 stageNo/stageQ 重置成1/0——這兩個現在存進 Save.d 了（見上面
      宣告處），中途離開戰鬥畫面（回大廳、重整）再回來要接得回進度，不要每次重開都砍掉。
      stagePending 是「這次要不要跳彈窗」的一次性旗標，繼續歸零沒關係。 */
@@ -4569,21 +4583,8 @@ Topic.bar($('topicbar'), () => paintRangeVis());
 Range.bar($('rangebar'), () => Topic.bar($('topicbar'), () => paintRangeVis()));
 paintRangeVis();
 Stage.bar($('stagebar'));
-/* 每一關要打死幾隻怪：登入才能調（10～100，10 一階）。沒登入固定 10 隻，按鈕整排藏起來只留提示。
-   2026-09-05：從「每幾題一關」改成「每擊敗幾隻一關」，數值意義變了但機制（10～100可調、
-   登入才顯示）沒變，見 stageKillAdvance()。 */
-function paintStageQ(){
-  const logged = Cloud.logged();
-  document.body.classList.toggle('stageqGuest', !logged);
-  STAGE_Q = logged ? StageQ.get() : 10;
-  $('stageqVal').textContent = STAGE_Q + ' 隻一關';
-  $('stagelabQ').textContent = STAGE_Q;
-  $('stageqMinus').disabled = STAGE_Q <= 10;
-  $('stageqPlus').disabled = STAGE_Q >= 100;
-}
-$('stageqMinus').onclick = () => { if(!Cloud.logged()) return; StageQ.set(StageQ.get() - 10); paintStageQ(); };
-$('stageqPlus').onclick  = () => { if(!Cloud.logged()) return; StageQ.set(StageQ.get() + 10); paintStageQ(); };
-paintStageQ();
+/* 2026-09-06：「每一關要打死幾隻怪」可調整UI已拿掉，STAGE_Q固定為1（見上面宣告），
+   paintStageQ()／stageqMinus／stageqPlus／stageqGuest 這組跟著移除，不用開局呼叫。 */
 /* 喇叭：再唸一次，不扣分也不重算時間 */
 $('spkBtn').onclick = (e) => {
   e.stopPropagation();
@@ -4613,7 +4614,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260906f"></script>
-<script src="assets/lock.js?v=20260906f"></script>
+<script src="assets/audio.js?v=20260906g"></script>
+<script src="assets/lock.js?v=20260906g"></script>
 </body>
 </html>

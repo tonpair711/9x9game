@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260907d">
+<link rel="stylesheet" href="assets/common.css?v=20260907e">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -1621,7 +1621,7 @@ body:not(.arcade) .skillsToggle{display:none}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260907d"></script>
+<script src="assets/common.js?v=20260907e"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -3169,9 +3169,13 @@ function useSkill(key){
   const f = F();
   f.style.setProperty('--sc', sk.color + '99');
   comboShout(sk.name + '！', sk.color);
-  // 2026-09-07：技能音效改按元素分類播（見SKILLS的snd欄位／common.js的SkillSfx），
-  // lv越高的技能聲音份量越重一點（0.8~1.3倍），不再20顆技能共用同一組beep
-  SkillSfx.play(sk.snd, Math.min(1.3, 0.8 + sk.lv / 80 * 0.5));
+  // 2026-09-07 Steve回報「法術音效也沒有」，查出根因：SkillSfx原本在這裡（按鈕按下當下）
+  // 就播完了，但heroCast()的施法動畫要2.6秒後（82%進度）才真的炸開，等玩家看到爆發畫面
+  // 聲音早就結束——視覺聽覺對不上，感覺像沒配音效。改成兩層：這裡只放Sfx.chargeUp()
+  // 這種輕巧的起手音給即時回饋，SkillSfx.play()（份量更重、剛加了低頻boom）移到下面兩個
+  // heroCast()的命中callback裡，跟playFx()同一瞬間觸發，聲音畫面才會對上。
+  const skIntensity = Math.min(1.3, 0.8 + sk.lv / 80 * 0.5);
+  Sfx.chargeUp();
 
   if(sk.heal){
     /* 2026-09-01：回血也改播施法逐幀（heroCast），不再原地不動只噴特效——
@@ -3180,12 +3184,14 @@ function useSkill(key){
       const back = Math.round(maxHp * sk.heal);
       heroHp = Math.min(maxHp, heroHp + back);
       paintHeroBar();
+      SkillSfx.play(sk.snd, skIntensity);
       playFx(sk.fx.key, heroCenter(), sk.fx);
       dmgText('+' + back, true);
     }, sk.castSpr);
   }else{
     heroCast(() => {
       /* 先讓招式看得見，再結算傷害：同一格同時噴命中火花會把技能特效蓋掉 */
+      SkillSfx.play(sk.snd, skIntensity);
       playFx(sk.fx.key, mobCenter(), sk.fx);
       setTimeout(() => {
         if(!running) return;
@@ -4714,7 +4720,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260907d"></script>
-<script src="assets/lock.js?v=20260907d"></script>
+<script src="assets/audio.js?v=20260907e"></script>
+<script src="assets/lock.js?v=20260907e"></script>
 </body>
 </html>

@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.53';
+const GAME_VERSION = '1.3.54';
 
 const $ = id => document.getElementById(id);
 
@@ -476,7 +476,30 @@ const Sfx = {
         i * 70);
     }
   },
-  /* 打擊音：低頻悶響＋高頻碎裂，兩層疊起來才有份量 */
+  /* 2026-09-07：技能施法「起手」音——按下技能鈕的當下先給一點回饋（快速上滑的短促音＋
+     一點高頻閃光），跟真正的爆發音（SkillSfx，見下方，改成對到heroCast()命中瞬間才播）
+     分開兩層，中間那2秒多的蓄力動畫才不會整段死寂。刻意做得輕、短，不會搶走稍後大爆發
+     音效的風頭。 */
+  chargeUp: () => {
+    try{
+      _ac = _ac || new (window.AudioContext || window.webkitAudioContext)();
+      const t = _ac.currentTime;
+      const o = _ac.createOscillator(), g = _ac.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(340, t);
+      o.frequency.exponentialRampToValueAtTime(900, t + .16);
+      const gv = .09 * sfxGain();
+      if(gv <= 0) return;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(gv, t + .04);
+      g.gain.exponentialRampToValueAtTime(.0001, t + .2);
+      o.connect(g); g.connect(_ac.destination); o.start(t); o.stop(t + .22);
+    }catch(e){}
+  },
+  /* 打擊音：低頻悶響＋高頻碎裂＋極短「喀」一聲咬字，三層疊起來才有份量。
+     2026-09-07 Steve回報「角色對戰太爛」，這裡跟SampleSfx（真人取樣揮劍/重拳聲）本來就有
+     疊在一起播，這輪把合成層份量調重一點（原本偏薄，取樣聲量一大就幾乎聽不到這層），
+     crit額外加一顆更尖的高頻咬字，敲擊感更清楚。 */
   hit: (crit) => {
     try{
       _ac = _ac || new (window.AudioContext || window.webkitAudioContext)();
@@ -484,20 +507,26 @@ const Sfx = {
       // 低頻：頻率快速下滑，像重擊
       const o = _ac.createOscillator(), g = _ac.createGain();
       o.type = 'sine';
-      o.frequency.setValueAtTime(crit ? 220 : 160, t);
-      o.frequency.exponentialRampToValueAtTime(40, t + .18);
-      const gv = (crit ? .3 : .22) * sfxGain();
+      o.frequency.setValueAtTime(crit ? 240 : 175, t);
+      o.frequency.exponentialRampToValueAtTime(38, t + .19);
+      const gv = (crit ? .4 : .3) * sfxGain();
       if(gv <= 0) return;
       g.gain.setValueAtTime(gv, t);
       g.gain.exponentialRampToValueAtTime(.0001, t + .2);
       o.connect(g); g.connect(_ac.destination); o.start(t); o.stop(t + .22);
+      // 極短咬字：命中那一瞬間先給一記清脆的「喀」，crit更尖更亮
+      const c = _ac.createOscillator(), cg = _ac.createGain();
+      c.type = 'triangle'; c.frequency.setValueAtTime(crit ? 3200 : 2200, t);
+      cg.gain.setValueAtTime((crit ? .16 : .1) * sfxGain(), t);
+      cg.gain.exponentialRampToValueAtTime(.0001, t + .03);
+      c.connect(cg); cg.connect(_ac.destination); c.start(t); c.stop(t + .04);
       // 高頻：白噪音短爆，做碎裂感
-      const len = Math.floor(_ac.sampleRate * .09);
+      const len = Math.floor(_ac.sampleRate * .1);
       const buf = _ac.createBuffer(1, len, _ac.sampleRate);
       const data = buf.getChannelData(0);
       for(let i=0;i<len;i++) data[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2.5);
       const n = _ac.createBufferSource(); n.buffer = buf;
-      const ng = _ac.createGain(); ng.gain.value = (crit ? .22 : .14) * sfxGain();
+      const ng = _ac.createGain(); ng.gain.value = (crit ? .3 : .19) * sfxGain();
       const hp = _ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1400;
       n.connect(hp); hp.connect(ng); ng.connect(_ac.destination); n.start(t);
     }catch(e){}
@@ -510,11 +539,20 @@ const Sfx = {
       o.type = 'square';
       o.frequency.setValueAtTime(300, t);
       o.frequency.exponentialRampToValueAtTime(70, t + .25);
-      const gv = .16 * sfxGain();
+      const gv = .22 * sfxGain();
       if(gv <= 0) return;
       g.gain.setValueAtTime(gv, t);
       g.gain.exponentialRampToValueAtTime(.0001, t + .28);
       o.connect(g); g.connect(_ac.destination); o.start(t); o.stop(t + .3);
+      // 補一層低通悶噪音，原本只有單一方波音太乾淨，加點「挨了一下」的粗糙質感
+      const len = Math.floor(_ac.sampleRate * .16);
+      const buf = _ac.createBuffer(1, len, _ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for(let i=0;i<len;i++) data[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 1.8);
+      const n = _ac.createBufferSource(); n.buffer = buf;
+      const ng = _ac.createGain(); ng.gain.value = .1 * sfxGain();
+      const lp = _ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+      n.connect(lp); lp.connect(ng); ng.connect(_ac.destination); n.start(t);
     }catch(e){}
   }
 };
@@ -536,8 +574,8 @@ const SampleSfx = (() => {
     }catch(e){}
   }
   return {
-    heroAttack: () => play('assets/sfx/hero_attack.mp3', .8),
-    mobAttack:  () => play('assets/sfx/mob_attack.mp3', .8)
+    heroAttack: () => play('assets/sfx/hero_attack.mp3', 1),
+    mobAttack:  () => play('assets/sfx/mob_attack.mp3', 1)
   };
 })();
 
@@ -583,15 +621,25 @@ const SkillSfx = (() => {
       n.start(t);
     }catch(e){}
   }
+  /* 2026-09-07：Steve回報「法術音效也沒有」——查出真正原因是這組音效原本在按鈕按下的
+     當下就播完了，但施法逐幀動畫（heroCast，2.6~3.25秒）的爆發畫面要等到快尾聲才出現，
+     等玩家真的看到大招炸開，聲音早就結束一兩秒了，等於視覺跟聽覺對不上，感覺像沒配音效。
+     這裡順便把每個元素都疊一層跟Sfx.hit()同手法的低頻悶響（boom），單靠原本那組偏薄的
+     單振盪器+短噪音，份量感撐不起現在螢幕級的爆發特效。播放時機的修正在useSkill()，
+     這裡只管音色本身要夠重。 */
+  function boom(k){
+    tone(150, 42, .3, 'sine', .16 * k);
+    noise(.1, 900, .08 * k, .01);
+  }
   const VOICES = {
-    wind:    k => { tone(520, 280, .22, 'sine', .11 * k); noise(.18, 1200, .10 * k); },
-    pierce:  k => { tone(880, 140, .16, 'sawtooth', .13 * k); noise(.08, 2600, .09 * k); },
-    heal:    k => { [660, 880, 1100].forEach((f, i) => tone(f, f, .5, 'sine', .09 * k, i * .07)); },
-    ice:     k => { tone(1500, 2200, .28, 'sine', .09 * k); tone(900, 1300, .28, 'triangle', .07 * k, .03); noise(.12, 3000, .06 * k); },
-    fire:    k => { tone(140, 55, .32, 'sawtooth', .14 * k); noise(.26, 700, .13 * k); },
-    poison:  k => { tone(260, 175, .4, 'sine', .10 * k); tone(300, 205, .4, 'sine', .07 * k, .06); },
-    thunder: k => { tone(1800, 90, .14, 'square', .14 * k); noise(.16, 2200, .14 * k); },
-    holy:    k => { [784, 988, 1175, 1568].forEach((f, i) => tone(f, f, .6, 'sine', .075 * k, i * .05)); }
+    wind:    k => { boom(k*.7); tone(520, 280, .24, 'sine', .15 * k); noise(.2, 1200, .13 * k); },
+    pierce:  k => { boom(k*.8); tone(880, 140, .18, 'sawtooth', .17 * k); noise(.1, 2600, .12 * k); },
+    heal:    k => { [660, 880, 1100].forEach((f, i) => tone(f, f, .55, 'sine', .12 * k, i * .07)); },
+    ice:     k => { boom(k*.6); tone(1500, 2200, .3, 'sine', .12 * k); tone(900, 1300, .3, 'triangle', .09 * k, .03); noise(.14, 3000, .08 * k); },
+    fire:    k => { boom(k); tone(140, 55, .34, 'sawtooth', .18 * k); noise(.3, 700, .17 * k); },
+    poison:  k => { boom(k*.6); tone(260, 175, .42, 'sine', .13 * k); tone(300, 205, .42, 'sine', .09 * k, .06); },
+    thunder: k => { boom(k*.9); tone(1800, 90, .16, 'square', .18 * k); noise(.2, 2200, .18 * k); },
+    holy:    k => { [784, 988, 1175, 1568].forEach((f, i) => tone(f, f, .62, 'sine', .1 * k, i * .05)); }
   };
   return { play: (key, k) => { (VOICES[key] || VOICES.wind)(k == null ? 1 : k); } };
 })();

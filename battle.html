@@ -1196,6 +1196,31 @@ body.playing #pauseBtn{display:flex}
 }
 .modalwrap.on{display:flex;animation:mwIn .18s ease-out}
 @keyframes mwIn{from{opacity:0}}
+/* 2026-09-07：手指教學疊在.modalwrap的暗底上，但不是置中的對話框——手指擺在畫面下半
+   （出擊鈕/答案鈕那一帶），示範完就整片收掉，不擋住玩家真正要點的東西太久 */
+.tutWrap{flex-direction:column;justify-content:flex-end;padding-bottom:22vh;gap:14px;cursor:pointer}
+.tutZone{position:relative;width:76px;height:76px;display:flex;align-items:center;justify-content:center}
+.tutHand{font-size:44px;filter:drop-shadow(0 6px 10px #000a);animation:tutTap 1.1s ease-in-out infinite}
+@keyframes tutTap{
+  0%,100%{transform:translateY(0) scale(1)}
+  38%{transform:translateY(16px) scale(.86)}
+  52%{transform:translateY(18px) scale(.82)}
+  70%{transform:translateY(0) scale(1.06)}
+}
+.tutRing{
+  position:absolute;inset:0;border-radius:50%;border:3px solid var(--gold);opacity:0;
+  animation:tutRing 1.1s ease-out infinite;
+}
+@keyframes tutRing{
+  0%,30%{transform:scale(.3);opacity:0}
+  44%{opacity:.85}
+  75%{transform:scale(1.7);opacity:0}
+  100%{opacity:0}
+}
+.tutHint{
+  font-size:20px;font-weight:900;color:var(--gold);letter-spacing:2px;
+  text-shadow:0 2px 0 #000,0 -1px 0 #000,2px 0 0 #000,-2px 0 0 #000;
+}
 .modalbox{
   width:min(94vw,470px);max-height:86vh;overflow:auto;position:relative;
   border-radius:20px;padding:20px 18px 18px;text-align:center;
@@ -1486,6 +1511,12 @@ body:not(.arcade) .skillsToggle{display:none}
     <button class="btn" id="resumeBtn">繼 續 冒 險</button>
     <button class="btn ghost" id="quitBtn" style="height:44px">結 束 這 一 場</button>
   </div>
+</div>
+
+<!-- 2026-09-07 Phase B：第一次進戰鬥的3秒手指教學，只出現一次（見showTutorial()/TUT_KEY） -->
+<div class="modalwrap tutWrap" id="tutWrap">
+  <div class="tutZone"><div class="tutRing"></div><div class="tutHand">👆</div></div>
+  <div class="tutHint">點一下試試看！</div>
 </div>
 
 <!-- 2026-09-04 第二十七輪：技能熱鍵設定面板 -->
@@ -2735,6 +2766,33 @@ function paintHeroBar(){
    超過 165 之後每 +10 連擊重播最強招；跟 20 顆升級技能（SKILLS）是獨立兩套。
    法師的「提早兩連就放」改成呼叫端把 HERO.spellEarly 當第二個參數傳給 spellFor()。 */
 const spellForHero = c => spellFor(c, (typeof HERO !== 'undefined' && HERO.spellEarly) || 0);
+/* 2026-09-07 Phase B：第一次進戰鬥的3秒手指教學。只在裝置上出現過一次（localStorage
+   記過就不再出現，重打不會每次都要看）。玩家點一下畫面任何地方（不用點準）→ 手指收起 →
+   3-2-1 倒數（借comboShout那組戰場大字，不用另外做一組元素）→ 才真的叫nextMob()出第一題。 */
+const TUT_KEY = 'mul99_tut1';
+function seenTut(){ try{ return !!localStorage.getItem(TUT_KEY); }catch(e){ return true; } }
+function markTutSeen(){ try{ localStorage.setItem(TUT_KEY, '1'); }catch(e){} }
+function showTutorial(done){
+  const w = $('tutWrap');
+  w.classList.add('on');
+  const dismiss = () => {
+    w.classList.remove('on');
+    markTutSeen();
+    tutCountdown(done);
+  };
+  w.addEventListener('pointerdown', dismiss, {once:true});
+}
+function tutCountdown(done){
+  const steps = [['3','#ff6a5c'],['2','#ffd76a'],['1','#5cc8ff'],['開始！','#7CFC7A']];
+  let i = 0;
+  (function step(){
+    comboShout(steps[i][0], steps[i][1]);
+    Sfx.tick();
+    i++;
+    if(i < steps.length) setTimeout(step, 480);
+    else setTimeout(done, 420);
+  })();
+}
 function comboShout(text, color){
   const f = $('comboFrame'), b = $('comboBig');
   f.style.setProperty('--cc', color); b.style.setProperty('--cc', color);
@@ -4402,7 +4460,7 @@ function start(){
   $('shMob').classList.remove('gone','hit');
   paintHeroBar();
   fixHotkeys();
-  paintUlt(); paintSkills(); paintHotbar(); nextMob(); idleBreak();
+  paintUlt(); paintSkills(); paintHotbar(); idleBreak();
   paused = false;
   document.body.classList.remove('paused');
   $('pausewin').classList.remove('on');
@@ -4410,6 +4468,10 @@ function start(){
   Fx.recheck();                 // 開打才是真正吃效能的時候，這時再量一次
   Sfx.next();
   $('start').textContent = '重 新 開 始';
+  // 2026-09-07 Phase B：第一次玩才出現的3秒手指教學（見下方showTutorial）。
+  // locked 這時還是 true（上面已設），nextMob()（會 locked=false 開始出題）延到教學結束才呼叫，
+  // 畫面上題目/答案格保持空白＝視覺上就是「時間凍結」，不用另外寫暫停邏輯。
+  seenTut() ? nextMob() : showTutorial(nextMob);
 }
 function over(win){
   running = false; paused = false; stopLoop();

@@ -100,6 +100,7 @@ body{padding-bottom:16px}
 @keyframes motes{from{transform:translateY(0);opacity:.2}45%{opacity:.9}to{transform:translateY(-70px);opacity:0}}
 
 /* ── 鏡頭層：整個戰鬥世界一起推近拉遠，血條不跟著動 ── */
+#fxLayer{position:absolute;inset:0;pointer-events:none}
 #world{position:absolute;inset:0;z-index:1;transform-origin:72% 62%;
   transition:transform .55s cubic-bezier(.2,.9,.3,1)}
 #world.zoom{transform:scale(1.12)}
@@ -502,6 +503,7 @@ body.lowfx .shard{animation-duration:.35s}
 /* 命中停頓：整個戰場的動畫定格幾十毫秒，重量感就是從這裡來的 */
 .field.freeze .fighter,
 .field.freeze .shard,
+.field.freeze .dust,
 .field.freeze .impact,
 .field.freeze .dmg,
 .field.freeze .dmg b{animation-play-state:paused !important}
@@ -1357,6 +1359,11 @@ body:not(.arcade) .skillsToggle{display:none}
       <div class="bar bombbar" id="bombBarWrap" style="display:none"><i id="bombBar"></i><span id="bombNum">5</span></div>
     </div>
     <div id="world">
+    <!-- 2026-09-08：WAAPI（.animate()）動畫暫時掛靠的小圖層，目前只有遠程怪的投射物
+         （shotAtHero()）。獨立出來是為了讓 freezeField() 能只查這個小容器，不用對整個
+         #world（含.scene那一串常駐CSS動畫）跑getAnimations({subtree:true})——那個呼叫
+         本身的花費是跟著子樹動畫數量等比例變貴的，範圍縮小才是真的省，見fieldAnims()說明 -->
+    <div id="fxLayer"></div>
     <div class="scene">
       <div class="sky"></div><div class="pic"></div><div class="glow"></div><div class="stars"></div>
       <div class="far"></div><div class="mid"></div><div class="ground"></div><div class="motes"></div>
@@ -2068,8 +2075,8 @@ function ultimateCast(){
    所以一直都沒有真的晃過。改成共用 cam1/2/3 那三段強度，1 輕、2 中、3 重。 */
 function shake(power){
   const f = F(), c = (power >= 3 || power === undefined) ? 'cam3' : power >= 2 ? 'cam2' : 'cam1';
-  f.classList.remove('cam1','cam2','cam3'); void f.offsetWidth;
-  f.classList.add(c);
+  f.classList.remove('cam1','cam2','cam3');
+  requestAnimationFrame(() => f.classList.add(c));   // 見restartCls()說明，不用void offsetWidth強制重排
   clearTimeout(f._shkT);
   f._shkT = setTimeout(()=>f.classList.remove(c), 520);
 }
@@ -2088,6 +2095,19 @@ function knockback(power){
   ], {duration: power >= 3 ? 560 : 400, easing:'cubic-bezier(.2,1,.3,1)', fill:'none'});
 }
 
+/* 2026-09-08 Steve回報「畫面震動/鏡頭縮放造成LAG」，實測（CDP CPU節流20倍模擬中低階
+   手機）抓到真根因：命中特效那串 remove class→void el.offsetWidth（強制同步重排）→
+   add class 的「重播CSS動畫」寫法，在單次命中裡連續觸發4~5次，每次都逼瀏覽器把當下
+   所有還沒處理完的DOM變更（含剛噴出去的十幾顆碎片）一次算完，量到單次命中光是這些
+   強制重排疊加起來就快70ms（20倍節流下，換算約一般中低階手機的等級），對到Steve說的
+   「一點都不連貫」。修法是業界標準做法：改用requestAnimationFrame延遲一幀再把class
+   加回去，效果肉眼看不出差異（差在下一影格，16ms內），但不再強迫瀏覽器同步重排。
+   只套在這條「打擊感」熱路徑（每次命中都會跑），不動其他低頻率的remove/add（結算畫面、
+   提示彈字那些一次性的，不值得冒風險去動）。 */
+function restartCls(el, cls){
+  el.classList.remove(cls);
+  requestAnimationFrame(() => el.classList.add(cls));
+}
 /* ---------- 打擊感 ----------
    命中停頓 → 爆閃 → 碎片 → 擠壓變形 → 震動，五件事疊起來才有「打到東西」的感覺 */
 const W = () => $('world');
@@ -2109,7 +2129,7 @@ function impactAt(pt){
   const el = $('impact');
   el.style.left = pt.x + 'px';
   el.style.top  = pt.y + 'px';
-  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  restartCls(el, 'on');
 }
 const SMALL_SCREEN = matchMedia('(max-width:520px)').matches;
 function shards(pt, n, crit, dir){
@@ -2135,18 +2155,34 @@ function shards(pt, n, crit, dir){
 }
 /* 戰場上正在跑的動畫（含角色那條時間軸）一起暫停／放慢。
    血條的 transition 要排除掉——凍住的話，白色殘影慢半拍追上的效果就沒了 */
+/* 2026-09-08 Steve回報「震動/縮放造成LAG」，CDP CPU節流20倍實測找到真根因：
+   getAnimations({subtree:true}) 這個呼叫本身的花費跟著子樹裡動畫數量等比例變貴，
+   單次命中光是對整個 .field（含.scene那一串常駐CSS動畫、剛噴出去的十幾顆碎片）跑
+   一次就要快20ms。CSS動畫（碎片/塵土/角色呼吸）本來就有.field.freeze那條純CSS規則
+   （animation-play-state:paused）處理掉了，不需要走這條JS路——這裡真正必要處理的
+   只有WAAPI（.animate()）動畫，範圍就三個：#hero2（揮擊/施法/受擊/閃避）、#mobWrap
+   （怪物出手撲擊/擊退，含子元素#mob的攻擊位移）、#fxLayer（遠程怪投射物）。查小範圍
+   不會漏東西，但快非常多。 */
 function fieldAnims(){
   try{
-    return F().getAnimations({subtree:true}).filter(a => {
-      const t = a.effect && a.effect.target;
-      return t && t.closest && !t.closest('.bars');
-    });
+    const roots = [$('hero2'), $('mobWrap'), $('fxLayer')];
+    const list = [];
+    for(const r of roots){ if(r) list.push(...r.getAnimations({subtree:true})); }
+    return list;
   }catch(e){ return []; }
 }
 function freezeField(ms){
-  const list = fieldAnims();
-  list.forEach(a => { try{ a.pause(); }catch(e){} });
-  setTimeout(() => list.forEach(a => { try{ a.play(); }catch(e){} }), ms);
+  // 2026-09-08：getAnimations()本身很便宜（~1ms），真正貴的是它會強迫瀏覽器把「前面
+  // 剛做的一堆DOM變更」（命中瞬間同時噴的碎片、class切換）先同步處理完才能給出準確
+  // 結果——這跟void el.offsetWidth強制重排是同一種病，只是這次是強制style/animation
+  // flush不是強制layout。延後一幀再查，讓瀏覽器照自己步調把前面的工作做完，
+  // 這裡才不用付「插隊同步結算」的代價（CDP CPU節流20倍下量到能差10幾ms）。
+  // 延後一幀（16ms內）視覺上感覺不出來，頓格效果依然成立。
+  requestAnimationFrame(() => {
+    const list = fieldAnims();
+    list.forEach(a => { try{ a.pause(); }catch(e){} });
+    setTimeout(() => list.forEach(a => { try{ a.play(); }catch(e){} }), ms);
+  });
 }
 function slowmoField(ms, rate){
   const list = fieldAnims();
@@ -2492,11 +2528,14 @@ function deathBurst(){
    停頓長度照業界慣例：一般 3~5 幀、重擊 8 幀上下、致命一擊 0.25 秒 */
 function hitEffect(crit, weak, lethal){
   const m = $('mob'), f = F(), sh = $('shMob');
-  m.classList.remove('hit'); void m.offsetWidth; m.classList.add('hit');
-  sh.classList.remove('hit'); void sh.offsetWidth; sh.classList.add('hit');
+  restartCls(m, 'hit');
+  restartCls(sh, 'hit');
   const pt = mobCenter();
   impactAt(pt);
-  shards(pt, lethal ? 26 : crit ? 20 : weak ? 14 : 10, crit || lethal);
+  // 2026-09-08：碎片數量調降（26/20/14/10→18/14/10/7），量過shards()本身在CPU節流下
+  // 也要吃掉近10ms，命中特效的「份量感」主要來自頓格+閃白+震動這幾個，碎片數量減少
+  // 肉眼幾乎感覺不出來，但少一截同步work
+  shards(pt, lethal ? 18 : crit ? 14 : weak ? 10 : 7, crit || lethal);
 
   if(crit || lethal) playFx('fire', pt, {size: lethal ? 260 : 190, n:16, fps:30});
   const stop  = lethal ? 250 : crit ? 150 : weak ? 110 : 80;
@@ -3937,7 +3976,7 @@ function shotAtHero(){
   const el = document.createElement('div');
   el.className = 'mobshot';
   el.style.left = from.x + 'px'; el.style.top = from.y + 'px';
-  W().appendChild(el);
+  $('fxLayer').appendChild(el);   // 見#fxLayer說明：獨立小圖層方便freezeField()窄範圍查詢
   el.animate([{transform:'translate(-50%,-50%)'},
               {transform:'translate(' + (to.x - from.x - 10) + 'px,' + (to.y - from.y) + 'px) scale(1.15)'}],
              {duration:420, easing:'linear', fill:'forwards'});

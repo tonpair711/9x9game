@@ -272,6 +272,8 @@ body{padding-bottom:16px}
    沒有就是 1（維持原樣，不動大多數素材）。 */
 #hero2{left:4%;height:calc(62% * var(--sprScale, 1));
   animation:heroIdle 2.6s ease-in-out infinite alternate}
+/* 2026-09-07：骨架動畫試搭畫布，位置跟#hero2對齊（見initRig()），?rig=1才會顯示 */
+#hero2rig{position:absolute;left:4%;bottom:8%;height:48%;aspect-ratio:1600/1080;z-index:3;pointer-events:none}
 @keyframes heroIdle{from{transform:translateY(0) scale(1,1)}to{transform:translateY(-7px) scale(.99,1.02)}}
 /* 漂浮掛在外層 .mobwrap、受擊掛在 #mob 自己身上。
    兩個動畫如果掛同一層會互相覆蓋，命中結束的瞬間會「跳」一下回漂浮的相位 */
@@ -1371,6 +1373,9 @@ body:not(.arcade) .skillsToggle{display:none}
       <div class="bar mob"><i class="ghost" id="mobHpGhost"></i><i id="mobHp"></i><span id="mobHpText">敵人</span></div>
     </div>
     <img class="fighter" id="hero2" src="assets/fx_hero_ready.webp" alt="">
+    <!-- 2026-09-07：骨架動畫試搭（DragonBones，只有王者）。網址加 ?rig=1 才會啟用，
+         平常玩家完全看不到、完全不影響現有雪碧圖系統。見下方 initRig()。 -->
+    <canvas id="hero2rig" style="display:none"></canvas>
     <div class="fighter mobwrap" id="mobWrap"><div class="mobflip" id="mobFlip"><img id="mob" src="assets/mob_slime.webp" alt=""></div><div class="bombIcon">💣</div></div>
     <div class="slash" id="slash"></div>
     <div class="speedlines" id="speedlines"></div>
@@ -4722,5 +4727,98 @@ paintHeroBar();
 </script>
 <script src="assets/audio.js?v=20260907e"></script>
 <script src="assets/lock.js?v=20260907e"></script>
+<script>
+/* 2026-09-07：王者骨架動畫試搭（DragonBones + PixiJS，見進度.md Pass 10）。
+   完全opt-in——網址沒帶?rig=1，這整段連PixiJS/DragonBones都不會下載，對一般玩家
+   零影響。原理：monkey-patch heroFrame/heroSwing/heroCast/heroHurtAnim，讓#hero2rig
+   這塊canvas跟著原本的雪碧圖系統一起收到同樣的呼叫、播對應動畫；#hero2本身還是照舊
+   跑（只是被CSS蓋住看不到），壞了也不影響雪碧圖那條原本的路。
+   已知限制（這輪只求「真的能玩、能看」，不是最終品質）：
+   - 只有王者、只有身體+手臂兩塊，沒有lunge位移動畫（heroSwing原本會把#hero2往前
+     衝再彈回，這塊還沒複製到canvas上，角色會原地換動作不會撲過去）
+   - 部件是我目測對位置的，不是Steve在DragonBones Pro裡手動搭的，肩膀接縫還看得出來 */
+(function(){
+  const params = new URLSearchParams(location.search);
+  if(params.get('rig') !== '1') return;
+
+  function loadScript(src){
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = res; s.onerror = () => rej(new Error('load fail: ' + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  let rigReady = false, armatureDisplay = null, app = null;
+
+  async function initRig(){
+    try{
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pixi.js/5.3.9/pixi.min.js');
+      await loadScript('https://cdn.jsdelivr.net/gh/DragonBones/DragonBonesJS@master/Pixi/5.x/out/dragonBones.js');
+
+      const canvas = document.getElementById('hero2rig');
+      // CSS aspect-ratio對<canvas>不可靠（它是替換元素，有自己預設300x150的固有尺寸
+      // 會蓋掉），改成量到的高度直接算寬度、手動設canvas.style.width。
+      const rigH = canvas.getBoundingClientRect().height || 314;
+      const rigW = rigH * (1600 / 1080);
+      canvas.style.width = rigW + 'px';
+      const rect = {width: rigW, height: rigH};
+      app = new PIXI.Application({
+        view: canvas, width: rect.width, height: rect.height,
+        transparent: true, backgroundAlpha: 0, resolution: window.devicePixelRatio || 1, autoDensity: true
+      });
+      PIXI.Ticker.shared.start();   // 見進度.md踩過的坑：PixiFactory自己掛的是shared這顆，
+                                     // 不是app.ticker，不明確start()骨頭角度算得出來但畫面不會動
+
+      const factory = dragonBones.PixiFactory.factory;
+      const [skeJson, texJson] = await Promise.all([
+        fetch('assets/rig/hero_royal_ske.json').then(r => r.json()),
+        fetch('assets/rig/hero_royal_tex.json').then(r => r.json())
+      ]);
+      factory.parseDragonBonesData(skeJson);
+      const texture = PIXI.BaseTexture.from('assets/rig/hero_royal_tex.png');
+      await new Promise(res => { if(texture.valid) res(); else texture.on('loaded', res); });
+      factory.parseTextureAtlasData(texJson, texture);
+
+      armatureDisplay = factory.buildArmatureDisplay('hero_royal');
+      if(!armatureDisplay) throw new Error('buildArmatureDisplay 失敗');
+      const scale = (rect.height || 314) / 1080;
+      armatureDisplay.scale.set(scale);
+      // 畫布故意比身體本身還寬（見上面CSS aspect-ratio 1600:1080），留空間給伸出去的
+      // 手臂+法杖，不然施法舉起來會被canvas邊界直接裁掉。身體固定貼在畫布左側一小段留白。
+      armatureDisplay.x = (rect.height || 314) * 0.22;
+      armatureDisplay.y = rect.height || 314;
+      armatureDisplay.pivot.set(0, 1080);   // 腳底對齊canvas底部
+      app.stage.addChild(armatureDisplay);
+      armatureDisplay.animation.play('idle');
+
+      document.getElementById('hero2').style.display = 'none';
+      canvas.style.display = 'block';
+      rigReady = true;
+      console.log('[rig] 王者骨架動畫已啟用（?rig=1）');
+    }catch(e){
+      console.error('[rig] 初始化失敗，退回原本雪碧圖系統：', e);
+    }
+  }
+
+  function rigPlay(name){
+    if(rigReady && armatureDisplay && HERO.key === 'royal'){
+      try{ armatureDisplay.animation.play(name); }catch(e){}
+    }
+  }
+
+  // monkey-patch：包一層在外面，原函式照樣跑（#hero2雖被蓋住但邏輯不受影響）
+  const _heroFrame = heroFrame;
+  heroFrame = function(k, castKey){
+    if(k === 'swing') rigPlay('atk');
+    else if(k === 'cast') rigPlay('cast');
+    else if(k === 'hurt') rigPlay('idle');   // 這輪還沒做受擊動畫，先退回idle
+    else if(k === 'ready') rigPlay('idle');
+    return _heroFrame(k, castKey);
+  };
+
+  initRig();
+})();
+</script>
 </body>
 </html>

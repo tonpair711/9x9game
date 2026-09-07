@@ -1,0 +1,4 @@
+{"SubTexture":[
+  {"name":"body_base","x":0,"y":0,"width":1032,"height":1080},
+  {"name":"arm_weapon","x":1032,"y":0,"width":445,"height":123}
+],"width":1477,"height":1080,"name":"hero_royal","imagePath":"hero_royal_tex.png"}

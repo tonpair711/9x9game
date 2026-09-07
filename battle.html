@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260907c">
+<link rel="stylesheet" href="assets/common.css?v=20260907d">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -1621,7 +1621,7 @@ body:not(.arcade) .skillsToggle{display:none}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260907c"></script>
+<script src="assets/common.js?v=20260907d"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -2885,47 +2885,52 @@ const skillBusy = () => performance.now() < skillBusyUntil;
    靠 hue/sat/bright/size 調不同配色與大小做出視覺差異，desc 各自寫不同招式感覺。
    等級間距刻意拉開早期（2/3/4/6/8）跟後期（65/70/75/80），呼應天堂式升等曲線
    （早期幾秒升一級、後期要磨很久），新技能不會擠在同一段忽然全部解鎖。 */
+/* 2026-09-07：每顆技能加 snd（施法音「元素分類」，8種：wind/pierce/heal/ice/fire/poison/
+   thunder/holy，對到common.js的SkillSfx）。fx.key只是「借用哪一組粒子特效形狀」（只有
+   whirl/heal/fire/poison/thunder/holy六種形狀，冰系技能借fire形狀改藍色調），不能拿來
+   當聲音分類——之前全部技能音效都靠同一個Sfx.next()，Steve回報「各種技能音效都一樣」，
+   要修的正是這個，所以另外給每顆技能一個「真正代表這招是什麼元素」的snd。 */
 const SKILLS = [
   {key:'gale2', name:'疾風斬', icon:'🌪️', lv:2, cd:5000, color:'#9be8ff', castSpr:'hero_cast_gale2',
-   fx:{key:'whirl', size:240, sat:1.1}, mult:0.9, desc:'比普通攻擊快、CD 短的入門技'},
+   fx:{key:'whirl', size:240, sat:1.1}, mult:0.9, snd:'wind', desc:'比普通攻擊快、CD 短的入門技'},
   {key:'whirl', name:'旋風斬', icon:'🌀', lv:3,  cd:9000,  color:'#7fe6ff', castSpr:'hero_cast_whirl',
-   fx:{key:'whirl', size:460, bright:1.35, sat:1.3}, mult:2.4, desc:'一圈掃過去的大傷害'},
+   fx:{key:'whirl', size:460, bright:1.35, sat:1.3}, mult:2.4, snd:'wind', desc:'一圈掃過去的大傷害'},
   {key:'mark',  name:'破魂突刺', icon:'💢', lv:4,  cd:7000,  color:'#ff8a8a', castSpr:'hero_cast_mark',
-   fx:{key:'whirl', size:280, hue:-70, sat:1.6}, mult:1.1, markMs:4500, desc:'打上破綻，接旋風斬爆傷'},
+   fx:{key:'whirl', size:280, hue:-70, sat:1.6}, mult:1.1, markMs:4500, snd:'pierce', desc:'打上破綻，接旋風斬爆傷'},
   {key:'heal',  name:'治療術', icon:'💚', lv:6,  cd:22000, color:'#8affc4', castSpr:'hero_cast_heal',
-   fx:{key:'heal', size:340, dy:14, bright:1.25}, heal:0.3, desc:'回一大口血'},
+   fx:{key:'heal', size:340, dy:14, bright:1.25}, heal:0.3, snd:'heal', desc:'回一大口血'},
   {key:'iceshot8', name:'冰箭穿心', icon:'🧊', lv:8, cd:8000, color:'#8fd6ff', castSpr:'hero_cast_iceshot8',
-   fx:{key:'fire', size:260, hue:180, sat:1.5}, mult:1.4, desc:'凍徹心扉的一箭'},
+   fx:{key:'fire', size:260, hue:180, sat:1.5}, mult:1.4, snd:'ice', desc:'凍徹心扉的一箭'},
   {key:'flame10', name:'烈焰斬', icon:'🔥', lv:10, cd:8000, color:'#ff8a3d', castSpr:'hero_cast_flame10',
-   fx:{key:'fire', size:320, dy:6}, mult:2.0, desc:'火燄纏繞的一斬'},
+   fx:{key:'fire', size:320, dy:6}, mult:2.0, snd:'fire', desc:'火燄纏繞的一斬'},
   {key:'inferno15', name:'烈焰漩渦', icon:'🌋', lv:15, cd:10000, color:'#ff7a4d', castSpr:'hero_cast_inferno15',
-   fx:{key:'whirl', size:400, hue:15, bright:1.3}, mult:2.2, desc:'一圈燒起來的漩渦'},
+   fx:{key:'whirl', size:400, hue:15, bright:1.3}, mult:2.2, snd:'fire', desc:'一圈燒起來的漩渦'},
   {key:'ice20', name:'冰霜爆裂', icon:'❄️', lv:20, cd:9000, color:'#6ea8ff', castSpr:'hero_cast_ice20',
-   fx:{key:'fire', size:320, dy:6, hue:168, sat:1.7, bright:1.1}, mult:2.6, desc:'凍結範圍內爆開'},
+   fx:{key:'fire', size:320, dy:6, hue:168, sat:1.7, bright:1.1}, mult:2.6, snd:'ice', desc:'凍結範圍內爆開'},
   {key:'shadowpoison25', name:'暗影毒襲', icon:'🐍', lv:25, cd:11000, color:'#b98bff',
-   fx:{key:'poison', size:300, hue:-100, sat:1.4}, mult:2.9, desc:'從暗處竄出的毒牙'},
+   fx:{key:'poison', size:300, hue:-100, sat:1.4}, mult:2.9, snd:'poison', desc:'從暗處竄出的毒牙'},
   {key:'thunder30', name:'雷霆一擊', icon:'⚡', lv:30, cd:10000, color:'#c4b5fd',
-   fx:{key:'thunder', size:460, dy:-8}, mult:3.2, desc:'天降落雷，貫穿全場'},
+   fx:{key:'thunder', size:460, dy:-8}, mult:3.2, snd:'thunder', desc:'天降落雷，貫穿全場'},
   {key:'gust35', name:'狂風掃殺', icon:'🌬️', lv:35, cd:11000, color:'#7fe6ff',
-   fx:{key:'whirl', size:500, bright:1.5}, mult:3.6, desc:'範圍更大的旋風進化版'},
+   fx:{key:'whirl', size:500, bright:1.5}, mult:3.6, snd:'wind', desc:'範圍更大的旋風進化版'},
   {key:'holy40', name:'聖光治癒', icon:'✨', lv:40, cd:24000, color:'#ffe9a8',
-   fx:{key:'holy', size:360, dy:-4}, heal:0.35, desc:'比治療術更強的回血'},
+   fx:{key:'holy', size:360, dy:-4}, heal:0.35, snd:'holy', desc:'比治療術更強的回血'},
   {key:'chainlightning45', name:'雷鎖鏈', icon:'⛓️', lv:45, cd:11000, color:'#c9baff',
-   fx:{key:'thunder', size:400, hue:40}, mult:4.0, desc:'一道接一道的連鎖落雷'},
+   fx:{key:'thunder', size:400, hue:40}, mult:4.0, snd:'thunder', desc:'一道接一道的連鎖落雷'},
   {key:'poison50', name:'幻毒突襲', icon:'☠️', lv:50, cd:12000, color:'#b98bff',
-   fx:{key:'poison', size:320, hue:-40, sat:1.6}, mult:4.4, desc:'毒霧瀰漫，重擊要害'},
+   fx:{key:'poison', size:320, hue:-40, sat:1.6}, mult:4.4, snd:'poison', desc:'毒霧瀰漫，重擊要害'},
   {key:'radiance55', name:'光輝回復', icon:'🌟', lv:55, cd:26000, color:'#ffe9a8',
-   fx:{key:'heal', size:380, bright:1.35}, heal:0.32, desc:'又一招更亮的回血術'},
+   fx:{key:'heal', size:380, bright:1.35}, heal:0.32, snd:'holy', desc:'又一招更亮的回血術'},
   {key:'dragon60', name:'龍炎爆擊', icon:'🐲', lv:60, cd:13000, color:'#ff9d5c',
-   fx:{key:'fire', size:400, dy:0, bright:1.3}, mult:5.0, desc:'龍息般的爆炸傷害'},
+   fx:{key:'fire', size:400, dy:0, bright:1.3}, mult:5.0, snd:'fire', desc:'龍息般的爆炸傷害'},
   {key:'hellfire65', name:'業火審判', icon:'🔱', lv:65, cd:13000, color:'#ff6a3d',
-   fx:{key:'fire', size:440, bright:1.4}, mult:5.4, desc:'燒盡一切的業火'},
+   fx:{key:'fire', size:440, bright:1.4}, mult:5.4, snd:'fire', desc:'燒盡一切的業火'},
   {key:'star70', name:'星辰隕落', icon:'🌠', lv:70, cd:14000, color:'#5cf0ff',
-   fx:{key:'thunder', size:480, dy:-10, hue:180, sat:1.4}, mult:5.6, desc:'星辰墜落，範圍重創'},
+   fx:{key:'thunder', size:480, dy:-10, hue:180, sat:1.4}, mult:5.6, snd:'thunder', desc:'星辰墜落，範圍重創'},
   {key:'obliterate75', name:'滅世射線', icon:'🌀', lv:75, cd:14000, color:'#ffb3ff',
-   fx:{key:'thunder', size:500, hue:-160, sat:1.6}, mult:6.0, desc:'一線貫穿的毀滅之光'},
+   fx:{key:'thunder', size:500, hue:-160, sat:1.6}, mult:6.0, snd:'thunder', desc:'一線貫穿的毀滅之光'},
   {key:'ultra80', name:'終極斬', icon:'💥', lv:80, cd:15000, color:'#ffe066',
-   fx:{key:'whirl', size:520, bright:1.4, sat:1.3}, mult:6.4, desc:'集氣後的終極一擊'}
+   fx:{key:'whirl', size:520, bright:1.4, sat:1.3}, mult:6.4, snd:'wind', desc:'集氣後的終極一擊'}
 ];
 
 /* 2026-09-02 第十四輪：拿掉「戰鬥只能帶3主動」的配裝限制——Steve玩過反應「還是沒看到
@@ -3133,7 +3138,7 @@ $('hotClose').onclick = $('hotOk').onclick = () => panelClose('hotwin');
 $('hotwin').onclick = e => { if(e.target === $('hotwin')) panelClose('hotwin'); };
 
 function useSkill(key){
-  if(paused || castBusy) return;
+  if(paused) return;
   const sk = SKILLS.find(x => x.key === key);
   if(!sk || !running || Save.d.lv < sk.lv) return;
   if((skillState[key] || 0) > performance.now()) return;
@@ -3144,7 +3149,9 @@ function useSkill(key){
   const f = F();
   f.style.setProperty('--sc', sk.color + '99');
   comboShout(sk.name + '！', sk.color);
-  Sfx.next();
+  // 2026-09-07：技能音效改按元素分類播（見SKILLS的snd欄位／common.js的SkillSfx），
+  // lv越高的技能聲音份量越重一點（0.8~1.3倍），不再20顆技能共用同一組beep
+  SkillSfx.play(sk.snd, Math.min(1.3, 0.8 + sk.lv / 80 * 0.5));
 
   if(sk.heal){
     /* 2026-09-01：回血也改播施法逐幀（heroCast），不再原地不動只噴特效——
@@ -3161,7 +3168,6 @@ function useSkill(key){
       /* 先讓招式看得見，再結算傷害：同一格同時噴命中火花會把技能特效蓋掉 */
       playFx(sk.fx.key, mobCenter(), sk.fx);
       setTimeout(() => {
-        castBusy = false;
         if(!running) return;
         /* 連段：旋風斬打中有破綻印記的目標會引爆，傷害大幅提高並消耗印記 */
         const combo = key === 'whirl' && mobMarkedUntil > performance.now();
@@ -3454,7 +3460,7 @@ function finisherSwing(onHit){
 }
 
 function playerAttack(){
-  if(!running || paused || !arcade || locked || !atkReady || castBusy) return;
+  if(!running || paused || !arcade || locked || !atkReady) return;
   const btn = $('actAtk');
   const now = performance.now();
   const perfectHit = !!btn._ringCloseAt && now >= (btn._ringCloseAt - (btn._ringCloseAt - btn._ringOpenAt) * 0.3) && now <= btn._ringCloseAt + 60;
@@ -4683,7 +4689,7 @@ maxHp = P.hp; heroHp = P.hp;
 paintHeroBar();
 
 </script>
-<script src="assets/audio.js?v=20260907c"></script>
-<script src="assets/lock.js?v=20260907c"></script>
+<script src="assets/audio.js?v=20260907d"></script>
+<script src="assets/lock.js?v=20260907d"></script>
 </body>
 </html>

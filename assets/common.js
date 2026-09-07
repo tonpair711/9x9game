@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.50';
+const GAME_VERSION = '1.3.51';
 
 const $ = id => document.getElementById(id);
 
@@ -533,6 +533,61 @@ const SampleSfx = (() => {
     heroAttack: () => play('assets/sfx/hero_attack.mp3', .8),
     mobAttack:  () => play('assets/sfx/mob_attack.mp3', .8)
   };
+})();
+
+/* 2026-09-07：技能施法音，8種元素各自的音色（wind/pierce/heal/ice/fire/poison/thunder/holy）。
+   Steve回報battle.html「各種技能音效都一樣」——20顆技能（見SKILLS）原本全部共用Sfx.next()
+   那組固定兩音beep，聽起來根本分不出打的是哪一招。跟Sfx.hit()同一套手法（現場疊振盪器/
+   雜訊，不拉外部檔案），只是這次故意讓每種元素的音色差很大：風系是掃過去的噪音+下滑音、
+   治療是三音上行和弦、冰系是高頻清亮雙音、火系是低頻鋸齒轟+噪音爆、毒系是兩個相近頻率
+   疊出的濁濁悶悶波動音、雷系是尖銳方波+高通雜訊喀啦、聖光是四音上行鐘聲。
+   intensity(k，約0.8~1.3)依技能等級微調音量/音長，越後期的大招聽起來越有份量。 */
+const SkillSfx = (() => {
+  function tone(freq0, freq1, dur, type, gain, delay){
+    try{
+      _ac = _ac || new (window.AudioContext || window.webkitAudioContext)();
+      const t = _ac.currentTime + (delay || 0);
+      const o = _ac.createOscillator(), g = _ac.createGain();
+      o.type = type; o.frequency.setValueAtTime(freq0, t);
+      if(freq1 !== freq0) o.frequency.exponentialRampToValueAtTime(Math.max(20, freq1), t + dur);
+      const gv = gain * sfxGain();
+      if(gv <= 0) return;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(gv, t + Math.min(.02, dur * .2));
+      g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      o.connect(g); g.connect(_ac.destination);
+      o.start(t); o.stop(t + dur + .02);
+    }catch(e){}
+  }
+  function noise(dur, hpFreq, gain, delay){
+    try{
+      _ac = _ac || new (window.AudioContext || window.webkitAudioContext)();
+      const t = _ac.currentTime + (delay || 0);
+      const len = Math.max(1, Math.floor(_ac.sampleRate * dur));
+      const buf = _ac.createBuffer(1, len, _ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for(let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.6);
+      const n = _ac.createBufferSource(); n.buffer = buf;
+      const g = _ac.createGain();
+      const gv = gain * sfxGain();
+      if(gv <= 0) return;
+      g.gain.setValueAtTime(gv, t);
+      const f = _ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hpFreq;
+      n.connect(f); f.connect(g); g.connect(_ac.destination);
+      n.start(t);
+    }catch(e){}
+  }
+  const VOICES = {
+    wind:    k => { tone(520, 280, .22, 'sine', .11 * k); noise(.18, 1200, .10 * k); },
+    pierce:  k => { tone(880, 140, .16, 'sawtooth', .13 * k); noise(.08, 2600, .09 * k); },
+    heal:    k => { [660, 880, 1100].forEach((f, i) => tone(f, f, .5, 'sine', .09 * k, i * .07)); },
+    ice:     k => { tone(1500, 2200, .28, 'sine', .09 * k); tone(900, 1300, .28, 'triangle', .07 * k, .03); noise(.12, 3000, .06 * k); },
+    fire:    k => { tone(140, 55, .32, 'sawtooth', .14 * k); noise(.26, 700, .13 * k); },
+    poison:  k => { tone(260, 175, .4, 'sine', .10 * k); tone(300, 205, .4, 'sine', .07 * k, .06); },
+    thunder: k => { tone(1800, 90, .14, 'square', .14 * k); noise(.16, 2200, .14 * k); },
+    holy:    k => { [784, 988, 1175, 1568].forEach((f, i) => tone(f, f, .6, 'sine', .075 * k, i * .05)); }
+  };
+  return { play: (key, k) => { (VOICES[key] || VOICES.wind)(k == null ? 1 : k); } };
 })();
 
 /* ---------- 角色演出 ---------- */

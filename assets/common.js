@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.52';
+const GAME_VERSION = '1.3.53';
 
 const $ = id => document.getElementById(id);
 
@@ -263,10 +263,16 @@ function buySpeedPotions(qty){
      spellEarly＝連擊魔法提早幾連觸發｜cdMul＝技能冷卻倍率｜scrollLuck＝卷軸多掉的機率 */
 const HEROES = [
   {key:'royal',  name:'王者',      icon:'👑', img:'assets/fx_hero_ready.webp', frames:true,
+   sprPrefix:'hero', atkFrom:12, atkTo:32, atkFps:50, ultFrom:30, ultTo:51,
    desc:'帶頭的那一個', buff:'金幣 +35%、卷軸更常掉',
    play:'抓節奏連點：命中的瞬間再點一下，接出二連斬',
    atk:2, hp:10, crit:2, ult:2, spell:1.1, gold:0.35, scrollLuck:1},   // scrollLuck 1＝掉落率翻倍
-  {key:'mage',   name:'星辰術士',  icon:'🔮', img:'assets/char_mage.webp',
+  /* 2026-09-07：星辰術士補上跟王者同等級的真逐幀動畫（待機呼吸/甩杖出手/施法大招），
+     取代原本「只有CSS濾鏡+法術光暈」的省額度版（見heroFrame()舊註解）。
+     atkFrom/atkTo跟王者不同——這組雪碧圖本身只有20幀（0~19），不是從52幀裡挑一段，
+     全部播完剛好是「蓄力後甩→出手」，fps62讓20幀壓進620ms普攻節奏裡的.21~.72那段。 */
+  {key:'mage',   name:'星辰術士',  icon:'🔮', img:'assets/char_mage.webp', frames:true,
+   sprPrefix:'mage', atkFrom:0, atkTo:19, atkFps:62, ultFrom:30, ultTo:52,
    desc:'魔法就是暴力', buff:'魔法 ×1.7，連擊魔法提早兩連',
    play:'長按蓄力再滑出：光圈縮到綠區時放手，打出雙倍威力',
    atk:-2, hp:-12, crit:0, ult:4, spell:1.7, spellEarly:2}

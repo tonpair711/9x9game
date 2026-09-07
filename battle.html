@@ -1857,8 +1857,13 @@ function preloadNearby(){
   }
 }
 preload([...Object.values(HERO_FRAMES), 'assets/fx_slash_big.webp', HERO.img]);
-/* 逐幀雪碧圖：角色自己那組跟第一隻怪的先載，播到才抓會閃一下空白 */
-if(HERO.frames) preload(['assets/spr_hero_idle.webp', 'assets/spr_hero_atk.webp', 'assets/spr_hero_skillcast.webp']);
+/* 逐幀雪碧圖：角色自己那組跟第一隻怪的先載，播到才抓會閃一下空白
+   2026-09-07：星辰術士補了真動畫之後跟王者一樣有 frames:true，改用 sprPrefix 動態組
+   檔名，不能再寫死 hero_*（不然選星辰術士還是預抓王者的圖，浪費頻寬且沒意義）。 */
+if(HERO.frames){
+  const pfx = HERO.sprPrefix || 'hero';
+  preload(['assets/spr_' + pfx + '_idle.webp', 'assets/spr_' + pfx + '_atk.webp', 'assets/spr_' + pfx + '_skillcast.webp']);
+}
 preload(['assets/spr_slime_idle.webp', 'assets/spr_slime_atk.webp',
          'assets/fx_whirl.webp', 'assets/fx_heal.webp']);
 preloadNearby();
@@ -1877,26 +1882,33 @@ addEventListener('load', () => setTimeout(() => {
   if('requestIdleCallback' in window) requestIdleCallback(preloadRest, {timeout:3000});
   else preloadRest();
 }, 1200));
-/* 王者有分解動作就換圖；其他角色只有一張，改用變形表現動作 */
+/* 有逐幀素材的角色就換圖；其他角色只有一張，改用變形表現動作
+   2026-09-07：星辰術士補齊 idle/atk/skillcast 之後，跟王者一樣 frames:true，
+   全部改用 HERO.sprPrefix 動態組 key，不能再寫死 hero_*（不然選星辰術士還是播王者的圖）。 */
 function heroFrame(k, castKey){
   const el = $('hero2');
-  /* 王者有整組逐幀，走 Spr */
-  if(HERO.frames && SPR.hero_idle){
+  const pfx = HERO.sprPrefix || 'hero';
+  /* 這個角色有整組逐幀，走 Spr */
+  if(HERO.frames && SPR[pfx + '_idle']){
     el.classList.remove('poseSwing','poseHurt','poseCast');
-    const rest = () => IDLE_SPRITE() ? Spr.play(el, 'hero_idle', {loop:true})
-                                     : Spr.off(el, HERO_FRAMES.ready);
-    if(k === 'swing')      Spr.play(el, 'hero_atk', {from:12, to:32, fps:50, done:rest});
+    const rest = () => IDLE_SPRITE() ? Spr.play(el, pfx + '_idle', {loop:true})
+                                     : Spr.off(el, HERO.img);
+    if(k === 'swing')      Spr.play(el, pfx + '_atk', {from:HERO.atkFrom, to:HERO.atkTo, fps:HERO.atkFps, done:rest});
     else if(k === 'cast'){
       /* 2026-09-03 Steve：20顆技能各自專屬施法動畫——skill.castSpr有定義且SPR裡真的
-         生好那個key才用專屬那組，沒有就退回共用的hero_skillcast，不會報錯（漸進式
+         生好那個key才用專屬那組，沒有就退回這個角色自己的共用施法動畫 <prefix>_skillcast
+         （每個frames:true的角色現在都有自己這一支，不會混播錯角色），不會報錯（漸進式
          生一隻補一隻，沒生完的技能維持原本表現）。 */
-      const key = (castKey && SPR[castKey]) ? castKey : 'hero_skillcast';
+      /* castKey（hero_cast_gale2 這種）是王者專屬的20招各自逐幀，星辰術士沒有這組，
+         只在 pfx==='hero' 時才用，其他角色一律退回自己的 <prefix>_skillcast，
+         不然選星辰術士放技能會播出王者的施法動畫，角色對不上。 */
+      const key = (pfx === 'hero' && castKey && SPR[castKey]) ? castKey : pfx + '_skillcast';
       el.classList.add('poseCast');
       Spr.play(el, key, {done:() => { el.classList.remove('poseCast'); rest(); }});
     }
     else if(k === 'hurt'){
-      if(IDLE_SPRITE()) Spr.play(el, 'hero_idle', {from:0, to:1});
-      else Spr.off(el, HERO_FRAMES.hurt);
+      if(IDLE_SPRITE()) Spr.play(el, pfx + '_idle', {from:0, to:1});
+      else Spr.off(el, HERO.img);
       el.classList.add('poseHurt');
     }
     else if(k !== 'after') rest();
@@ -2038,12 +2050,13 @@ function heroHurtAnim(){
    全長不一樣，這裡要配合ultfx的.9s全螢幕閃光，所以直接自訂from/to/fps，不走heroFrame('cast')
    那條播全長52幀的路） */
 function ultimateCast(){
-  if(!HERO.frames || !SPR.hero_idle) return;   // 沒有這組逐幀的角色（星辰術士等）直接跳過，不報錯
+  const pfx = HERO.sprPrefix || 'hero';
+  if(!HERO.frames || !SPR[pfx + '_idle']) return;   // 沒有這組逐幀的角色直接跳過，不報錯
   const h = $('hero2');
   h.classList.remove('poseSwing','poseHurt'); h.classList.add('poseCast');
-  Spr.play(h, 'hero_skillcast', {from:30, to:51, fps:24, done:() => {
+  Spr.play(h, pfx + '_skillcast', {from:HERO.ultFrom, to:HERO.ultTo, fps:24, done:() => {
     h.classList.remove('poseCast');
-    IDLE_SPRITE() ? Spr.play(h, 'hero_idle', {loop:true}) : Spr.off(h, HERO_FRAMES.ready);
+    IDLE_SPRITE() ? Spr.play(h, pfx + '_idle', {loop:true}) : Spr.off(h, HERO.img);
   }});
 }
 /* 畫面震動。原本這裡加的是 .field.shake，但整份 CSS 沒有這條規則（.hero.shake 是別的元素），
@@ -2177,6 +2190,12 @@ const SPR = {
      跟 hero_cast_* 不同的是這兩支不是 useSkill() 那套 20 招表定義的，直接被 playKofSprite() 引用。 */
   hero_kof_combo1: {img:'assets/spr_hero_kof_combo1.webp', cols:6, rows:5, n:29, ar:1, fps:16, scale:1.09},
   hero_kof_finisher: {img:'assets/spr_hero_kof_finisher.webp', cols:8, rows:8, n:61, ar:1, fps:16},
+  /* 2026-09-07：星辰術士補齊跟王者同等級的三支逐幀（待機/普攻甩杖/技能施法大招），
+     取代原本只有CSS濾鏡+playFx()光暈的省額度版。atk只有20幀（不是從52幀挑一段像王者那樣），
+     heroFrame()用HERO.atkFrom~atkTo=0~19全部播完，配合atkFps=62壓進普攻620ms節奏裡。 */
+  mage_idle:      {img:'assets/spr_mage_idle.webp',      cols:5, rows:4, n:20, ar:1, fps:8},
+  mage_atk:       {img:'assets/spr_mage_atk.webp',       cols:5, rows:4, n:20, ar:1, fps:62},
+  mage_skillcast: {img:'assets/spr_mage_skillcast.webp', cols:6, rows:9, n:53, ar:1, fps:16},
   slime_idle:  {img:'assets/spr_slime_idle.webp',  cols:5, rows:4, n:16, ar:224/125, fps:8},
   slime_atk:   {img:'assets/spr_slime_atk.webp',   cols:6, rows:5, n:29, ar:224/125, fps:20, scale:1.25},
   dragon_idle: {img:'assets/spr_dragon_idle.webp', cols:6, rows:4, n:24, ar:224/211, fps:10},
@@ -3656,12 +3675,16 @@ function onRhythmHit(kind){
    「光爆瞬間＝出招判定」比例，不共用 heroCast 是因為那支的 WAAPI bob 動畫固定 3.25 秒，
    跟這兩支逐幀圖各自的實際長度（1.8s／3.8s）對不上。 */
 function playKofSprite(key, totalMs, onBeat){
-  if(HERO.frames && SPR.hero_idle && SPR[key]){
+  /* hero_kof_combo1／hero_kof_finisher 是王者專屬（他「抓節奏連點」的拳皇式連續技），
+     2026-09-07星辰術士補了frames:true之後不能只看HERO.frames——要鎖定sprPrefix==='hero'，
+     不然選星辰術士連段滿也會播出王者的連續技逐幀圖，角色對不上。星辰術士連段一樣走下面
+     else的heroSwing()退回路徑，不報錯。 */
+  if(HERO.sprPrefix === 'hero' && SPR.hero_idle && SPR[key]){
     const h = $('hero2');
     h.classList.add('poseCast');
     Spr.play(h, key, {done:() => {
       h.classList.remove('poseCast');
-      IDLE_SPRITE() ? Spr.play(h, 'hero_idle', {loop:true}) : Spr.off(h, HERO_FRAMES.ready);
+      IDLE_SPRITE() ? Spr.play(h, 'hero_idle', {loop:true}) : Spr.off(h, HERO.img);
     }});
     setTimeout(() => onBeat && onBeat(), totalMs * 0.82);
   }else{

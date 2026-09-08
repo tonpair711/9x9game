@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.68';
+const GAME_VERSION = '1.3.69';
 
 const $ = id => document.getElementById(id);
 
@@ -1503,29 +1503,34 @@ function loginBox(onDone, startMode){
      能秒殺怪、吃 fx_*.webp 特效圖）。
    - 小遊戲：只呼叫 `ComboMagic.show(combo, '連擊詞')`——命中門檻才放，純視覺（整螢幕元素色閃
      ＋置中大字招式名，CSS 自帶不吃素材圖），不影響各遊戲的計分與輸贏。 */
-/* 2026-09-08 Steve回報「連續攻擊就觸發技能」太容易——原本第一個門檻只要連對3題，
-   幾乎每場都在放。改成照Steve給的例子「連續答對10題才有」，把整條門檻表照原本
-   的曲線形狀等比放大（新/舊 ≈ 10/3），越後面的招式越稀有這件事沒變，只是整體
-   變得更難碰到，不是拿掉這個機制（key/vk/name/color/mult/mode/heal全部不動，
-   只改at這個門檻數字）。 */
+/* 2026-09-08 Steve回報「連擊次數和答對次數對不上」——根因是answer()裡combo會被
+   快答加成灌水（見battle.html的說明），跟Gemini A討論9輪後：combo改成嚴格連續
+   答對才+1，快答加成搬去別的管道（MP），不再混進這個數字。combo變乾淨之後，
+   原本1.3.62那輪「10~550」的門檻表就完全不合理了——550連擊等於要求玩家連續
+   答對550題不能錯一題（一題抓3秒，等於零失誤打30分鐘），高階魔法永遠碰不到。
+   跟Gemini重新設計成「前密後疏」的17階曲線（3/5/7/9/12/15/18/21/25/29/33/37/
+   41/45/48/51/55）：前面幾階密集出現，一般10題關卡/15題Boss關都摸得到基礎
+   魔法，答錯歸零也能很快爬回來；後面拉開留給連續打贏好幾隻怪不失誤的高手，
+   最高55連擊是認真練過的國小生可以搆到但不是隨手就有的門檻。
+   key/vk/name/color/mult/mode/heal全部不動，只改at這個門檻數字。 */
 const SPELLS = [
-  {at:10,  key:'s3',   vk:'fire',    name:'火球術',   color:'#ff8a3d', mult:1.6,  mode:'fly'},
-  {at:17,  key:'s5',   vk:'ice',     name:'冰霜術',   color:'#6ea8ff', mult:2.0,  mode:'fly'},
-  {at:30,  key:'s9',   vk:'thunder', name:'落雷術',   color:'#c4b5fd', mult:2.6,  mode:'drop'},
-  {at:40,  key:'s12',  vk:'whirl',   name:'破魂旋斬', color:'#7fe6ff', mult:3.2,  mode:'fly'},
-  {at:55,  key:'s16',  vk:'holy',    name:'聖光審判', color:'#ffe9a8', mult:3.8,  mode:'drop', heal:15},
-  {at:85,  key:'s25',  vk:'ice',     name:'疾風狂斬', color:'#5cc8ff', mult:4.6,  mode:'fly'},
-  {at:120, key:'s35',  vk:'poison',  name:'幻影無雙', color:'#b98bff', mult:5.4,  mode:'drop'},
-  {at:150, key:'s45',  vk:'thunder', name:'隕石衝擊', color:'#ff8a3d', mult:6.2,  mode:'drop'},
-  {at:185, key:'s55',  vk:'holy',    name:'王者降臨', color:'#ffd76a', mult:7.0,  mode:'drop', heal:30},
-  {at:220, key:'s65',  vk:'fire',    name:'龍王破空', color:'#ff9d5c', mult:7.8,  mode:'fly'},
-  {at:250, key:'s75',  vk:'whirl',   name:'時空崩裂', color:'#5cf0ff', mult:8.6,  mode:'drop'},
-  {at:285, key:'s85',  vk:'poison',  name:'宇宙極光', color:'#c893ff', mult:9.4,  mode:'fly'},
-  {at:320, key:'s95',  vk:'ice',     name:'超越限界', color:'#ffffff', mult:10.2, mode:'drop'},
-  {at:350, key:'s105', vk:'holy',    name:'九數禁咒', color:'#fff2c2', mult:11.0, mode:'drop', heal:20},
-  {at:420, key:'s125', vk:'poison',  name:'熾焰滅殺', color:'#ff6ad5', mult:11.8, mode:'fly'},
-  {at:485, key:'s145', vk:'whirl',   name:'虛空終焉', color:'#8fd8ff', mult:12.6, mode:'drop'},
-  {at:550, key:'s165', vk:'fire',    name:'乘法神話', color:'#ffe066', mult:13.4, mode:'drop', heal:40}
+  {at:3,  key:'s3',   vk:'fire',    name:'火球術',   color:'#ff8a3d', mult:1.6,  mode:'fly'},
+  {at:5,  key:'s5',   vk:'ice',     name:'冰霜術',   color:'#6ea8ff', mult:2.0,  mode:'fly'},
+  {at:7,  key:'s9',   vk:'thunder', name:'落雷術',   color:'#c4b5fd', mult:2.6,  mode:'drop'},
+  {at:9,  key:'s12',  vk:'whirl',   name:'破魂旋斬', color:'#7fe6ff', mult:3.2,  mode:'fly'},
+  {at:12, key:'s16',  vk:'holy',    name:'聖光審判', color:'#ffe9a8', mult:3.8,  mode:'drop', heal:15},
+  {at:15, key:'s25',  vk:'ice',     name:'疾風狂斬', color:'#5cc8ff', mult:4.6,  mode:'fly'},
+  {at:18, key:'s35',  vk:'poison',  name:'幻影無雙', color:'#b98bff', mult:5.4,  mode:'drop'},
+  {at:21, key:'s45',  vk:'thunder', name:'隕石衝擊', color:'#ff8a3d', mult:6.2,  mode:'drop'},
+  {at:25, key:'s55',  vk:'holy',    name:'王者降臨', color:'#ffd76a', mult:7.0,  mode:'drop', heal:30},
+  {at:29, key:'s65',  vk:'fire',    name:'龍王破空', color:'#ff9d5c', mult:7.8,  mode:'fly'},
+  {at:33, key:'s75',  vk:'whirl',   name:'時空崩裂', color:'#5cf0ff', mult:8.6,  mode:'drop'},
+  {at:37, key:'s85',  vk:'poison',  name:'宇宙極光', color:'#c893ff', mult:9.4,  mode:'fly'},
+  {at:41, key:'s95',  vk:'ice',     name:'超越限界', color:'#ffffff', mult:10.2, mode:'drop'},
+  {at:45, key:'s105', vk:'holy',    name:'九數禁咒', color:'#fff2c2', mult:11.0, mode:'drop', heal:20},
+  {at:48, key:'s125', vk:'poison',  name:'熾焰滅殺', color:'#ff6ad5', mult:11.8, mode:'fly'},
+  {at:51, key:'s145', vk:'whirl',   name:'虛空終焉', color:'#8fd8ff', mult:12.6, mode:'drop'},
+  {at:55, key:'s165', vk:'fire',    name:'乘法神話', color:'#ffe066', mult:13.4, mode:'drop', heal:40}
 ];
 /* combo＝目前連續答對數；early＝提早幾連就放（battle.html 法師 HERO.spellEarly，小遊戲傳 0）。
    超過最後一個門檻之後，每 +10 連擊重播最強那招。命中門檻回招式物件，否則 null。 */

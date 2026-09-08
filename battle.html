@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260908e">
+<link rel="stylesheet" href="assets/common.css?v=20260908f">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -628,7 +628,10 @@ body.lowfx .shard{animation-duration:.35s}
 .dmg.crit b{color:#fff3c4;text-shadow:0 3px 0 #a86200,0 0 26px #ffcf5c}
 
 /* 血條 */
-.bars{position:absolute;left:0;right:0;top:0;z-index:4;padding:10px 12px;display:flex;
+/* 2026-09-08 Steve回報「文字擠在一起」——加MP條之後.charBar(HP/MP)跟這個.bars
+   (計時條/連擊數)離太近，兩塊幾乎貼在一起。.bars頂端padding稍微加大，配合下面
+   .charBar{top}也往下挪，兩塊之間留出真正看得出來的間距 */
+.bars{position:absolute;left:0;right:0;top:0;z-index:4;padding:14px 12px 10px;display:flex;
   flex-direction:column;gap:6px;align-items:center}
 .bar{background:#00000066;border:1px solid #ffffff22;border-radius:99px;height:16px;
   position:relative;overflow:hidden}
@@ -660,14 +663,15 @@ body.lowfx .shard{animation-duration:.35s}
 /* HP條各自浮在人物/怪物正上方，跟 #hero2(left:4%)／.mobwrap(right:4%) 用同一組水平錨點，
    但獨立浮動不跟著呼吸/受擊動畫抖動——那些動畫都掛在 #hero2/.mobwrap 本體上，
    血條放在同一層(#world)但不共用同一個會動的元素，天然不會被帶著晃。 */
-.charBar{position:absolute;top:6%;z-index:7;width:34%;max-width:220px;pointer-events:none}
+.charBar{position:absolute;top:11%;z-index:7;width:34%;max-width:220px;pointer-events:none}
 .charBar .bar{height:13px}
 .charBar .bar span{font-size:10px}
 .heroBar{left:3%}
 .mobBar{right:3%}
 /* 2026-09-08：MP條疊在HP條下面，故意矮一點+淺一點字級，視覺上明確是HP的次要資源，
-   不是搶戲的第二條主條 */
-.bar.heromp{height:9px;margin-top:4px}
+   不是搶戲的第二條主條。margin-top加大到7px，跟HP條之間有真正看得出來的間距，
+   不會像原本4px那樣兩條幾乎貼在一起 */
+.bar.heromp{height:9px;margin-top:7px}
 .bar.heromp i{background:linear-gradient(90deg,#60a5fa,#2563eb)}
 .bar.heromp span{font-size:9px}
 
@@ -1330,10 +1334,14 @@ body:not(.arcade) .skillsToggle{display:none}
   .mobwrap{right:1%;height:46%}
   #shHero{left:2%;width:17%}
   #shMob{right:2%;width:17%}
-  .charBar{width:44%;top:4%}
+  .charBar{width:38%;top:9%}
   .heroBar{left:1%}
   .mobBar{right:1%}
-  .charBar .bar span{font-size:9px}
+  .charBar .bar span{font-size:8px;letter-spacing:0}
+  .bar.heromp span{font-size:7px}
+  /* 2026-09-08 Steve回報手機版「文字擠在一起」——原本44%+44%只留12%給中間的連擊數，
+     窄螢幕一定會撞在一起。charBar縮到38%讓出空間，連擊數字級/內距也一起縮小 */
+  .comboCounter{font-size:10px;padding:1px 6px}
   /* 手機省效能（實測 CPU 放慢四倍：這兩項讓打怪頁從 30fps 回到 60fps）
      1. drop-shadow 每換一格逐幀都要重算一次整張圖的陰影，最貴；地上本來就有 .gshadow 影子
      2. 星星與飄浮光點是整片覆蓋的動畫層，畫面小根本看不出來 */
@@ -1451,13 +1459,11 @@ body:not(.arcade) .skillsToggle{display:none}
     <div id="modebar"></div>
     <!-- 2026-09-06 Steve：題型（九九乘法／加減…）與加減法範圍統一在大廳選好，
          戰鬥頁不再重複給一次選單，開打前畫面保持乾淨。原 #topicwrap／#rangewrap 已移除。 -->
-    <!-- 2026-09-06 Steve：「是每打死1隻怪物答對10題就問是否繼續，不是你現在這樣」——
-         拿掉原本「每一關要打死幾隻怪(登入才能調整)」那組可調整UI，固定每打死1隻就問，
-         這裡只剩「要不要問」的開關（每次都問/只提示）。 -->
-    <div id="stagewrap">
-      <div class="setlab">打死一隻怪要不要問繼續</div>
-      <div id="stagebar"></div>
-    </div>
+    <!-- 2026-09-08 Steve回報：「打死一隻怪要不要問繼續」這個開關跟「已經準備出擊」的
+         畫面擠在一起，看起來像已經開始玩才冒出來的設定——搬到index.html大廳的「設定」
+         步驟去了（跟題型/範圍/語音那些出擊前設定放一起），這裡不再重複顯示。localStorage
+         那組值（Stage.get()/Stage.set()，見common.js）維持共用，battle.html還是照樣讀，
+         只是UI選擇的地方換了。 -->
     <div id="diffwrap">
       <div class="setlab">娛樂模式的難度</div>
       <div class="levels" id="difbar">
@@ -1670,7 +1676,7 @@ body:not(.arcade) .skillsToggle{display:none}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260908e"></script>
+<script src="assets/common.js?v=20260908f"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -4787,10 +4793,11 @@ document.addEventListener('visibilitychange', () => {
   if(document.hidden && running && !paused) setPause(true);
 });
 Mode.readonly($('modebar'));
-Stage.bar($('stagebar'));
 /* 2026-09-06 Steve：題型／加減法範圍統一在大廳選好，戰鬥頁不再重複給一次選單
    （Topic.bar／Range.bar／paintRangeVis 連同 #topicwrap／#rangewrap 一起拿掉）。
-   「每一關要打死幾隻怪」可調整UI更早之前也已拿掉，STAGE_Q固定為1。 */
+   「每一關要打死幾隻怪」可調整UI更早之前也已拿掉，STAGE_Q固定為1。
+   2026-09-08：「打死一隻怪要不要問繼續」（Stage.bar）也搬去index.html了，見上面
+   #setup那段說明，這裡不用再呼叫——Stage.get()判讀邏輯（stageFinale()那邊）沒有動。 */
 /* 喇叭：再聽一次，不扣分也不重算時間。點那顆圓鈕、或點整個題目框都算 */
 function replayQ(){
   if(!QQ || !$('qbox').classList.contains('hasvoice')) return;

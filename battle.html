@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260908i">
+<link rel="stylesheet" href="assets/common.css?v=20260908j">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -1689,7 +1689,7 @@ body:not(.arcade) .skillsToggle{display:none}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260908i"></script>
+<script src="assets/common.js?v=20260908j"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -4370,19 +4370,24 @@ $('mob').addEventListener('error', () => {
     }
   }
 });
-/* 2026-09-05：練習模式怪物來源（娛樂模式維持 MOBS[wave] 原班不動）。
-   一般怪照舊借用 wave 當游標（wave 本身照原邏輯每殺一隻＋1、跟 round 一起算難度成長，
-   不因為這裡改了選怪來源而動），只是改到只在 REG_MOBS（50隻）裡繞；滿5隻改抽Boss，
-   Boss 依 pBossIdx 依序輪流（10隻輪完歸零從頭），兩個游標都存進 Save 才不會重整頁面就重算。 */
+/* 2026-09-08 Steve回報「關卡要固定，第一隻怪物是什麼、第二關是哪隻，不要隨機」——
+   查出真根因：原本這裡用`wave`當游標（一直往上長、只有繞完全部MOBS才歸零），跟畫面
+   上顯示的「第X關」（stageNo，10關一輪就歸1）完全脫鉤。同一個角色玩久了wave變得很大，
+   同樣顯示「1關」，實際查表出來的卻是完全不同的怪物，玩家看起來就是「隨機」。
+   改成直接用stageNo（1~10迴圈）算怪物，不再管wave（wave繼續留給娛樂模式的MOBS[wave]
+   用，練習模式不再依賴它）：每10關固定第5、第10關是Boss（BOSS_MOBS依序輪流，兩關
+   剛好對到2隻，10關一輪換完就繞回開頭，不是隨機挑），其餘8關固定對到REG_MOBS[0~7]
+   （同一輪內8隻不重複，下一輪從頭重來——不是每輪都不一樣，是「每一輪」都長一樣，
+   這正是Steve要的「第1關永遠是黏黏怪」那種固定感，跟真正上市遊戲的關卡設計一致）。
+   難度依然靠round（第幾輪）用setMob()裡的1.06^(round-1)往上疊，不受這裡改動影響——
+   同一隻怪換到下一輪血量變高，不是變成別隻怪。 */
 function pickPracticeMob(){
-  if(pStreak >= 5){
-    const m = {...BOSS_MOBS[pBossIdx % BOSS_MOBS.length]};
-    pBossIdx = (pBossIdx + 1) % BOSS_MOBS.length;
-    pStreak = 0;
-    Save.d.pBossIdx = pBossIdx; Save.d.pStreak = pStreak; Save.put();
-    return m;
+  if(stageNo % 5 === 0){
+    const bossIdx = (stageNo / 5 - 1) % BOSS_MOBS.length;   // 第5關→Boss[0]、第10關→Boss[1]
+    return {...BOSS_MOBS[bossIdx]};
   }
-  return {...REG_MOBS[wave % REG_MOBS.length]};
+  const slot = stageNo - 1 - Math.floor((stageNo - 1) / 5);  // 扣掉被第5/10關佔走的位置，壓成連續0~7
+  return {...REG_MOBS[slot % REG_MOBS.length]};
 }
 function setMob(){
   mob = arcade ? {...MOBS[wave]} : pickPracticeMob();

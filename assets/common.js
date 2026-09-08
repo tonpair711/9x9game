@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.57';
+const GAME_VERSION = '1.3.58';
 
 const $ = id => document.getElementById(id);
 
@@ -570,6 +570,9 @@ const SampleSfx = (() => {
     try{
       const a = get(src).cloneNode();
       a.volume = Math.max(0, Math.min(1, (vol == null ? 1 : vol) * sfxGain()));
+      // 2026-09-08：連續答對時同一顆揮劍聲會一模一樣地重播，聽久了很機械。
+      // 真人音效±6%的隨機音高，肉耳聽不出「變調」但不再是節拍器式的死板重複
+      a.playbackRate = 0.94 + Math.random() * 0.12;
       a.play().catch(()=>{});
     }catch(e){}
   }

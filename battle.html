@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260907e">
+<link rel="stylesheet" href="assets/common.css?v=20260908a">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -280,6 +280,18 @@ body{padding-bottom:16px}
    兩個動畫如果掛同一層會互相覆蓋，命中結束的瞬間會「跳」一下回漂浮的相位 */
 .mobwrap{right:4%;height:56%;animation:mobIdle 2.2s ease-in-out infinite alternate}
 @keyframes mobIdle{to{transform:translateY(-10px) scale(1.02)}}
+/* 2026-09-08：換怪登場——原本setMob()換完圖就直接站在原地，跟「怪物憑空出現」沒兩樣。
+   參考王國保衛戰式的登場儀式感：從上方掉落砸地、落地瞬間擠壓再彈回，配JS那邊的
+   shake()+落地音一起，才有「這隻怪剛出場」的存在感。同specificity覆蓋掉mobIdle，
+   animationend把class拿掉後自動變回呼吸/漂浮，不用另外收尾。 */
+.mobwrap.mobEnter{animation:mobDropIn .5s ease-out both}
+@keyframes mobDropIn{
+  0%  {transform:translateY(-170px) scale(.92,1.18);opacity:0}
+  50% {transform:translateY(0) scale(1.1,.86);opacity:1}
+  68% {transform:translateY(-16px) scale(.96,1.05)}
+  84% {transform:translateY(0) scale(1.04,.97)}
+  100%{transform:none;opacity:1}
+}
 /* 2026-09-01：部分怪物素材原本畫成背對主角，逐一盤點後對錯的怪加 mob.flip:true，
    在 setMob() 切 .mobflip 的 .flip class。獨立包一層是因為 #mob／.mobwrap 兩層都已經有
    自己的 transform 動畫（呼吸／受擊／死亡／漂浮／擊退），直接在它們身上加 scaleX(-1)
@@ -1633,7 +1645,7 @@ body:not(.arcade) .skillsToggle{display:none}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260907e"></script>
+<script src="assets/common.js?v=20260908a"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -4375,6 +4387,16 @@ function setMob(){
   $('mobHpText').textContent = mobHpLabel();
   applyScene();
   paintTop();
+  /* 2026-09-08：登場儀式感，見上面.mobEnter的說明。Boss不疊這個——bossIntro()自己
+     已經有一整套過場，兩個登場演出疊在一起反而互相打架。落地時機對到keyframe的50%
+     （250ms處），輕震動+落地悶響跟畫面同步，不是憑感覺兜的數字。 */
+  if(!mob.boss){
+    restartCls($('mobWrap'), 'mobEnter');
+    setTimeout(() => { shake(); beep(90, .16, 'sine', .1); }, 250);
+    // mobEnter用animation shorthand蓋掉常駐的mobIdle漂浮，播完要拿掉class才會接回去，
+    // 不然這隻怪會整段站著不呼吸不漂浮
+    setTimeout(() => $('mobWrap').classList.remove('mobEnter'), 520);
+  }
 }
 /* 換下一隻：Boss 先播登場過場，播完才出題 */
 async function nextMob(){

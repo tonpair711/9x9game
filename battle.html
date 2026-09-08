@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260908j">
+<link rel="stylesheet" href="assets/common.css?v=20260908k">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -1689,7 +1689,7 @@ body:not(.arcade) .skillsToggle{display:none}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260908j"></script>
+<script src="assets/common.js?v=20260908k"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -4990,6 +4990,80 @@ paintHeroBar();
     return entry;
   }
 
+  /* 2026-09-08 Steve：跟Gemini A討論10輪後決定的第一關優先做法——黏黏怪的待機/受擊/
+     死亡改用PIXI.SimplePlane真的網格頂點變形（不是CSS那種平移縮放的假動態），讓它
+     像果凍一樣真的鼓起扁下去。只套用在「顯示靜圖」的時刻（IDLE_SPRITE()預設關閉，
+     一般玩家看到的黏黏怪本來就是靜圖，這裡直接把靜圖升級成會動的mesh）；攻擊出手
+     那段雪碧圖frame動畫（slime_atk）繼續用原本的sprite，两條路徑靠visible切換共存
+     ——怪物攻擊/被攻擊是不同回合，不會同時顯示，不用擔心打架。
+     頂點網格4×4＝跟Gemini給的規格一致；deform()裡的u/v是normalized座標（0~1，
+     頂部v=0、底部v=1），權重w=1-v讓底部頂點固定（腳底貼地），頂部形變量最大。
+     idle：0.4Hz（2.5秒一輪）、Y振幅4%／X振幅3.5%、相位差180°（體積守恆，一邊壓
+     另一邊就要脹，才會像果凍不是變形怪）。hit：前90ms瞬間壓扁（Y-50%/X+40%），
+     之後340ms阻尼正弦波彈回。die：420ms內壓扁拉寬＋淡出，配合原本碎片特效。 */
+  function makeMeshFor(app){
+    let mesh = null, base = null, tw = 0, th = 0, mode = 'idle', t0 = 0;
+    function build(texture){
+      if(mesh){ app.stage.removeChild(mesh); mesh.destroy(); }
+      tw = texture.width; th = texture.height;
+      mesh = new PIXI.SimplePlane(texture, 4, 4);
+      mesh.visible = false;
+      app.stage.addChildAt(mesh, 0);
+      base = Float32Array.from(mesh.geometry.getBuffer('aVertexPosition').data);
+    }
+    function place(w, h){
+      if(!mesh) return;
+      mesh.pivot.set(tw / 2, th);            // 腳底置中對齊，跟Sprite的anchor(0.5,1)同概念
+      mesh.scale.set(tw ? w / tw : 1, th ? h / th : 1);
+      mesh.x = w / 2; mesh.y = h;
+    }
+    function deform(fn){
+      if(!mesh) return;
+      const buf = mesh.geometry.getBuffer('aVertexPosition');
+      for(let i = 0; i < base.length; i += 2){
+        const bx = base[i], by = base[i + 1];
+        const u = tw ? bx / tw : 0, v = th ? by / th : 0;
+        const d = fn(u, v);
+        buf.data[i] = bx + d[0] * tw;
+        buf.data[i + 1] = by + d[1] * th;
+      }
+      buf.update();
+    }
+    function tick(t){
+      if(!mesh || !mesh.visible) return;
+      if(mode === 'idle'){
+        const period = 2500;
+        const s = Math.sin(2 * Math.PI * ((t % period) / period));
+        deform((u, v) => { const w = 1 - v; return [-0.035 * s * w, 0.04 * s * w]; });
+      }else if(mode === 'hit'){
+        const dt = t - t0;
+        let sx, sy;
+        if(dt < 90){ const p = dt / 90; sx = 0.4 * p; sy = -0.5 * p; }
+        else{
+          const p = Math.min(1, (dt - 90) / 340);
+          const damp = Math.exp(-5 * p) * Math.cos(9 * p);
+          sx = 0.2 * damp; sy = -0.25 * damp;
+        }
+        deform((u, v) => { const w = 1 - v; return [sx * w * (u - 0.5) * 2, sy * w]; });
+        if(dt > 430) mode = 'idle';
+      }else if(mode === 'dying'){
+        const dt = t - t0;
+        const p = Math.min(1, dt / 420);
+        const ease = 1 - Math.pow(1 - p, 3);
+        deform((u, v) => { const w = 1 - v; return [0.5 * ease * w * (u - 0.5) * 2, -0.8 * ease * w]; });
+        mesh.alpha = 1 - ease;
+      }
+    }
+    return {
+      build, place, tick,
+      get active(){ return !!mesh; },
+      show(){ if(mesh){ mesh.visible = true; mesh.alpha = 1; mode = 'idle'; } },
+      hide(){ if(mesh) mesh.visible = false; },
+      squash(){ if(mesh){ mode = 'hit'; t0 = performance.now(); } },
+      die(){ if(mesh){ mode = 'dying'; t0 = performance.now(); } }
+    };
+  }
+
   /* 一顆Stage管一個角色（主角/怪物各一個）。跟#hero2rig同一招：量對應DOM元素目前的
      實際高度（getBoundingClientRect，已經包含--sprScale補償），寬度自己用目前這組
      動畫的ar值算，不用去猜CSS的box model。flipElId是黏黏怪鏡像用（.mobflip.flip）。
@@ -4997,12 +5071,14 @@ paintHeroBar();
      一直掛著heroIdle/mobBreath這兩條CSS transform動畫，canvas版當時完全沒搬，靜止
      不動看起來很死），Steve問「看起來生不生動」之後這輪補上：跟CSS keyframe同精神，
      用一顆餘弦波算y位移+輕微縮放，不管目前在播哪個SPR key都持續疊加（跟原本CSS
-     動畫掛在外層、跟內層雪碧圖frame切換互不干擾是同一個道理）。 */
-  function makeStage(canvasId, refElId, flipElId, breathe){
+     動畫掛在外層、跟內層雪碧圖frame切換互不干擾是同一個道理）。
+     meshSrc：指定哪張靜圖要升級成SimplePlane網格變形（目前只給黏黏怪，見上面
+     makeMeshFor()的說明），其餘怪物/主角這個參數不傳，完全不受影響。 */
+  function makeStage(canvasId, refElId, flipElId, breathe, meshSrc){
     const canvas = document.getElementById(canvasId);
     const ref = document.getElementById(refElId);
     const flipEl = flipElId ? document.getElementById(flipElId) : null;
-    let app = null, sprite = null, raf = 0, curKey = null, lastAr = 1, baseH = 0;
+    let app = null, sprite = null, meshCtl = null, raf = 0, curKey = null, lastAr = 1, baseH = 0;
 
     function ensureApp(){
       if(app) return;
@@ -5014,6 +5090,7 @@ paintHeroBar();
       sprite = new PIXI.Sprite();
       sprite.anchor.set(0.5, 1);   // 腳底置中對齊，跟.fighter{bottom:8%}那套「站在地面」概念一致
       app.stage.addChild(sprite);
+      if(meshSrc) meshCtl = makeMeshFor(app);
       if(breathe){
         app.ticker.add(() => {
           if(!baseH) return;
@@ -5023,6 +5100,7 @@ paintHeroBar();
           sprite.height = baseH * (1 + (breathe.scalePulse || 0) * wave);
         });
       }
+      if(meshCtl) app.ticker.add(() => meshCtl.tick(performance.now()));
     }
     function applyFlip(){
       if(!flipEl || !sprite) return;
@@ -5040,11 +5118,30 @@ paintHeroBar();
       app.renderer.resize(w, h);
       sprite.width = w; sprite.height = h;
       sprite.x = w / 2; sprite.y = h;
+      if(meshCtl && meshCtl.active) meshCtl.place(w, h);
       applyFlip();
     }
     function stop(){ if(raf){ cancelAnimationFrame(raf); raf = 0; } }
     function showStatic(src){
       ensureApp();
+      // 這張靜圖有對應的mesh（目前只有黏黏怪）——顯示mesh、藏sprite，不走原本的
+      // Texture切換那條路。第一次遇到才build()，之後同一張圖重複顯示只要show()。
+      if(meshCtl && src === meshSrc){
+        curKey = null; stop();
+        sprite.visible = false;
+        if(meshCtl.active){ meshCtl.show(); resize(lastAr); return; }
+        const tex = PIXI.Texture.from(src);
+        const bt = tex.baseTexture;
+        const doBuild = () => {
+          meshCtl.build(tex);
+          meshCtl.show();
+          resize((bt.width && bt.height) ? bt.width / bt.height : 1);
+        };
+        if(bt.valid) doBuild(); else bt.once('loaded', doBuild);
+        return;
+      }
+      if(meshCtl) meshCtl.hide();
+      sprite.visible = true;
       const key = 'static:' + src;
       let entry = texCache[key];
       if(!entry) entry = texCache[key] = { list: [PIXI.Texture.from(src)] };
@@ -5060,6 +5157,8 @@ paintHeroBar();
       const f = framesFor(key); if(!f) return;
       ensureApp();
       if(!f.list){ f.base.once('loaded', () => play(key, opt)); return; }   // 圖還沒切好，載完重試一次
+      if(meshCtl) meshCtl.hide();          // 攻擊出手雪碧圖動畫優先，mesh讓開
+      sprite.visible = true;
       if(curKey !== key){ curKey = key; resize(f.d.ar || 1); }
       applyFlip();
       stop();
@@ -5083,7 +5182,11 @@ paintHeroBar();
       };
       raf = requestAnimationFrame(step);
     }
-    return { showStatic, play, refresh: () => resize(lastAr) };
+    return {
+      showStatic, play, refresh: () => resize(lastAr),
+      squash: () => { if(meshCtl) meshCtl.squash(); },
+      die: () => { if(meshCtl) meshCtl.die(); }
+    };
   }
 
   let heroStage = null, mobStage = null, engineReady = false;
@@ -5093,7 +5196,9 @@ paintHeroBar();
       await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pixi.js/5.3.9/pixi.min.js');
       // 呼吸振幅/週期抄DOM版的heroIdle（7px/2.6s）／mobIdle（10px/2.2s）這兩條CSS keyframe
       heroStage = makeStage('heroStage', 'hero2', null, {amp:7, period:2600, scalePulse:.03});
-      mobStage  = makeStage('mobStage', 'mobWrap', 'mobFlip', {amp:10, period:2200, scalePulse:.02});
+      // meshSrc只給黏黏怪（'assets/mob_slime.webp'）——這輪跟Gemini討論後決定的
+      // 第一關優先做法，其他怪物不傳這個參數，完全走原本的Sprite雪碧圖路徑
+      mobStage  = makeStage('mobStage', 'mobWrap', 'mobFlip', {amp:10, period:2200, scalePulse:.02}, 'assets/mob_slime.webp');
       const hero2 = document.getElementById('hero2'), mob = document.getElementById('mob');
       // display:none不用——之後量測這兩個元素的getBoundingClientRect().height還要用，
       // display:none的元素量出來全是0，改用visibility:hidden（照舊佔版位、CSS動畫照跑，
@@ -5132,6 +5237,22 @@ paintHeroBar();
     _sprOff.call(Spr, el, src);
     const st = engineReady && stageFor(el);
     if(st) st.showStatic(src);
+  };
+  /* 2026-09-08：黏黏怪的mesh受擊擠壓/死亡壓扁，接進現有hitEffect()/killMob()這兩個
+     全怪物共用的既有流程（不是另外開一條新的命中判定路徑）。mobStage.squash()/die()
+     內部沒有黏黏怪mesh時直接是no-op，這裡不用另外判斷「現在是不是打黏黏怪」。
+     命中停頓（freezeField，凍結WAAPI/CSS）管不到canvas內部的Pixi ticker，所以mesh的
+     時間軸是自己算的（見makeMeshFor()裡hit狀態的90ms瞬壓+340ms阻尼），數字跟
+     hitEffect()原本的stop（80~250ms）同一個量級，肉眼看起來是同步的。 */
+  const _hitEffect = hitEffect;
+  hitEffect = function(crit, weak, lethal){
+    if(engineReady && mobStage) mobStage.squash();
+    return _hitEffect(crit, weak, lethal);
+  };
+  const _killMob = killMob;
+  killMob = function(){
+    if(engineReady && mobStage) mobStage.die();
+    return _killMob();
   };
 
   initEngine();

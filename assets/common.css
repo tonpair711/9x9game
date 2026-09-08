@@ -393,6 +393,20 @@ body.lowfx .spark,body.lowfx .dust{display:none}
   margin-top:12px;background:none;border:none;color:var(--gold2);font-size:12px;cursor:pointer;
   text-decoration:underline;font-family:inherit;
 }
+/* 2026-09-08：註冊畫面的個資保護說明，預設收合成一行摘要（<summary>），
+   點開才看到完整條文——不擋在「填完帳密就能玩」這條路徑上，但找得到、看得懂 */
+.pwPrivacy{
+  text-align:left;margin:2px 0 10px;padding:8px 10px;border-radius:10px;
+  background:#1f1330;border:1px solid var(--line);
+}
+.pwPrivacy summary{
+  font-size:11px;color:var(--dim);cursor:pointer;list-style:none;line-height:1.5;
+}
+.pwPrivacy summary::-webkit-details-marker{display:none}
+.pwPrivacy summary::before{content:'🔒 ';}
+.pwPrivacy[open] summary{color:var(--gold2);margin-bottom:6px}
+.pwPrivacy p{font-size:11px;color:var(--dim);margin:0 0 8px;line-height:1.6;text-align:left}
+.pwPrivacy p:last-child{margin-bottom:0}
 .userbar{
   display:flex;align-items:center;gap:8px;justify-content:center;width:100%;
   padding:8px 12px;border-radius:12px;background:#251739;border:1px solid var(--line);font-size:13px;

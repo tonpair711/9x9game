@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260908a">
+<link rel="stylesheet" href="assets/common.css?v=20260908e">
 <style>
 body{padding-bottom:16px}
 .wrap{width:min(96vw,620px);display:flex;flex-direction:column;gap:10px}
@@ -103,9 +103,14 @@ body{padding-bottom:16px}
 #fxLayer{position:absolute;inset:0;pointer-events:none}
 #world{position:absolute;inset:0;z-index:1;transform-origin:72% 62%;
   transition:transform .55s cubic-bezier(.2,.9,.3,1)}
-#world.zoom{transform:scale(1.12)}
-#world.zoomBig{transform:scale(1.28)}
-#world.pull{transform:scale(.96)}
+/* 2026-09-08 Steve回報「攝影機縮放頭很暈、還導致LAG」——這三條原本是scale(1.12)/
+   scale(1.28)/scale(.96)，答對每一題都會觸發一次(camPull()/camPush())，等於整個
+   戰場容器每一回合都在.55s內縮放一次。JS呼叫(camPull/camPush/W().classList.add)
+   全部照舊留著沒動，只把視覺效果拔掉——牽動的call site多、風險比改CSS高，這樣改
+   最小風險關掉效果 */
+#world.zoom{transform:none}
+#world.zoomBig{transform:none}
+#world.pull{transform:none}
 /* Boss 登場：全場壓暗只留 Boss */
 .curtain{position:absolute;inset:0;z-index:4;background:#05030a;opacity:0;pointer-events:none;
   transition:opacity .35s}
@@ -175,35 +180,36 @@ body{padding-bottom:16px}
   100%{opacity:0;transform:translate(-50%,-50%) scale(2.2)}
 }
 
-/* 鏡頭：沿攻擊方向先被推開再回彈，同時推近一點點（zoom punch）。
-   一般擊、弱點擊、爆擊三種強度，衰減都很快，畫面才不會糊掉 */
+/* 鏡頭：沿攻擊方向被推開再回彈。原本同時有scale(1.005~1.035)「推近一點點」的zoom
+   punch，2026-09-08 Steve回報連這個小縮放都會頭暈+造成LAG，拔掉scale只留位移
+   （跟rotate），震動感還在但不再有畫面縮放 */
 .field.cam1{animation:impactCam .3s cubic-bezier(.36,.07,.19,.97)}
 .field.cam2{animation:impactCamMid .38s cubic-bezier(.36,.07,.19,.97)}
 .field.cam3{animation:impactCamHeavy .46s cubic-bezier(.36,.07,.19,.97)}
 @keyframes impactCam{
   0%{transform:none}
-  10%{transform:scale(1.014) translate(7px,-5px)}
-  26%{transform:scale(1.008) translate(-6px,4px)}
-  44%{transform:scale(1.004) translate(4px,-2px)}
+  10%{transform:translate(7px,-5px)}
+  26%{transform:translate(-6px,4px)}
+  44%{transform:translate(4px,-2px)}
   66%{transform:translate(-3px,1px)}
   100%{transform:none}
 }
 @keyframes impactCamMid{
   0%{transform:none}
-  8%{transform:scale(1.025) translate(12px,-8px) rotate(.4deg)}
-  22%{transform:scale(1.015) translate(-10px,6px) rotate(-.35deg)}
-  38%{transform:scale(1.008) translate(8px,-4px) rotate(.25deg)}
-  56%{transform:scale(1.004) translate(-5px,3px)}
+  8%{transform:translate(12px,-8px) rotate(.4deg)}
+  22%{transform:translate(-10px,6px) rotate(-.35deg)}
+  38%{transform:translate(8px,-4px) rotate(.25deg)}
+  56%{transform:translate(-5px,3px)}
   76%{transform:translate(4px,-1px)}
   100%{transform:none}
 }
 @keyframes impactCamHeavy{
   0%{transform:none}
-  6%{transform:scale(1.035) translate(17px,-13px) rotate(.7deg)}
-  18%{transform:scale(1.025) translate(-15px,10px) rotate(-.6deg)}
-  30%{transform:scale(1.018) translate(12px,-8px) rotate(.45deg)}
-  44%{transform:scale(1.01) translate(-9px,6px) rotate(-.3deg)}
-  60%{transform:scale(1.005) translate(6px,-4px)}
+  6%{transform:translate(17px,-13px) rotate(.7deg)}
+  18%{transform:translate(-15px,10px) rotate(-.6deg)}
+  30%{transform:translate(12px,-8px) rotate(.45deg)}
+  44%{transform:translate(-9px,6px) rotate(-.3deg)}
+  60%{transform:translate(6px,-4px)}
   78%{transform:translate(-3px,2px)}
   100%{transform:none}
 }
@@ -275,6 +281,12 @@ body{padding-bottom:16px}
   animation:heroIdle 2.6s ease-in-out infinite alternate}
 /* 2026-09-07：骨架動畫試搭畫布，位置跟#hero2對齊（見initRig()），?rig=1才會顯示 */
 #hero2rig{position:absolute;left:4%;bottom:8%;height:48%;aspect-ratio:1600/1080;z-index:3;pointer-events:none}
+/* 2026-09-08：Pixi戰鬥舞台的兩塊canvas，位置比照#hero2/.mobwrap原本的錨點（left/right:4%、
+   bottom:8%），寬高故意不在這裡定死——JS量測對應DOM元素目前算出來的實際高度（含
+   --sprScale補償）之後用app.renderer.resize()動態設定，比寫死比例可靠 */
+#heroStage,#mobStage{position:absolute;bottom:8%;z-index:3;pointer-events:none}
+#heroStage{left:4%}
+#mobStage{right:4%}
 @keyframes heroIdle{from{transform:translateY(0) scale(1,1)}to{transform:translateY(-7px) scale(.99,1.02)}}
 /* 漂浮掛在外層 .mobwrap、受擊掛在 #mob 自己身上。
    兩個動畫如果掛同一層會互相覆蓋，命中結束的瞬間會「跳」一下回漂浮的相位 */
@@ -653,6 +665,11 @@ body.lowfx .shard{animation-duration:.35s}
 .charBar .bar span{font-size:10px}
 .heroBar{left:3%}
 .mobBar{right:3%}
+/* 2026-09-08：MP條疊在HP條下面，故意矮一點+淺一點字級，視覺上明確是HP的次要資源，
+   不是搶戲的第二條主條 */
+.bar.heromp{height:9px;margin-top:4px}
+.bar.heromp i{background:linear-gradient(90deg,#60a5fa,#2563eb)}
+.bar.heromp span{font-size:9px}
 
 /* 題目與答案 */
 .qbox{
@@ -1387,6 +1404,8 @@ body:not(.arcade) .skillsToggle{display:none}
          left/right%對齊，但獨立浮動不跟著呼吸動畫抖動（見下面CSS說明）。 -->
     <div class="charBar heroBar">
       <div class="bar herohp"><i class="ghost" id="heroHpGhost"></i><i id="heroHp"></i><span id="heroHpText">小勇者</span></div>
+      <!-- 2026-09-08：MP條，答對題目賺、連段自動魔法要放一次扣，見answer()/castSpell() -->
+      <div class="bar heromp"><i id="heroMp"></i><span id="heroMpText">MP</span></div>
     </div>
     <div class="charBar mobBar">
       <div class="bar mob"><i class="ghost" id="mobHpGhost"></i><i id="mobHp"></i><span id="mobHpText">敵人</span></div>
@@ -1395,7 +1414,13 @@ body:not(.arcade) .skillsToggle{display:none}
     <!-- 2026-09-07：骨架動畫試搭（DragonBones，只有王者）。網址加 ?rig=1 才會啟用，
          平常玩家完全看不到、完全不影響現有雪碧圖系統。見下方 initRig()。 -->
     <canvas id="hero2rig" style="display:none"></canvas>
+    <!-- 2026-09-08：戰鬥舞台換PixiJS/WebGL引擎試搭（Tier 1混合架構，見進度.md Pass 14）。
+         網址加 ?engine=1 才會啟用，平常玩家完全看不到、完全不影響現有雪碧圖系統。
+         見下方 initEngine()。跟?rig=1是分開的旗標——rig只管王者骨架，engine管整個
+         戰鬥舞台（主角+黏黏怪）的渲染方式改成Canvas畫。 -->
+    <canvas id="heroStage" style="display:none"></canvas>
     <div class="fighter mobwrap" id="mobWrap"><div class="mobflip" id="mobFlip"><img id="mob" src="assets/mob_slime.webp" alt=""></div><div class="bombIcon">💣</div></div>
+    <canvas id="mobStage" style="display:none"></canvas>
     <div class="slash" id="slash"></div>
     <div class="speedlines" id="speedlines"></div>
     <img class="circle" id="circle" src="assets/fx_holy.webp" alt="">
@@ -1645,7 +1670,7 @@ body:not(.arcade) .skillsToggle{display:none}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260908a"></script>
+<script src="assets/common.js?v=20260908e"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -1751,6 +1776,8 @@ function timeForCombo(c){
 
 let P = Save.power();                 // 目前能力（基礎＋裝備）
 let maxHp = P.hp, heroHp = P.hp;
+let maxMp = P.mp, heroMp = P.mp;   // 2026-09-08：MP資源，見answer()怎麼賺/castSpell前怎麼扣
+const MP_PER_ANSWER = 4, SPELL_MP_COST = 10;   // 答對+4，連段自動魔法要放一次扣10
 let wave = Save.d.wave, round = Save.d.round;
 let mob = null, mobHp = 0;
 let qa = 1, qb = 1, ans = 0, qStart = 0, locked = true, running = false;
@@ -2833,6 +2860,8 @@ function paintHeroBar(){
   setHp('heroHp', heroHp / maxHp);
   $('heroHpText').textContent = playerName() + ' Lv' + Save.d.lv +
     (Save.d.lv >= MAX_LV ? '（滿等）' : '') + '　' + fmtN(heroHp) + ' / ' + fmtN(maxHp);
+  setBar($('heroMp'), heroMp / maxMp);
+  $('heroMpText').textContent = 'MP ' + fmtN(heroMp) + ' / ' + fmtN(maxMp);
 }
 
 /* ---------- 魔法：連續答對到門檻自動施放，越連越強 ----------
@@ -3853,6 +3882,7 @@ function answer(v, btn){
     if(fastest === null || took < fastest) fastest = took;
     combo++;
     if(took <= 2.5) combo += 2;                 // 2026-09-01 第九輪：快答加成，鼓勵熟練不鼓勵拖時間
+    heroMp = Math.min(maxMp, heroMp + MP_PER_ANSWER); paintHeroBar();   // 2026-09-08：答對賺MP
     Stats.mark(QQ.key, true);
     const ms = milestoneFor(combo);
     if(ms) showMilestone(ms);
@@ -3884,7 +3914,11 @@ function answer(v, btn){
       if(applyHit(dmg, isCrit, isWeak, undefined, isEven)) return killMob();
       comboAura(combo);
       const sp = spellForHero(combo);
-      if(sp){
+      /* 2026-09-08：連段自動魔法現在要吃MP——連擊到門檻但MP不夠時，這次就只有普通
+         攻擊的傷害，不放魔法特效（不特別跳警告字，安靜不放比較不會有「明明連擊到了
+         卻被扣分」的挫折感，MP條本身會顯示為什麼），等答對幾題把MP補回來再放 */
+      if(sp && heroMp >= SPELL_MP_COST){
+        heroMp -= SPELL_MP_COST; paintHeroBar();
         setTimeout(async ()=>{
           const dead = await castSpell(sp);
           if(dead) return killMob();
@@ -4542,6 +4576,7 @@ function start(){
   heroFrame('ready');
   P = Save.power();
   maxHp = P.hp; heroHp = P.hp;
+  maxMp = P.mp; heroMp = P.mp;
   running = true; locked = true;
   ult = 0; combo = 0; finisherReady = false; comboVisualTier(0);
   skillBusyUntil = 0;
@@ -4879,6 +4914,202 @@ paintHeroBar();
   };
 
   initRig();
+})();
+
+/* 2026-09-08：戰鬥舞台換PixiJS/WebGL引擎試搭（Tier 1混合架構，見進度.md Pass 14，
+   跟Gemini討論過的技術分層——HUD/血條/題目留在DOM，角色渲染換到Canvas）。
+   完全opt-in——網址沒帶?engine=1，這整段連PixiJS都不會下載，對一般玩家零影響。
+   跟?rig=1（王者骨架，只有王者一人、只有DragonBones）是分開的旗標：這裡管的是
+   王者+黏黏怪兩個角色的「雪碧圖動畫」整套從DOM background-position換成Pixi Texture
+   切幀——數學完全沿用SPR/Spr.frame()那套既有邏輯，只是「畫在哪裡」變了。
+   原理：monkey-patch Spr.on/Spr.off/Spr.play，讓#heroStage/#mobStage這兩塊canvas
+   跟著原本呼叫Spr的地方（heroSwing/heroCast/setMob/hitEffect...既有呼叫完全不用改）
+   收到同樣的動畫指令；#hero2/#mob本身還是照舊跑（只是visibility:hidden看不到，
+   不用display:none是因為之後量測它們的getBoundingClientRect().height還要用，
+   display:none的元素量出來全是0），任何一步失敗就不顯示canvas、退回原本雪碧圖那條路。
+   已知限制（這輪只求「引擎真的換了、看起來沒退步」，不是最終品質，見進度.md）：
+   - 只做王者+黏黏怪這兩個角色，其他角色/怪物沒有對應的Pixi texture
+   - 命中特效（碎片/震動/鏡頭punch）還是原本的DOM/CSS，沒有搬進Pixi（排進下一輪）
+   - 技能施法（hero_cast_*系列）、拳皇連段（hero_kof_*）也會走同一套Spr.play，
+     理論上會自動被接住，但這輪只逐一驗證過idle/atk，其餘沒有一一走過 */
+(function(){
+  const params = new URLSearchParams(location.search);
+  if(params.get('engine') !== '1') return;
+
+  function loadScript(src){
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = res; s.onerror = () => rej(new Error('load fail: ' + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  // SPR key -> {base, list, d}，切好的Texture陣列快取，不用每次播放重切
+  const texCache = {};
+  function framesFor(key){
+    if(texCache[key]) return texCache[key];
+    const d = SPR[key]; if(!d) return null;
+    const base = PIXI.BaseTexture.from(d.img);
+    const entry = { base, list: null, d };
+    const slice = () => {
+      const fw = base.width / d.cols, fh = base.height / d.rows;
+      const list = [];
+      for(let i = 0; i < d.n; i++){
+        const cx = i % d.cols, cy = (i / d.cols) | 0;
+        list.push(new PIXI.Texture(base, new PIXI.Rectangle(cx*fw, cy*fh, fw, fh)));
+      }
+      entry.list = list;
+    };
+    if(base.valid) slice(); else base.once('loaded', slice);
+    texCache[key] = entry;
+    return entry;
+  }
+
+  /* 一顆Stage管一個角色（主角/怪物各一個）。跟#hero2rig同一招：量對應DOM元素目前的
+     實際高度（getBoundingClientRect，已經包含--sprScale補償），寬度自己用目前這組
+     動畫的ar值算，不用去猜CSS的box model。flipElId是黏黏怪鏡像用（.mobflip.flip）。
+     breathe是待機呼吸的振幅/週期——Phase 1第一版漏了這個（DOM版原本#hero2/.mobwrap
+     一直掛著heroIdle/mobBreath這兩條CSS transform動畫，canvas版當時完全沒搬，靜止
+     不動看起來很死），Steve問「看起來生不生動」之後這輪補上：跟CSS keyframe同精神，
+     用一顆餘弦波算y位移+輕微縮放，不管目前在播哪個SPR key都持續疊加（跟原本CSS
+     動畫掛在外層、跟內層雪碧圖frame切換互不干擾是同一個道理）。 */
+  function makeStage(canvasId, refElId, flipElId, breathe){
+    const canvas = document.getElementById(canvasId);
+    const ref = document.getElementById(refElId);
+    const flipEl = flipElId ? document.getElementById(flipElId) : null;
+    let app = null, sprite = null, raf = 0, curKey = null, lastAr = 1, baseH = 0;
+
+    function ensureApp(){
+      if(app) return;
+      const h = ref.getBoundingClientRect().height || 100;
+      app = new PIXI.Application({
+        view: canvas, width: h, height: h, transparent: true, backgroundAlpha: 0,
+        resolution: window.devicePixelRatio || 1, autoDensity: true
+      });
+      sprite = new PIXI.Sprite();
+      sprite.anchor.set(0.5, 1);   // 腳底置中對齊，跟.fighter{bottom:8%}那套「站在地面」概念一致
+      app.stage.addChild(sprite);
+      if(breathe){
+        app.ticker.add(() => {
+          if(!baseH) return;
+          const t = performance.now() % breathe.period;
+          const wave = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / breathe.period);   // 0→1→0，跟ease-in-out alternate同形狀
+          sprite.y = baseH - breathe.amp * wave;
+          sprite.height = baseH * (1 + (breathe.scalePulse || 0) * wave);
+        });
+      }
+    }
+    function applyFlip(){
+      if(!flipEl || !sprite) return;
+      const mirrored = flipEl.classList.contains('flip');
+      sprite.scale.x = mirrored ? -Math.abs(sprite.scale.x || 1) : Math.abs(sprite.scale.x || 1);
+    }
+    function resize(ar){
+      ensureApp();
+      lastAr = ar || lastAr;
+      const h = ref.getBoundingClientRect().height || 100;
+      const w = h * lastAr;
+      baseH = h;
+      canvas.style.height = h + 'px';
+      canvas.style.width = w + 'px';
+      app.renderer.resize(w, h);
+      sprite.width = w; sprite.height = h;
+      sprite.x = w / 2; sprite.y = h;
+      applyFlip();
+    }
+    function stop(){ if(raf){ cancelAnimationFrame(raf); raf = 0; } }
+    function showStatic(src){
+      ensureApp();
+      const key = 'static:' + src;
+      let entry = texCache[key];
+      if(!entry) entry = texCache[key] = { list: [PIXI.Texture.from(src)] };
+      curKey = null; stop();
+      const tex = entry.list[0];
+      sprite.texture = tex;
+      const bt = tex.baseTexture;
+      const applyAr = () => resize((bt.width && bt.height) ? bt.width / bt.height : 1);
+      if(bt.valid) applyAr(); else bt.once('loaded', applyAr);
+    }
+    function play(key, opt){
+      opt = opt || {};
+      const f = framesFor(key); if(!f) return;
+      ensureApp();
+      if(!f.list){ f.base.once('loaded', () => play(key, opt)); return; }   // 圖還沒切好，載完重試一次
+      if(curKey !== key){ curKey = key; resize(f.d.ar || 1); }
+      applyFlip();
+      stop();
+      const from = opt.from || 0, to = Math.min(opt.to || f.d.n, f.d.n);
+      let fps = opt.fps || f.d.fps;
+      if(typeof Fx !== 'undefined' && Fx.low && Fx.low()) fps = Math.min(fps, 12);
+      let i = from, last = 0;
+      sprite.texture = f.list[i];
+      const step = (t) => {
+        if(!canvas.isConnected){ raf = 0; return; }
+        if(document.hidden){ raf = requestAnimationFrame(step); return; }
+        if(t - last >= 1000/fps){
+          i++;
+          if(i >= to){
+            if(opt.loop){ i = from; }
+            else { raf = 0; opt.done && opt.done(); return; }
+          }
+          sprite.texture = f.list[i]; last = t;
+        }
+        raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    }
+    return { showStatic, play, refresh: () => resize(lastAr) };
+  }
+
+  let heroStage = null, mobStage = null, engineReady = false;
+
+  async function initEngine(){
+    try{
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pixi.js/5.3.9/pixi.min.js');
+      // 呼吸振幅/週期抄DOM版的heroIdle（7px/2.6s）／mobIdle（10px/2.2s）這兩條CSS keyframe
+      heroStage = makeStage('heroStage', 'hero2', null, {amp:7, period:2600, scalePulse:.03});
+      mobStage  = makeStage('mobStage', 'mobWrap', 'mobFlip', {amp:10, period:2200, scalePulse:.02});
+      const hero2 = document.getElementById('hero2'), mob = document.getElementById('mob');
+      // display:none不用——之後量測這兩個元素的getBoundingClientRect().height還要用，
+      // display:none的元素量出來全是0，改用visibility:hidden（照舊佔版位、CSS動畫照跑，
+      // 只是不畫出來）
+      hero2.style.visibility = 'hidden';
+      mob.style.visibility = 'hidden';
+      document.getElementById('heroStage').style.display = 'block';
+      document.getElementById('mobStage').style.display = 'block';
+      heroStage.showStatic(hero2.src);
+      mobStage.showStatic(mob.src);
+      window.addEventListener('resize', () => { heroStage.refresh(); mobStage.refresh(); });
+      engineReady = true;
+      console.log('[engine] 戰鬥舞台已切換PixiJS渲染（?engine=1）');
+    }catch(e){
+      console.error('[engine] 初始化失敗，退回原本雪碧圖系統：', e);
+      engineReady = false;
+    }
+  }
+
+  function stageFor(el){
+    if(el.id === 'hero2') return heroStage;
+    if(el.id === 'mob') return mobStage;
+    return null;
+  }
+
+  // monkey-patch：包一層在外面，原函式照樣跑（#hero2/#mob雖被蓋住但邏輯不受影響，
+  // 血條/連擊/命中判定這些完全沒動，這裡只接管「畫出來」這件事）
+  const _sprPlay = Spr.play, _sprOff = Spr.off;
+  Spr.play = function(el, key, opt){
+    const r = _sprPlay.call(Spr, el, key, opt);
+    const st = engineReady && stageFor(el);
+    if(st) st.play(key, opt);
+    return r;
+  };
+  Spr.off = function(el, src){
+    _sprOff.call(Spr, el, src);
+    const st = engineReady && stageFor(el);
+    if(st) st.showStatic(src);
+  };
+
+  initEngine();
 })();
 </script>
 </body>

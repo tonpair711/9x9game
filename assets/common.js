@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.58';
+const GAME_VERSION = '1.3.62';
 
 const $ = id => document.getElementById(id);
 
@@ -199,12 +199,16 @@ const Save = {
     let hp  = 100 + (this.d.lv-1)*12 + h.hp;
     let crit = 5 + h.crit, ult = 11 + h.ult;
     let cdr = 0;
+    /* 2026-09-08 Steve：角色沒有MP——原本連段自動魔法（SPELLS，combo到門檻就免費放）
+       完全不吃資源，跟裝備/等級都無關。加一個簡單的MP格：等級帶一點基礎成長，
+       之後要讓裝備也能加MP的話再加gearStat(it,'mp')，這輪先不做（沒有現成裝備欄位）。 */
+    let mp = 20 + (this.d.lv-1)*2;
     for(const k of GEAR_SLOTS){
       const it = g[k]; if(!it) continue;
       atk += gearStat(it,'atk'); hp += gearStat(it,'hp');
       crit += gearStat(it,'crit'); ult += gearStat(it,'ult'); cdr += gearStat(it,'cdr');
     }
-    return {atk, hp: Math.max(40, hp), crit, ult, cdr: Math.min(30, cdr), spell: h.spell, hero: h};
+    return {atk, hp: Math.max(40, hp), mp: Math.max(10, mp), crit, ult, cdr: Math.min(30, cdr), spell: h.spell, hero: h};
   },
   addExp(n){
     if(this.d.lv >= MAX_LV){ this.d.exp = 0; this.put(); return 0; }
@@ -1414,6 +1418,20 @@ function loginBox(onDone, startMode){
       // 一旦設錯就再也登不進去，這是最該防的一種呆
       '<input id="lgPw2" type="password" maxlength="32" placeholder="再輸入一次密碼" ' +
         'autocomplete="new-password" style="display:none">' +
+      /* 2026-09-08 Steve：加個資法保護詳細宣告。只在註冊畫面出現（登入不是新蒐集資料的
+         時間點），預設收合成一行摘要，點了才展開完整條文——不強迫每個小朋友/家長在
+         能玩之前先讀一大段字，但要看的人找得到、看得懂。 */
+      '<details class="pwPrivacy" id="lgPrivacy" style="display:none">' +
+        '<summary>只需要帳號和密碼，不問真實姓名／電話 — 個資保護說明</summary>' +
+        '<p>註冊只會請你填「自訂帳號名稱」與「密碼」，不會問真實姓名、手機、地址或' +
+        'email。密碼會先加密雜湊過才存起來，連我們自己都看不到你的原始密碼。</p>' +
+        '<p>蒐集這些資料唯一的用途是「登入驗證」與「把你的等級／裝備／答題紀錄接到' +
+        '雲端，換手機換電腦也接得回來」——不會用在廣告、不會賣給或分享給第三方、' +
+        '不會拿去做這個功能以外的事。資料存在 Cloudflare 的雲端服務上，帳號存在' +
+        '期間會一直保留，登出不會刪除。</p>' +
+        '<p>國小學生使用建議請家長協助設定帳號。想查詢、更正或刪除已註冊的帳號與' +
+        '資料，寄信到 shen@hunglun.com 即可，會盡快處理刪除。</p>' +
+      '</details>' +
       '<div class="pwmsg" id="lgMsg"></div>' +
       '<div class="pwbtns">' +
         '<button class="btn ghost" id="lgCancel">取 消</button>' +
@@ -1437,6 +1455,7 @@ function loginBox(onDone, startMode){
     $$('lgPw').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
     $$('lgPw2').style.display = mode === 'login' ? 'none' : '';
     $$('lgPw2').value = '';
+    $$('lgPrivacy').style.display = mode === 'login' ? 'none' : '';
     msg('');
   };
   $$('lgGo').onclick = async () => {
@@ -1484,24 +1503,29 @@ function loginBox(onDone, startMode){
      能秒殺怪、吃 fx_*.webp 特效圖）。
    - 小遊戲：只呼叫 `ComboMagic.show(combo, '連擊詞')`——命中門檻才放，純視覺（整螢幕元素色閃
      ＋置中大字招式名，CSS 自帶不吃素材圖），不影響各遊戲的計分與輸贏。 */
+/* 2026-09-08 Steve回報「連續攻擊就觸發技能」太容易——原本第一個門檻只要連對3題，
+   幾乎每場都在放。改成照Steve給的例子「連續答對10題才有」，把整條門檻表照原本
+   的曲線形狀等比放大（新/舊 ≈ 10/3），越後面的招式越稀有這件事沒變，只是整體
+   變得更難碰到，不是拿掉這個機制（key/vk/name/color/mult/mode/heal全部不動，
+   只改at這個門檻數字）。 */
 const SPELLS = [
-  {at:3,   key:'s3',   vk:'fire',    name:'火球術',   color:'#ff8a3d', mult:1.6,  mode:'fly'},
-  {at:5,   key:'s5',   vk:'ice',     name:'冰霜術',   color:'#6ea8ff', mult:2.0,  mode:'fly'},
-  {at:9,   key:'s9',   vk:'thunder', name:'落雷術',   color:'#c4b5fd', mult:2.6,  mode:'drop'},
-  {at:12,  key:'s12',  vk:'whirl',   name:'破魂旋斬', color:'#7fe6ff', mult:3.2,  mode:'fly'},
-  {at:16,  key:'s16',  vk:'holy',    name:'聖光審判', color:'#ffe9a8', mult:3.8,  mode:'drop', heal:15},
-  {at:25,  key:'s25',  vk:'ice',     name:'疾風狂斬', color:'#5cc8ff', mult:4.6,  mode:'fly'},
-  {at:35,  key:'s35',  vk:'poison',  name:'幻影無雙', color:'#b98bff', mult:5.4,  mode:'drop'},
-  {at:45,  key:'s45',  vk:'thunder', name:'隕石衝擊', color:'#ff8a3d', mult:6.2,  mode:'drop'},
-  {at:55,  key:'s55',  vk:'holy',    name:'王者降臨', color:'#ffd76a', mult:7.0,  mode:'drop', heal:30},
-  {at:65,  key:'s65',  vk:'fire',    name:'龍王破空', color:'#ff9d5c', mult:7.8,  mode:'fly'},
-  {at:75,  key:'s75',  vk:'whirl',   name:'時空崩裂', color:'#5cf0ff', mult:8.6,  mode:'drop'},
-  {at:85,  key:'s85',  vk:'poison',  name:'宇宙極光', color:'#c893ff', mult:9.4,  mode:'fly'},
-  {at:95,  key:'s95',  vk:'ice',     name:'超越限界', color:'#ffffff', mult:10.2, mode:'drop'},
-  {at:105, key:'s105', vk:'holy',    name:'九數禁咒', color:'#fff2c2', mult:11.0, mode:'drop', heal:20},
-  {at:125, key:'s125', vk:'poison',  name:'熾焰滅殺', color:'#ff6ad5', mult:11.8, mode:'fly'},
-  {at:145, key:'s145', vk:'whirl',   name:'虛空終焉', color:'#8fd8ff', mult:12.6, mode:'drop'},
-  {at:165, key:'s165', vk:'fire',    name:'乘法神話', color:'#ffe066', mult:13.4, mode:'drop', heal:40}
+  {at:10,  key:'s3',   vk:'fire',    name:'火球術',   color:'#ff8a3d', mult:1.6,  mode:'fly'},
+  {at:17,  key:'s5',   vk:'ice',     name:'冰霜術',   color:'#6ea8ff', mult:2.0,  mode:'fly'},
+  {at:30,  key:'s9',   vk:'thunder', name:'落雷術',   color:'#c4b5fd', mult:2.6,  mode:'drop'},
+  {at:40,  key:'s12',  vk:'whirl',   name:'破魂旋斬', color:'#7fe6ff', mult:3.2,  mode:'fly'},
+  {at:55,  key:'s16',  vk:'holy',    name:'聖光審判', color:'#ffe9a8', mult:3.8,  mode:'drop', heal:15},
+  {at:85,  key:'s25',  vk:'ice',     name:'疾風狂斬', color:'#5cc8ff', mult:4.6,  mode:'fly'},
+  {at:120, key:'s35',  vk:'poison',  name:'幻影無雙', color:'#b98bff', mult:5.4,  mode:'drop'},
+  {at:150, key:'s45',  vk:'thunder', name:'隕石衝擊', color:'#ff8a3d', mult:6.2,  mode:'drop'},
+  {at:185, key:'s55',  vk:'holy',    name:'王者降臨', color:'#ffd76a', mult:7.0,  mode:'drop', heal:30},
+  {at:220, key:'s65',  vk:'fire',    name:'龍王破空', color:'#ff9d5c', mult:7.8,  mode:'fly'},
+  {at:250, key:'s75',  vk:'whirl',   name:'時空崩裂', color:'#5cf0ff', mult:8.6,  mode:'drop'},
+  {at:285, key:'s85',  vk:'poison',  name:'宇宙極光', color:'#c893ff', mult:9.4,  mode:'fly'},
+  {at:320, key:'s95',  vk:'ice',     name:'超越限界', color:'#ffffff', mult:10.2, mode:'drop'},
+  {at:350, key:'s105', vk:'holy',    name:'九數禁咒', color:'#fff2c2', mult:11.0, mode:'drop', heal:20},
+  {at:420, key:'s125', vk:'poison',  name:'熾焰滅殺', color:'#ff6ad5', mult:11.8, mode:'fly'},
+  {at:485, key:'s145', vk:'whirl',   name:'虛空終焉', color:'#8fd8ff', mult:12.6, mode:'drop'},
+  {at:550, key:'s165', vk:'fire',    name:'乘法神話', color:'#ffe066', mult:13.4, mode:'drop', heal:40}
 ];
 /* combo＝目前連續答對數；early＝提早幾連就放（battle.html 法師 HERO.spellEarly，小遊戲傳 0）。
    超過最後一個門檻之後，每 +10 連擊重播最強那招。命中門檻回招式物件，否則 null。 */

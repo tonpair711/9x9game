@@ -2,6 +2,19 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
+<script>
+/* 2026-09-08 Steve要求：任何小遊戲頁被F5/重新整理，一律強制跳回index.html第一步，
+   不留在原地、不恢復原本畫面。用Navigation Timing API分辨這次載入是「重新整理」
+   還是「從別的頁面點連結/直接輸入網址過來」——只攔reload，後者正常放行，不然從
+   index.html點遊戲卡片進來也會被誤判成要跳走。故意放在<head>最前面、common.js
+   之前就先判斷完，真的要跳走時不會先跑一堆遊戲初始化/量測，省一次浪費的工。 */
+(function(){
+  try{
+    var nav = performance.getEntriesByType('navigation')[0];
+    if(nav && nav.type === 'reload') location.replace('index.html');
+  }catch(e){}
+})();
+</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>邊玩邊變強・深海泡泡</title>
 <meta name="theme-color" content="#120b1c">
@@ -11,7 +24,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="邊玩邊變強">
-<link rel="stylesheet" href="assets/common.css?v=20260908h">
+<link rel="stylesheet" href="assets/common.css?v=20260908i">
 <style>
 body{gap:8px}
 .wrap{width:min(96vw,560px);display:flex;flex-direction:column;gap:8px}
@@ -143,7 +156,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;z-index:3}
   <button class="btn ghost" style="margin-top:8px;width:100%;height:44px" onclick="location.href='index.html'">回大廳</button>
 </div></div>
 
-<script src="assets/common.js?v=20260908h"></script>
+<script src="assets/common.js?v=20260908i"></script>
 <script>
 Topic.bar($('topicbar'));
 Mode.readonly($('modebar'));

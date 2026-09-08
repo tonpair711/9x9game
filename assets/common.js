@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.63';
+const GAME_VERSION = '1.3.65';
 
 const $ = id => document.getElementById(id);
 
@@ -1147,8 +1147,8 @@ const Voice = {
    因為現在永遠是1隻，講「每10隻」會誤導。 */
 const STAGE_ASK_KEY = 'mul99_stageAsk';
 const STAGE_ASK_MODES = [
-  {k:'ask',  n:'每次都問',   d:'打死一隻就問要不要繼續'},
-  {k:'auto', n:'只提示',    d:'顯示過關，自動接著打'}
+  {k:'ask',  n:'每次都問',   d:'每答對10題、打死一隻就問要不要繼續'},
+  {k:'auto', n:'只提示',    d:'每答對10題顯示過關，自動接著打'}
 ];
 const Stage = {
   get(){ try{ const v = localStorage.getItem(STAGE_ASK_KEY); return STAGE_ASK_MODES.some(m=>m.k===v) ? v : 'ask'; }catch(e){ return 'ask'; } },
@@ -1529,9 +1529,18 @@ const SPELLS = [
 ];
 /* combo＝目前連續答對數；early＝提早幾連就放（battle.html 法師 HERO.spellEarly，小遊戲傳 0）。
    超過最後一個門檻之後，每 +10 連擊重播最強那招。命中門檻回招式物件，否則 null。 */
+/* 2026-09-08 Steve回報「沒答對10題就跑出連擊技能」——查出來是星辰術士(mage)的
+   spellEarly:2職業特性（HEROES表「連擊魔法提早兩連」），combo才8就先觸發了。這輪
+   剛把門檻表改成「第一次真的要連續答對10題」（Pass 16）、UI也剛寫死承諾「答對10題」
+   （Pass 18），第一個門檻不該再被職業加成繞過，不然文字說的跟實際不一樣。
+   做法：第一個門檻（SPELLS[0]）完全不吃early加成，只認原始combo精準等於門檻值才觸發
+   ——星辰術士「提早連擊」的職業特色沒有整個拿掉，只是不能拿來繞過「至少答對10題」這個
+   新的硬性下限；第二個門檻以後（17/30/40…）early加成照常生效，職業特色還在。 */
 function spellFor(c, early){
-  const ce = c + (early || 0);
-  if(ce < SPELLS[0].at) return null;
+  early = early || 0;
+  if(c < SPELLS[0].at) return null;
+  if(c === SPELLS[0].at) return {...SPELLS[0], word: c + ' 連擊！' + SPELLS[0].name};
+  const ce = c + early;
   const last = SPELLS[SPELLS.length - 1];
   const sp = (ce > last.at)
     ? ((ce - last.at) % 10 === 0 ? last : null)

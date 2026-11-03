@@ -1316,10 +1316,9 @@ body.playing .combat{display:flex}
 .row3 .skills{width:100%;flex-wrap:wrap;overflow:visible;justify-content:center;
   mask-image:none;-webkit-mask-image:none}
 .row3 .skills:empty{display:none}
-/* 2026-09-06 Steve：練習模式整個主動技能面板拿掉（技能格＋展開鈕），只有娛樂模式留。
+/* 2026-09-09 Steve：練習模式改回HP制，技能傷害真的會影響輸贏了，把2026-09-06拿掉的
+   主動技能面板（技能格＋展開鈕）還給練習模式，兩模式現在都看得到、都要扣MP才能放。
    連段自動魔法（3連火球…10連聖光）不受影響，那套跟這個手點面板是分開的。 */
-body:not(.arcade) .row3 .skills,
-body:not(.arcade) .skillsToggle{display:none}
 .row3 .skills .skill{flex:0 0 calc(25% - 6px);min-width:0;min-height:46px;padding:4px 3px}
 .row3 .skills .skill b{font-size:12px;letter-spacing:0;text-align:center;line-height:1.25}
 .row3 .skills .skill small{display:none}
@@ -1689,7 +1688,7 @@ body:not(.arcade) .skillsToggle{display:none}
   </div>
 </div>
 
-<script src="assets/common.js?v=20260908l"></script>
+<script src="assets/common.js?v=20261103a"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -1841,15 +1840,16 @@ let stageRight = 0, stageWrong = 0, stageWrongList = [];   // 這一輪（最多
    （沿用原本「10題一關」的 stageNo/STAGE_Q/stagePending 那套彈窗機制，只是把「答完10題」
    改成「打死10隻」——stageRight/stageWrong 還是每題都記，finale彈窗的答對/答錯數字不受影響）
    ⑤只改練習模式，娛樂模式（arcade）完全不動——沿用原本 wave 依序輪整個 MOBS、HP傷害制擊敗。 */
-let mobCorrect = 0, mobTarget = 10;    // 這一隻怪目前答對幾題／需要幾題（練習模式才有意義）
 let pStreak = Save.d.pStreak || 0, pBossIdx = Save.d.pBossIdx || 0;
                                         // pStreak：這一輪已擊敗幾隻一般怪（0~4，滿5換Boss）
                                         // pBossIdx：下一隻Boss要從 BOSS_MOBS 拿第幾隻（輪完歸零重算）
-function mobDead(){ return arcade ? (mobHp <= 0) : (mobCorrect >= mobTarget); }
-function mobBarFrac(){ return arcade ? Math.max(0, mobHp / mob.hp) : Math.max(0, 1 - mobCorrect / mobTarget); }
+/* 2026-09-09 Steve：練習模式改回跟娛樂模式一樣「打HP到0才算擊敗」，不要固定答對題數就死。
+   原本 mobCorrect/mobTarget 那套「答對N題＝擊敗」已拿掉——applyHit()本來就有在扣mobHp，
+   只是死亡判定沒接上，兩模式現在共用同一條規則。 */
+function mobDead(){ return mobHp <= 0; }
+function mobBarFrac(){ return Math.max(0, mobHp / mob.hp); }
 function mobHpLabel(){
-  return arcade ? (mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp))
-                : (mobLabel() + '　' + mobCorrect + '/' + mobTarget + ' 正確');
+  return mobLabel() + '　' + fmtN(mobHp) + ' / ' + fmtN(mob.hp);
 }
 const DIFF_KEY = 'mul99_diff';
 // 2026-09-02第十九輪：Steve指定普通攻擊冷卻強制2.5秒，不再看難度／PERFECT打折，
@@ -2558,8 +2558,8 @@ function bossIntro(){
       shake(); camPush(true);
       beep(70, .38, 'sawtooth', .16);
       beep(150, .22, 'square', .1);
-      nm.innerHTML = mob.name + '<small>弱點：' + (mob.weak || []).join('、') + ' 的乘法表</small>'
-        + (arcade ? '' : '<small>需答對 ' + mobTarget + ' 題才能擊敗！</small>');   // 2026-09-05：Boss事前告知
+      nm.innerHTML = mob.name + '<small>弱點：' + (mob.weak || []).join('、') + ' 的乘法表</small>';
+      // 2026-09-09：Boss現在跟一般怪一樣打HP，不再是固定答對題數，不用另外提示需答對幾題
       nm.classList.remove('on'); void nm.offsetWidth; nm.classList.add('on');
     }, 500);
 
@@ -3014,47 +3014,50 @@ const skillBusy = () => performance.now() < skillBusyUntil;
    whirl/heal/fire/poison/thunder/holy六種形狀，冰系技能借fire形狀改藍色調），不能拿來
    當聲音分類——之前全部技能音效都靠同一個Sfx.next()，Steve回報「各種技能音效都一樣」，
    要修的正是這個，所以另外給每顆技能一個「真正代表這招是什麼元素」的snd。 */
+/* 2026-09-09：每顆技能補上 mp（施法要扣的MP）——抓法 mp≈round(mult*5)（回血技沒有mult，
+   照heal幅度另外抓固定值），跟現有maxMp（Lv1=20、每級+2）與答對/命中賺MP的速度對齊，
+   讓玩家平均每2~4次命中/答對能放一次入門技能。第一版數字，Steve玩過覺得不對再調。 */
 const SKILLS = [
   {key:'gale2', name:'疾風斬', icon:'🌪️', lv:2, cd:5000, color:'#9be8ff', castSpr:'hero_cast_gale2',
-   fx:{key:'whirl', size:240, sat:1.1}, mult:0.9, snd:'wind', desc:'比普通攻擊快、CD 短的入門技'},
+   fx:{key:'whirl', size:240, sat:1.1}, mult:0.9, mp:5, snd:'wind', desc:'比普通攻擊快、CD 短的入門技'},
   {key:'whirl', name:'旋風斬', icon:'🌀', lv:3,  cd:9000,  color:'#7fe6ff', castSpr:'hero_cast_whirl',
-   fx:{key:'whirl', size:460, bright:1.35, sat:1.3}, mult:2.4, snd:'wind', desc:'一圈掃過去的大傷害'},
+   fx:{key:'whirl', size:460, bright:1.35, sat:1.3}, mult:2.4, mp:12, snd:'wind', desc:'一圈掃過去的大傷害'},
   {key:'mark',  name:'破魂突刺', icon:'💢', lv:4,  cd:7000,  color:'#ff8a8a', castSpr:'hero_cast_mark',
-   fx:{key:'whirl', size:280, hue:-70, sat:1.6}, mult:1.1, markMs:4500, snd:'pierce', desc:'打上破綻，接旋風斬爆傷'},
+   fx:{key:'whirl', size:280, hue:-70, sat:1.6}, mult:1.1, mp:6, markMs:4500, snd:'pierce', desc:'打上破綻，接旋風斬爆傷'},
   {key:'heal',  name:'治療術', icon:'💚', lv:6,  cd:22000, color:'#8affc4', castSpr:'hero_cast_heal',
-   fx:{key:'heal', size:340, dy:14, bright:1.25}, heal:0.3, snd:'heal', desc:'回一大口血'},
+   fx:{key:'heal', size:340, dy:14, bright:1.25}, heal:0.3, mp:12, snd:'heal', desc:'回一大口血'},
   {key:'iceshot8', name:'冰箭穿心', icon:'🧊', lv:8, cd:8000, color:'#8fd6ff', castSpr:'hero_cast_iceshot8',
-   fx:{key:'fire', size:260, hue:180, sat:1.5}, mult:1.4, snd:'ice', desc:'凍徹心扉的一箭'},
+   fx:{key:'fire', size:260, hue:180, sat:1.5}, mult:1.4, mp:7, snd:'ice', desc:'凍徹心扉的一箭'},
   {key:'flame10', name:'烈焰斬', icon:'🔥', lv:10, cd:8000, color:'#ff8a3d', castSpr:'hero_cast_flame10',
-   fx:{key:'fire', size:320, dy:6}, mult:2.0, snd:'fire', desc:'火燄纏繞的一斬'},
+   fx:{key:'fire', size:320, dy:6}, mult:2.0, mp:10, snd:'fire', desc:'火燄纏繞的一斬'},
   {key:'inferno15', name:'烈焰漩渦', icon:'🌋', lv:15, cd:10000, color:'#ff7a4d', castSpr:'hero_cast_inferno15',
-   fx:{key:'whirl', size:400, hue:15, bright:1.3}, mult:2.2, snd:'fire', desc:'一圈燒起來的漩渦'},
+   fx:{key:'whirl', size:400, hue:15, bright:1.3}, mult:2.2, mp:11, snd:'fire', desc:'一圈燒起來的漩渦'},
   {key:'ice20', name:'冰霜爆裂', icon:'❄️', lv:20, cd:9000, color:'#6ea8ff', castSpr:'hero_cast_ice20',
-   fx:{key:'fire', size:320, dy:6, hue:168, sat:1.7, bright:1.1}, mult:2.6, snd:'ice', desc:'凍結範圍內爆開'},
+   fx:{key:'fire', size:320, dy:6, hue:168, sat:1.7, bright:1.1}, mult:2.6, mp:13, snd:'ice', desc:'凍結範圍內爆開'},
   {key:'shadowpoison25', name:'暗影毒襲', icon:'🐍', lv:25, cd:11000, color:'#b98bff',
-   fx:{key:'poison', size:300, hue:-100, sat:1.4}, mult:2.9, snd:'poison', desc:'從暗處竄出的毒牙'},
+   fx:{key:'poison', size:300, hue:-100, sat:1.4}, mult:2.9, mp:15, snd:'poison', desc:'從暗處竄出的毒牙'},
   {key:'thunder30', name:'雷霆一擊', icon:'⚡', lv:30, cd:10000, color:'#c4b5fd',
-   fx:{key:'thunder', size:460, dy:-8}, mult:3.2, snd:'thunder', desc:'天降落雷，貫穿全場'},
+   fx:{key:'thunder', size:460, dy:-8}, mult:3.2, mp:16, snd:'thunder', desc:'天降落雷，貫穿全場'},
   {key:'gust35', name:'狂風掃殺', icon:'🌬️', lv:35, cd:11000, color:'#7fe6ff',
-   fx:{key:'whirl', size:500, bright:1.5}, mult:3.6, snd:'wind', desc:'範圍更大的旋風進化版'},
+   fx:{key:'whirl', size:500, bright:1.5}, mult:3.6, mp:18, snd:'wind', desc:'範圍更大的旋風進化版'},
   {key:'holy40', name:'聖光治癒', icon:'✨', lv:40, cd:24000, color:'#ffe9a8',
-   fx:{key:'holy', size:360, dy:-4}, heal:0.35, snd:'holy', desc:'比治療術更強的回血'},
+   fx:{key:'holy', size:360, dy:-4}, heal:0.35, mp:18, snd:'holy', desc:'比治療術更強的回血'},
   {key:'chainlightning45', name:'雷鎖鏈', icon:'⛓️', lv:45, cd:11000, color:'#c9baff',
-   fx:{key:'thunder', size:400, hue:40}, mult:4.0, snd:'thunder', desc:'一道接一道的連鎖落雷'},
+   fx:{key:'thunder', size:400, hue:40}, mult:4.0, mp:20, snd:'thunder', desc:'一道接一道的連鎖落雷'},
   {key:'poison50', name:'幻毒突襲', icon:'☠️', lv:50, cd:12000, color:'#b98bff',
-   fx:{key:'poison', size:320, hue:-40, sat:1.6}, mult:4.4, snd:'poison', desc:'毒霧瀰漫，重擊要害'},
+   fx:{key:'poison', size:320, hue:-40, sat:1.6}, mult:4.4, mp:22, snd:'poison', desc:'毒霧瀰漫，重擊要害'},
   {key:'radiance55', name:'光輝回復', icon:'🌟', lv:55, cd:26000, color:'#ffe9a8',
-   fx:{key:'heal', size:380, bright:1.35}, heal:0.32, snd:'holy', desc:'又一招更亮的回血術'},
+   fx:{key:'heal', size:380, bright:1.35}, heal:0.32, mp:16, snd:'holy', desc:'又一招更亮的回血術'},
   {key:'dragon60', name:'龍炎爆擊', icon:'🐲', lv:60, cd:13000, color:'#ff9d5c',
-   fx:{key:'fire', size:400, dy:0, bright:1.3}, mult:5.0, snd:'fire', desc:'龍息般的爆炸傷害'},
+   fx:{key:'fire', size:400, dy:0, bright:1.3}, mult:5.0, mp:25, snd:'fire', desc:'龍息般的爆炸傷害'},
   {key:'hellfire65', name:'業火審判', icon:'🔱', lv:65, cd:13000, color:'#ff6a3d',
-   fx:{key:'fire', size:440, bright:1.4}, mult:5.4, snd:'fire', desc:'燒盡一切的業火'},
+   fx:{key:'fire', size:440, bright:1.4}, mult:5.4, mp:27, snd:'fire', desc:'燒盡一切的業火'},
   {key:'star70', name:'星辰隕落', icon:'🌠', lv:70, cd:14000, color:'#5cf0ff',
-   fx:{key:'thunder', size:480, dy:-10, hue:180, sat:1.4}, mult:5.6, snd:'thunder', desc:'星辰墜落，範圍重創'},
+   fx:{key:'thunder', size:480, dy:-10, hue:180, sat:1.4}, mult:5.6, mp:28, snd:'thunder', desc:'星辰墜落，範圍重創'},
   {key:'obliterate75', name:'滅世射線', icon:'🌀', lv:75, cd:14000, color:'#ffb3ff',
-   fx:{key:'thunder', size:500, hue:-160, sat:1.6}, mult:6.0, snd:'thunder', desc:'一線貫穿的毀滅之光'},
+   fx:{key:'thunder', size:500, hue:-160, sat:1.6}, mult:6.0, mp:30, snd:'thunder', desc:'一線貫穿的毀滅之光'},
   {key:'ultra80', name:'終極斬', icon:'💥', lv:80, cd:15000, color:'#ffe066',
-   fx:{key:'whirl', size:520, bright:1.4, sat:1.3}, mult:6.4, snd:'wind', desc:'集氣後的終極一擊'}
+   fx:{key:'whirl', size:520, bright:1.4, sat:1.3}, mult:6.4, mp:32, snd:'wind', desc:'集氣後的終極一擊'}
 ];
 
 /* 2026-09-02 第十四輪：拿掉「戰鬥只能帶3主動」的配裝限制——Steve玩過反應「還是沒看到
@@ -3069,18 +3072,11 @@ const skillState = {};              // key → 可以再用的時間點
    鈕，按了才展開看全部20顆＋Lv門檻（滿足2026-09-03「要能看到20顆」的原意，只是
    從「常駐」改成「要看才展開」）。 */
 let skillsExpanded = false;
-/* 2026-09-06 Steve：「練習模式就不需要這麼多技能」——擊敗現在只看答對題數不看HP
-   （見mobDead()），20顆技能造成的傷害對練習模式的輸贏其實不再有實質影響，留著
-   全部20顆只是選擇障礙+版面負擔。練習模式砍到只留前5顆（gale2/whirl/mark/heal/
-   iceshot8，涵蓋一般攻擊/大招/連段/回血/元素攻擊幾種基本手感），娛樂模式（arcade）
-   不受影響，維持完整20顆。 */
-const SKILLS_PRACTICE_MAX = 5;
+/* 2026-09-09 Steve：練習模式改回HP制之後技能傷害真的有意義了，2026-09-06「只留前5顆」
+   的限制拿掉——兩模式共用同一份完整20顆 SKILLS，都依 Save.d.lv 解鎖。 */
 function paintSkills(){
   const box = $('skills');
-  /* 2026-09-06 Steve：練習模式不用手點技能面板，直接清空早退（CSS 也把它跟展開鈕藏了）。 */
-  if(!arcade){ if(box.dataset.keys !== ''){ box.innerHTML = ''; box.dataset.keys = ''; } return; }
-  const pool = arcade ? SKILLS : SKILLS.slice(0, SKILLS_PRACTICE_MAX);
-  const list = skillsExpanded ? pool : pool.filter(s => Save.d.lv >= s.lv);
+  const list = skillsExpanded ? SKILLS : SKILLS.filter(s => Save.d.lv >= s.lv);
   const keys = list.map(s => s.key).join(',');
   if(box.dataset.keys !== keys){
     box.dataset.keys = keys;
@@ -3101,8 +3097,10 @@ function paintSkills(){
     b.classList.toggle('locked', locked);
     b.querySelector('i').textContent = locked ? ('Lv ' + sk.lv) : '';
     const left = Math.max(0, (skillState[sk.key] || 0) - performance.now());
-    b.disabled = locked || left > 0 || !running || skillBusy();   // 未解鎖／冷卻中／施法中都壓住
-    b.querySelector('em').textContent = (!locked && left > 0) ? (Math.ceil(left/1000) + ' 秒') : '';
+    const mpShort = heroMp < sk.mp;                    // 2026-09-09：MP不夠也不能放
+    b.disabled = locked || left > 0 || !running || skillBusy() || mpShort;
+    b.querySelector('em').textContent = (!locked && left > 0) ? (Math.ceil(left/1000) + ' 秒')
+      : (!locked && mpShort) ? ('MP ' + sk.mp) : '';
   });
 }
 $('skillsToggle').onclick = () => {
@@ -3142,11 +3140,9 @@ function fixHotkeys(){
 }
 fixHotkeys();
 /* 升級解鎖新技能時，若熱鍵列還有空格，用「已解鎖、還沒在列上」的技能由低 Lv 往高補。
-   2026-09-06：練習模式技能砍到只留前 SKILLS_PRACTICE_MAX 顆（見 paintSkills()），
-   這裡也要跟著只從那個縮小版清單裡挑，不然練習模式玩家升級升到Lv10時會自動補進
-   技能面板根本看不到的第6顆技能，熱鍵跟面板兜不起來。 */
+   2026-09-09：兩模式共用完整20顆SKILLS（見paintSkills()），不再需要縮小版清單。 */
 function autofillHotbar(){
-  const pool = arcade ? SKILLS : SKILLS.slice(0, SKILLS_PRACTICE_MAX);
+  const pool = SKILLS;
   const on = new Set(Save.d.hotkeys.filter(Boolean));
   for(let i = 0; i < 4; i++){
     if(Save.d.hotkeys[i] != null) continue;
@@ -3267,6 +3263,8 @@ function useSkill(key){
   if(!sk || !running || Save.d.lv < sk.lv) return;
   if((skillState[key] || 0) > performance.now()) return;
   if(skillBusy()) return;                                   // 2026-09-03 Steve：施法中不能再放下一個技能
+  if(heroMp < sk.mp) return;                                // 2026-09-09：MP不夠不能放（兩模式都套用）
+  heroMp -= sk.mp; paintHeroBar();
   skillBusyUntil = performance.now() + CAST_MS;
   skillState[key] = performance.now() + sk.cd * (HERO.cdMul || 1) * (1 - (P.cdr || 0) / 100) * speedMul();
 
@@ -3597,6 +3595,10 @@ function playerAttack(){
   atkReady = false;
   cool(btn, D().cd * speedMul(), () => atkReady = true);   // 2026-09-03 Steve：CD 固定 2 秒，PERFECT 不再打折（只保留傷害/連擊加成），杜絕狂按；加速藥水生效時再乘speedMul()打折
   hits++;
+  /* 2026-09-09：娛樂模式原本完全沒有MP收入（技能只看CD），現在技能要扣MP、跟練習模式
+     待遇一致，命中就要賺MP——量級比照練習模式MP_PER_ANSWER，PERFECT命中比照快答多給。 */
+  const mpGain = perfectHit ? Math.round(MP_PER_ANSWER * 1.5) : MP_PER_ANSWER;
+  heroMp = Math.min(maxMp, heroMp + mpGain); paintHeroBar();
   combo += perfectHit ? 2 : 1;
   armComboDecay();
   const useFinisher = finisherReady;
@@ -3625,7 +3627,11 @@ function playerAttack(){
     if(applyHit(dmg, isCrit, false, perfectHit ? 'PERFECT ' : (counter ? '反擊 ' : ''), isEven)) return killMob();
     comboAura(combo);
     const sp = spellForHero(combo);
-    if(sp) setTimeout(async () => { if(await castSpell(sp)) killMob(); }, 320);
+    // 2026-09-09：連段自動魔法現在兩模式都要吃MP，不夠就只有普通攻擊傷害（比照練習模式answer()）
+    if(sp && heroMp >= SPELL_MP_COST){
+      heroMp -= SPELL_MP_COST; paintHeroBar();
+      setTimeout(async () => { if(await castSpell(sp)) killMob(); }, 320);
+    }
   }, tier);
 }
 /* 完美閃避（2026-08-23，跟 Gemini 討論的「Parry」）：
@@ -3758,6 +3764,9 @@ function hitLane(lane){
   retireNoteWithFx(best, kind === 'PERFECT' ? 'hitPerfect' : 'hitGood');
   onRhythmHit(kind);
 }
+/* 2026-09-09：ARCADE_ATK_MODE現在固定'button'（見上面常數），這條節奏音符路徑沒人在跑，
+   沒有跟著補MP收入／自動魔法MP門檻（playerAttack()那份已補）。等哪天真的切回節奏模式
+   要記得一起補這裡，不然這條路徑的技能/自動魔法會變成唯一還在吃免費資源的漏網之魚。 */
 function onRhythmHit(kind){
   const isPerfect = kind === 'PERFECT';
   combo += isPerfect ? 2 : 1;
@@ -3897,7 +3906,6 @@ function answer(v, btn){
 
   if(v === ans){
     right++; stageAdvance(true);
-    if(!arcade) mobCorrect++;   // 2026-09-05：練習模式擊敗＝答對題數累計，答錯不清零、不用連續
     if(fastest === null || took < fastest) fastest = took;
     /* 2026-09-08 Steve回報「連擊次數和答對次數對不上」——查到根因：原本這裡
        `combo++`之後還有`if(took<=2.5) combo+=2`，答對一題最多讓combo跳3，但
@@ -4399,14 +4407,21 @@ function pickPracticeMob(){
 }
 function setMob(){
   mob = arcade ? {...MOBS[wave]} : pickPracticeMob();
-  mobCorrect = 0;
-  mobTarget = mob.boss ? 15 : 10;
   /* 關卡成長：**血量／攻擊跟經驗刻意脫鉤**。
      玩家的戰力大致是線性成長（等級＋裝備），怪物血量若也用 1.15 指數，
      第 60 輪會變成幾十萬血、玩家打不動；但經驗需要指數才追得上 200 級的需求。
-     所以血量走 1.06、經驗走 1.15——高關卡＝經驗效率高，不是變成肉山。 */
-  mob.hp  = Math.round(mob.hp  * Math.pow(1.06, round - 1));
-  mob.atk = Math.round(mob.atk * Math.pow(1.05, round - 1));
+     所以血量走 1.06、經驗走 1.15——高關卡＝經驗效率高，不是變成肉山。
+     2026-09-09：練習模式的成長改用 Save.d.lv 當驅動——原本借用的 round 是娛樂模式
+     wave 繞完60隻才會跳一次，練習模式玩家不管重複玩幾輪10關迴圈，round幾乎不會動，
+     等於「怪物沒有隨關卡變強」。玩家等級持續在漲（答對就有exp），改用它才會真的動。
+     娛樂模式維持原本 round 算法不動。 */
+  if(arcade){
+    mob.hp  = Math.round(mob.hp  * Math.pow(1.06, round - 1));
+    mob.atk = Math.round(mob.atk * Math.pow(1.05, round - 1));
+  }else{
+    mob.hp  = Math.round(mob.hp  * Math.pow(1.045, Save.d.lv - 1));
+    mob.atk = Math.round(mob.atk * Math.pow(1.035, Save.d.lv - 1));
+  }
   /* 2026-09-03第二十四輪：黃金哥布林突發事件——跟Gemini討論「5分鐘就膩」之後選的第一個
      耐玩度機制，血量砍到3成（速戰速決）、打倒給8倍金幣，娛樂模式限定、Boss不算（Boss
      本身就是階段性亮點，不該被蓋掉）。純粹疊在既有mob物件上（mob={...MOBS[wave]}那個

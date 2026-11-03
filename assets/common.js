@@ -266,7 +266,7 @@ function buySpeedPotions(qty){
      gold＝金幣加成｜reduce＝受到傷害減免｜critBack＝爆擊回多少必殺
      spellEarly＝連擊魔法提早幾連觸發｜cdMul＝技能冷卻倍率｜scrollLuck＝卷軸多掉的機率 */
 const HEROES = [
-  {key:'royal',  name:'王者',      icon:'👑', img:'assets/fx_hero_ready.webp', frames:true,
+  {key:'royal',  name:'魔法公主',  icon:'👑', img:'assets/fx_hero_ready.webp', frames:true,
    sprPrefix:'hero', atkFrom:12, atkTo:32, atkFps:50, ultFrom:30, ultTo:51,
    desc:'帶頭的那一個', buff:'金幣 +35%、卷軸更常掉',
    play:'抓節奏連點：命中的瞬間再點一下，接出二連斬',
@@ -757,13 +757,7 @@ function startCoins(){
 /* 版本切換列 */
 const VERSIONS = [
   {f:'index.html',  n:'🏠 大廳'},
-  {f:'battle.html', n:'⚔️ 出擊'},
-  {f:'gems.html', n:'💎 消消樂'},
-  {f:'findnum.html', n:'🔢 找答案'},
-  {f:'racing.html', n:'🏎️ 賽車'},
-  {f:'memory.html', n:'🃏 翻牌'},
-  {f:'cloudjump.html', n:'☁️ 跳跳'},
-  {f:'bubble.html', n:'🐠 泡泡'}
+  {f:'battle.html', n:'⚔️ 出擊'}
 ];
 /* 娛樂模式在標題後面掛一顆徽章，換頁也看得出現在在哪個模式 */
 function modeBadge(){
@@ -948,12 +942,27 @@ const ABC_LIST = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 /* 出一題。weak＝這隻怪害怕的乘法表（只有乘法題用得到，別的題型忽略）
    prev＝上一題（有的話），只用來避免連續兩題長得一樣。
    回傳 {a, b, op, ans, text, key, weak}；text 已經是可以直接放進畫面的字串 */
+/* 2026-09-09：乘法題目改用洗牌袋——保證a×b（2~9共64組）全部出完一輪才會重複，取代原本
+   makeQOnce()裡「70%機率挑weak數字當被乘數」那段人工加權。那段加權正是2026-09-04查出的
+   「常常重複」根因：weak只有1個數字的怪，七成題目都是「同一個數字×?」。均勻覆蓋的洗牌袋
+   本來就會常常抽到弱點數字（每個弱點數字佔a或b各1/8的機率），不需要再另外加權。
+   不因換怪重置，整個練習過程持續彈，64組出完才重新洗牌下一輪。 */
+let mulBag = [];
+function nextMulPair(){
+  if(!mulBag.length){
+    mulBag = [];
+    for(let a = 2; a <= 9; a++) for(let b = 2; b <= 9; b++) mulBag.push([a, b]);
+    for(let i = mulBag.length - 1; i > 0; i--){       // Fisher-Yates洗牌
+      const j = (Math.random() * (i + 1)) | 0;
+      [mulBag[i], mulBag[j]] = [mulBag[j], mulBag[i]];
+    }
+  }
+  return mulBag.pop();
+}
 function makeQ(weak, prev){
-  /* 2026-09-04 Steve：「出的題目常常在重複」。真正查出來的根因在 makeQOnce() 的乘法分支
-     ——很多怪物 weak 只有 1 個數字（例如 weak:[3]），原本 70% 機率都直接拿那個數字當被乘數，
-     打同一隻怪的十幾題有七成都是「3×?」，這才是「常常重複」的主因，不是隨機數運氣不好。
-     這裡加一層「跟上一題長得一樣就重骰」，最多重試 8 次（symbol 池 26～37 個、正常一兩次
-     就會換到不同的，不會卡住；重試完還是一樣也不硬等，直接放行，不無限迴圈）。 */
+  /* 2026-09-04查出的乘法重複根因已經在上面 nextMulPair() 用洗牌袋治好了。這裡「跟上一題
+     長得一樣就重骰」是給加減法／符號題（zhuyin/abc）用的保險，最多重試 8 次（symbol 池
+     26～37 個、正常一兩次就會換到不同的，不會卡住；重試完還是一樣也不硬等，直接放行）。 */
   for(let tries = 0; tries < 8; tries++){
     const q = makeQOnce(weak, prev);
     if(!prev || q.key !== prev.key) return q;
@@ -991,16 +1000,7 @@ function makeQOnce(weak, prev){
     b = 1 + (Math.random()*(a - 1)|0);     // 減數比它小，答案不會是負的
     op = '－'; ans = a - b;
   }else{
-    const w = weak && weak.length ? weak : null;
-    if(w && Math.random() < .7){
-      /* 弱點只有 1 個數字時，上一題已經打過就別再挑同一個——沒有別的弱點數字可換，
-         乾脆這題退回全範圍隨機，總比連續好幾題都「同一個數字×?」好 */
-      const alt = w.filter(x => x !== (prev && prev.a));
-      a = alt.length ? alt[(Math.random()*alt.length)|0] : 2 + (Math.random()*8|0);
-    }else{
-      a = 2 + (Math.random()*8|0);
-    }
-    b = 2 + (Math.random()*8|0);
+    [a, b] = nextMulPair();
     op = '×'; ans = a * b;
   }
   const isWeak = !!(op === '×' && weak && (weak.includes(a) || weak.includes(b)));

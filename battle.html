@@ -1643,7 +1643,6 @@ body.playing .combat{display:flex}
     </div>
     <div class="baglist" id="baglist"></div>
     <button class="btn" id="closeGear" style="width:100%;margin-top:14px">關 閉</button>
-    <button class="btn ghost" id="resetSave" style="width:100%;margin-top:8px;height:40px">清除存檔重新開始</button>
   </div>
 </div>
 
@@ -2004,6 +2003,7 @@ function heroFrame(k, castKey){
   /* 這個角色有整組逐幀，走 Spr */
   if(HERO.frames && SPR[pfx + '_idle']){
     el.classList.remove('poseSwing','poseHurt','poseCast');
+    el.style.scale = '';
     const rest = () => IDLE_SPRITE() ? Spr.play(el, pfx + '_idle', {loop:true})
                                      : Spr.off(el, HERO.img);
     if(k === 'swing')      Spr.play(el, pfx + '_atk', {from:HERO.atkFrom, to:HERO.atkTo, fps:HERO.atkFps, done:rest});
@@ -2017,7 +2017,11 @@ function heroFrame(k, castKey){
          不然選星辰術士放技能會播出王者的施法動畫，角色對不上。 */
       const key = (pfx === 'hero' && castKey && SPR[castKey]) ? castKey : pfx + '_skillcast';
       el.classList.add('poseCast');
-      Spr.play(el, key, {from:CAST_FROM, fps:CAST_FPS, done:() => { el.classList.remove('poseCast'); rest(); }});
+      /* 2026-11-04 Steve：共用施法圖（<prefix>_skillcast）是角色背面、法杖舉在左邊，看起來像放反方向。
+         沒有專屬圖的招式用個別屬性 scale 水平翻面（不會蓋掉 heroCast 用的 transform 動畫），播完還原 */
+      const generic = key === pfx + '_skillcast';
+      el.style.scale = generic ? '-1 1' : '';
+      Spr.play(el, key, {from:CAST_FROM, fps:CAST_FPS, done:() => { el.style.scale = ''; el.classList.remove('poseCast'); rest(); }});
     }
     else if(k === 'hurt'){
       if(IDLE_SPRITE()) Spr.play(el, pfx + '_idle', {from:0, to:1});
@@ -2924,15 +2928,6 @@ $('buySpeed1').onclick = () => {
 };
 $('buySpeed3').onclick = () => {
   if(buySpeedPotions(3)){ paintShop(); paintTop(); paintSpeedPotBtn(); Sfx.ok(2); }else Sfx.bad();
-};
-$('resetSave').onclick = () => {
-  if(!confirm('確定要清除存檔嗎？等級、金幣、裝備都會不見。')) return;
-  Save.reset();
-  fixHotkeys(); paintHotbar();          // 清存檔後熱鍵列回到預設
-  round = 1; wave = 0;
-  P = Save.power(); maxHp = P.hp; heroHp = P.hp;
-  paintGear(); setMob(); paintHeroBar();
-  panelClose('gearwin');
 };
 
 function paintHeroBar(){

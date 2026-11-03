@@ -878,6 +878,16 @@ const TOPICS = {
   sub:    {n:'減法',     d:'{r} 以內，不會出負數', g:'math'},
   addsub: {n:'加減混合', d:'{r} 以內',            g:'math'},
   all:    {n:'全部混合', d:'加減乘一起來',        g:'math'},
+  /* 2026-11-03 擴充題型，出題在 assets/topics-extra.js */
+  div:      {n:'除法',       d:'九九乘法反過來',       g:'math'},
+  numsense: {n:'比大小與數列', d:'比大小、數列、幾個十', g:'math'},
+  clock:    {n:'認時鐘',     d:'看圖認幾點幾分',       g:'math'},
+  money:    {n:'錢幣與找錢', d:'數錢、100 元找錢',     g:'math'},
+  factor:   {n:'倍數與因數', d:'高年級',               g:'math'},
+  fraction: {n:'分數比大小', d:'高年級',               g:'math'},
+  word:     {n:'英文單字',   d:'看圖選單字',           g:'lang'},
+  engbasic: {n:'英文數字顏色星期', d:'one、red、Monday', g:'lang'},
+  zi:       {n:'國字認注音', d:'看字選注音',           g:'lang'},
   /* 2026-08-27 Steve：低年級還不會算數學，先練聽發音認符號 */
   zhuyin: {n:'注音符號', d:'聽發音選 ㄅㄆㄇ',     g:'lang'},
   abc:    {n:'英文字母', d:'聽發音選 A～Z',       g:'lang'}
@@ -919,7 +929,7 @@ const Topic = {
   isMul(){ return this.get() === 'mul'; },
   /* 語文題（注音／字母）：答案是符號不是數字，數字範圍與怪物弱點都用不到 */
   isLang(t){ return TOPICS[t || this.get()].g === 'lang'; },
-  needsRange(){ const t = this.get(); return t !== 'mul' && !this.isLang(t); },
+  needsRange(){ const t = this.get(); return ['add','sub','addsub','all','numsense'].includes(t); },
   /* 畫出題型選單（2026-08-31 改成下拉選單）：Steve 回報「數學」「語文」分頁籤＋一整排
      題型按鈕那頁太空泛、佔位置太多，改成一顆下拉選單，數學／語文用 optgroup 分組
      （只有一組時不分組）。沒點過（chosen()===false）時放一個停用的「請選擇」當預設項，
@@ -1031,6 +1041,7 @@ function makeQOnce(weak, prev){
   let t = Topic.get();
   if(!Topic.lang && Topic.isLang(t)) t = 'mul';   // 這一頁不支援語文題就照舊出乘法
   if(t === 'addsub') t = Math.random() < .5 ? 'add' : 'sub';
+  if(typeof ExtraQ !== 'undefined' && ExtraQ[t]) return ExtraQ[t]();
   if(t === 'all'){
     t = Order.get() === 'seq' ? ['add','sub','mul'][(_allRot++) % 3] : ['add','sub','mul'][(Math.random()*3)|0];
   }
@@ -1069,6 +1080,13 @@ function makeQOnce(weak, prev){
 /* 幫一題湊出 n 個選項（含正解），數字都不重複也不會是負的 */
 function makeOptions(q, n){
   n = n || 4;
+  if(q.opts) return q.fixed ? q.opts.slice() : q.opts.slice().sort(()=>Math.random()-.5);   // 題型自己給的選項
+  if(q.op === '÷'){                                  // 除法：答案是商，混淆項取附近的數
+    const c = new Set([q.ans]);
+    for(const v of [q.ans+1, q.ans-1, q.ans+2, q.ans-2, q.b, q.ans+3]) if(v >= 1 && c.size < n) c.add(v);
+    let e = 4; while(c.size < n) c.add(q.ans + e++);
+    return [...c].sort(()=>Math.random()-.5);
+  }
   /* 符號題：從同一個池子裡抽幾個不一樣的來當混淆項 */
   if(q.sym){
     const pool = q.kind === 'zhuyin'
@@ -1110,7 +1128,16 @@ const Voice = {
   get(){ try{ const v = localStorage.getItem(VOICE_KEY); return VOICE_MODES.some(m=>m.k===v) ? v : 'all'; }catch(e){ return 'all'; } },
   set(v){ try{ localStorage.setItem(VOICE_KEY, v); }catch(e){} },
   /* 這一題該不該唸。符號題只要沒關就唸，數學題只有「全部唸」才唸 */
-  on(q){ const m = this.get(); return m !== 'off' && (m === 'all' || !!(q && q.sym)); },
+  on(q){ const m = this.get(); return m !== 'off' && (m === 'all' || !!(q && (q.sym || q.langq))); },
+  /* 擴充題型用瀏覽器內建語音唸（不用預錄音檔）；沒有語音就安靜略過 */
+  tts(text, lang){
+    try{
+      if(!text || !window.speechSynthesis) return;
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text); u.lang = lang || 'zh-TW'; u.rate = .9;
+      speechSynthesis.speak(u);
+    }catch(e){}
+  },
   el(clip){
     let a = this._cache[clip];
     /* 2026-09-04：檔名不變、內容換了（重錄語速）就一定要帶版號，不然玩家瀏覽器/Cloudflare
@@ -1120,6 +1147,7 @@ const Voice = {
   },
   stop(){
     this._seq++;
+    try{ window.speechSynthesis && speechSynthesis.cancel(); }catch(e){}
     if(this._cur){ try{ this._cur.pause(); this._cur.currentTime = 0; }catch(e){} this._cur = null; }
   },
   /* 一串音檔接著播。中途換題就整串放棄 */
@@ -1172,12 +1200,14 @@ const Voice = {
     /* 不唸的時候也要把上一題還在唸的停掉，不然換題了聲音還接著跑 */
     if(!forced && !this.on(q)) return this.stop();
     if(this.get() === 'off' && !forced) return this.stop();
+    if(q && q.speak){ this.stop(); return this.tts(q.speak, q.lang); }
     const c = this.clips(q);
     if(c.length) this.play(c);
   },
   /* 答錯時再唸一次正解 */
   sayAns(q){
     if(!this.on(q)) return;
+    if(q.speakAns) return this.tts(q.speakAns, q.lang);
     if(q.sym) return this.play([q.clip]);
     if(q.ans >= 0 && q.ans <= 100) this.play(['n_' + q.ans]);
   },

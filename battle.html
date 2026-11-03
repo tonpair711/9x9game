@@ -541,6 +541,15 @@ body.lowfx .shard{animation-duration:.35s}
   70%{filter:brightness(1.15) saturate(1.6) drop-shadow(0 0 12px #ff6b6b)}
   100%{filter:none}
 }
+/* 施法逐幀圖偏暗（通用那張是背面暗色小人），施法中提亮一點 */
+#hero2.sprmode.poseCast{filter:brightness(1.3) saturate(1.2)}
+/* 技能命中用柔和閃光：全白剪影會把招式特效整個蓋掉（2026-11-03 逐招檢查發現 15 招都被白球吃掉） */
+#mob.hit.soft{animation:mobHit .46s cubic-bezier(.2,1.2,.4,1), mobFlashSoft .42s linear}
+@keyframes mobFlashSoft{
+  0%,14%{filter:brightness(1.7) saturate(1.2)}
+  40%{filter:brightness(1.3) saturate(1.8) hue-rotate(-20deg)}
+  100%{filter:none}
+}
 /* 命中停頓：整個戰場的動畫定格幾十毫秒，重量感就是從這裡來的 */
 .field.freeze .fighter,
 .field.freeze .shard,
@@ -1705,7 +1714,8 @@ body.playing .combat{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20261103f"></script>
+<script src="assets/common.js?v=20261103g"></script>
+<script src="assets/topics-extra.js?v=20261103g"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -1957,6 +1967,19 @@ if(HERO.frames){
 preload(['assets/spr_slime_idle.webp', 'assets/spr_slime_atk.webp',
          'assets/fx_whirl.webp', 'assets/fx_heal.webp']);
 preloadNearby();
+/* 2026-11-03 Steve：技能放出來超不流暢。施法逐幀圖每張約 600~900KB，原本放招當下才下載、
+   解碼，第一次放就卡一下（量到 60~80ms 長任務）。改成進頁面後閒置時，把「已解鎖」技能的
+   施法圖先抓好並用 decode() 先解碼，一個一個排隊（同時解多張反而會卡），放招時直接用。 */
+function warmSkillSprites(){
+  const list = (typeof SKILLS !== 'undefined' ? SKILLS : []).filter(k => k.castSpr && Save.d.lv >= k.lv)
+    .map(k => SPR[k.castSpr] && SPR[k.castSpr].img).filter(Boolean);
+  const next = () => {
+    const src = list.shift(); if(!src) return;
+    const im = new Image(); im.src = src;
+    (im.decode ? im.decode() : Promise.resolve()).catch(() => {}).then(() => setTimeout(next, 250));
+  };
+  next();
+}
 /* ⚠ 原本這裡是「把 60 隻怪 ＋ 全部魔法特效 ＋ 六個職業一次抓完」。
    那些圖解碼後是好幾十 MB，手機記憶體一吃緊就開始卡，而且九成當下根本用不到。
    改成只抓接下來 6 隻怪，其餘等真的走到那一關再由 preloadNearby() 補。 */
@@ -1994,7 +2017,7 @@ function heroFrame(k, castKey){
          不然選星辰術士放技能會播出王者的施法動畫，角色對不上。 */
       const key = (pfx === 'hero' && castKey && SPR[castKey]) ? castKey : pfx + '_skillcast';
       el.classList.add('poseCast');
-      Spr.play(el, key, {done:() => { el.classList.remove('poseCast'); rest(); }});
+      Spr.play(el, key, {from:CAST_FROM, fps:CAST_FPS, done:() => { el.classList.remove('poseCast'); rest(); }});
     }
     else if(k === 'hurt'){
       if(IDLE_SPRITE()) Spr.play(el, pfx + '_idle', {from:0, to:1});
@@ -2107,21 +2130,31 @@ function heroSwing(onHit, tier){
    的角色（目前是王者）才有這組逐幀；其餘角色沒有 hero_skillcast 素材，
    heroFrame('cast') 對他們會直接是 no-op（見 heroFrame 內的 HERO_FRAMES 分支），
    等於退回原本靜圖表現，不會報錯。 */
-const CAST_MS = 3250;                 // 52 幀 @ 16fps ≈ 3.25s
-function heroCast(onHit, castKey){
+/* 2026-11-03 Steve：技能放出來很不流暢、畫面醜、沒有真的打到怪物。
+   原本整段 52 格 @16fps＝3.25 秒，前 30 格是同一個龍捲風原地轉圈（白等兩秒），人又站在最左邊
+   隔空噴特效。改成：只播後段 CAST_FROM 起的蓄力＋爆發（約 1.4 秒），爆發時角色衝到怪物面前
+   （dash=true 的傷害技），命中瞬間才出特效與算傷害，再退回原位。回血技不衝刺。 */
+const CAST_FROM = 24, CAST_FPS = 20;
+const CAST_MS = Math.round((52 - CAST_FROM) / CAST_FPS * 1000);   // 1400ms
+function heroCast(onHit, castKey, dash){
   const h = $('hero2');
   if(h._swing){ try{ h._swing.cancel(); }catch(e){} }   // 跟heroSwing()同一套防疊招保險
   h.style.transform = '';
   h.style.transition = 'none';
+  const dx = dash ? 132 : 0;
   const anim = h.animate([
-    {offset:0,   transform:'translateY(0) scale(1,1)',           easing:'cubic-bezier(.3,.9,.5,1)'},
-    {offset:.25, transform:'translateY(-6px) scale(1.02,1.03)',  easing:'cubic-bezier(.4,0,.6,1)'},
-    {offset:.82, transform:'translateY(-10px) scale(1.05,1.06)', easing:'cubic-bezier(.2,.8,.4,1)'},
-    {offset:1,   transform:'translateY(0) scale(1,1)'}
+    {offset:0,   transform:'translateY(0) scale(1,1)',                    easing:'cubic-bezier(.3,.9,.5,1)'},
+    {offset:.35, transform:'translateY(-6px) scale(1.02,1.03)',           easing:'cubic-bezier(.55,0,.9,.45)'},
+    {offset:.55, transform:'translateX(' + dx + 'px) scale(1.06,.98)',    easing:'cubic-bezier(.2,.7,.4,1)'},
+    {offset:.75, transform:'translateX(' + (dx * .92) + 'px) scale(1.02,1.02)', easing:'cubic-bezier(.3,0,.5,1)'},
+    {offset:1,   transform:'translateX(0) scale(1,1)'}
   ], {duration:CAST_MS, fill:'none'});
   h._swing = anim;
   heroFrame('cast', castKey);
-  setTimeout(() => onHit && onHit(), CAST_MS * .82);   // 光爆瞬間＝出招判定
+  if(dash){
+    setTimeout(() => { if(running){ afterImage(); const sl = $('speedlines'); sl.classList.remove('on'); void sl.offsetWidth; sl.classList.add('on'); } }, CAST_MS * .4);
+  }
+  setTimeout(() => onHit && onHit(), CAST_MS * (dash ? .58 : .8));   // 衝到怪物面前＝出招判定
 }
 function heroHurtAnim(){
   const h = $('hero2');
@@ -2609,8 +2642,10 @@ function deathBurst(){
 }
 /* 命中：停頓 → 方向性鏡頭 → 爆閃 → 沿攻擊向量噴粒子。
    停頓長度照業界慣例：一般 3~5 幀、重擊 8 幀上下、致命一擊 0.25 秒 */
+let softFlash = false;      // 技能命中時為 true，見 mobFlashSoft
 function hitEffect(crit, weak, lethal){
   const m = $('mob'), f = F(), sh = $('shMob');
+  m.classList.toggle('soft', softFlash);
   restartCls(m, 'hit');
   restartCls(sh, 'hit');
   const pt = mobCenter();
@@ -3331,9 +3366,13 @@ function useSkill(key){
           ring(mobCenter(), 'dring', 200);
         }
         if(sk.markMs) mobMarkedUntil = performance.now() + sk.markMs;
-        if(applyHit(dmg, true, combo)) killMob();
-      }, 150);
-    }, sk.castSpr);
+        softFlash = true;
+        const dead = applyHit(dmg, false, combo);
+        softFlash = false;
+        if(dead) killMob();
+        shake(2);
+      }, 60);
+    }, sk.castSpr, true);
   }
   paintSkills();
 }
@@ -3428,7 +3467,12 @@ function newQ(){
                                                // 傳上一題（QQ 舊值）進去，避免連兩題長得一樣
   qa = QQ.a; qb = QQ.b; ans = QQ.ans;
   const box = $('qbox');
-  if(QQ.sym){
+  $('q').classList.toggle('rich', !!QQ.html);
+  if(QQ.html){
+    $('q').classList.remove('listen');
+    $('q').innerHTML = QQ.html;                       // 擴充題型（時鐘、錢幣、單字…）自己畫題目
+    if(QQ.after) QQ.after($('q'));
+  }else if(QQ.sym){
     /* 聽發音的題目：答案不能寫在畫面上，只給一顆耳朵 */
     $('q').innerHTML = '👂 <em>聽聽看</em>';
     $('q').classList.add('listen');
@@ -3437,7 +3481,7 @@ function newQ(){
     $('q').classList.remove('listen');
   }
   /* 喇叭：符號題一定要有；數學題只有「全部唸」那一段才需要 */
-  box.classList.toggle('hasvoice', QQ.sym || Voice.get() === 'all');
+  box.classList.toggle('hasvoice', !!(QQ.sym || QQ.speak) && Voice.get() !== 'off' || Voice.get() === 'all');
   $('weakTip').textContent = QQ.weak
     ? '⚡ 這題打中 ' + mob.name + ' 的弱點，傷害兩倍' : '';
   box.classList.remove('in'); void box.offsetWidth; box.classList.add('in');
@@ -3445,6 +3489,8 @@ function newQ(){
   const list = makeOptions(QQ, 4);
   const box2 = $('ans');
   box2.classList.toggle('sym', !!QQ.sym);
+  box2.classList.toggle('txt', !!QQ.txt);
+  box2.classList.toggle('three', list.length === 3);
   box2.innerHTML = '';
   for(const v of list){
     const b = document.createElement('button');
@@ -3956,7 +4002,7 @@ function answer(v, btn){
     if(ms) showMilestone(ms);
     btn.classList.add('right');
     const isWeak = QQ.weak;
-    const isEven = !QQ.sym && typeof QQ.ans === 'number' && QQ.ans % 2 === 0;   // 2026-09-01第十輪：偶數護盾判定
+    const isEven = !QQ.sym && !QQ.txt && typeof QQ.ans === 'number' && QQ.ans % 2 === 0;   // 2026-09-01第十輪：偶數護盾判定
     const bombBonus = bombActive && took <= BOMB_TIME;   // 拆彈成功要在defuseBomb()清掉bombActive之前先存起來
     if(bombBonus) defuseBomb();
     else if(bombActive) { explodeBomb(); return; }        // 理論上tick()會先偵測到逾時，這裡是保險
@@ -4003,7 +4049,7 @@ function answer(v, btn){
     btn.classList.add('wrong');
     /* 符號題的答案是字串，不能用 +b.textContent 轉數字去比 */
     [...$('ans').children].forEach(b => {
-      const same = QQ.sym ? (b.textContent === ans) : (+b.textContent === ans);
+      const same = String(b.textContent) === String(ans);
       if(same) b.classList.add('right');
     });
     Sfx.bad();
@@ -4649,6 +4695,7 @@ function paintTimer(){
 }
 
 function start(){
+  if('requestIdleCallback' in window) requestIdleCallback(warmSkillSprites, {timeout:4000}); else setTimeout(warmSkillSprites, 1500);
   arcade = Mode.isArcade();
   document.body.classList.toggle('arcade', arcade);
   document.body.classList.add('playing');

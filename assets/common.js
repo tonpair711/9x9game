@@ -968,17 +968,53 @@ const ABC_LIST = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
    「常常重複」根因：weak只有1個數字的怪，七成題目都是「同一個數字×?」。均勻覆蓋的洗牌袋
    本來就會常常抽到弱點數字（每個弱點數字佔a或b各1/8的機率），不需要再另外加權。
    不因換怪重置，整個練習過程持續彈，64組出完才重新洗牌下一輪。 */
-let mulBag = [];
-function nextMulPair(){
-  if(!mulBag.length){
-    mulBag = [];
-    for(let a = 2; a <= 9; a++) for(let b = 2; b <= 9; b++) mulBag.push([a, b]);
-    for(let i = mulBag.length - 1; i > 0; i--){       // Fisher-Yates洗牌
-      const j = (Math.random() * (i + 1)) | 0;
-      [mulBag[i], mulBag[j]] = [mulBag[j], mulBag[i]];
-    }
+/* 2026-11-03 Steve：題目要隨機、盡量每一題都考得到，不只九九乘法；也要有「按順序」的選項。
+   所有題型共用同一個出題袋 bagPick()：
+   ・隨機：整份題庫洗牌，一題一題抽，全部出完一輪才重洗（每題都會考到、不會一直重複）
+   ・依序：照題庫順序一題接一題（2×2、2×3…；ㄅㄆㄇ…；Aa Bb…），進度存在這台裝置，換頁也接著練 */
+const ORDER_KEY = 'mul99_order', SEQPOS_KEY = 'mul99_seqpos';
+const Order = {
+  get(){ try{ return localStorage.getItem(ORDER_KEY) === 'seq' ? 'seq' : 'random'; }catch(e){ return 'random'; } },
+  set(v){ try{ localStorage.setItem(ORDER_KEY, v); }catch(e){} },
+  bar(el, onChange){
+    if(!el) return;
+    el.className = 'topicbar';
+    const opts = [{k:'random', n:'隨機出題'}, {k:'seq', n:'按照順序'}];
+    el.innerHTML = opts.map(o => '<button data-v="' + o.k + '">' + o.n + '</button>').join('');
+    const paint = () => [...el.children].forEach(b => b.classList.toggle('on', b.dataset.v === Order.get()));
+    el.onclick = (e) => {
+      const b = e.target.closest('button'); if(!b) return;
+      Order.set(b.dataset.v); paint(); onChange && onChange(Order.get());
+    };
+    paint();
   }
-  return mulBag.pop();
+};
+const _bags = {};
+function bagPick(id, items){
+  if(Order.get() === 'seq'){
+    let pos = 0, all = {};
+    try{ all = JSON.parse(localStorage.getItem(SEQPOS_KEY)) || {}; }catch(e){}
+    pos = (all[id] | 0) % items.length;
+    all[id] = pos + 1;
+    try{ localStorage.setItem(SEQPOS_KEY, JSON.stringify(all)); }catch(e){}
+    return items[pos];
+  }
+  let b = _bags[id];
+  if(!b || !b.length){
+    b = items.slice();
+    for(let i = b.length - 1; i > 0; i--){            // Fisher-Yates 洗牌
+      const j = (Math.random() * (i + 1)) | 0;
+      [b[i], b[j]] = [b[j], b[i]];
+    }
+    _bags[id] = b;
+  }
+  return b.pop();
+}
+const _pairCache = {};
+function pairsOf(id, build){ return _pairCache[id] || (_pairCache[id] = build()); }
+function nextMulPair(){
+  return bagPick('mul', pairsOf('mul', () => {
+    const l = []; for(let a = 2; a <= 9; a++) for(let b = 2; b <= 9; b++) l.push([a, b]); return l; }));
 }
 function makeQ(weak, prev){
   /* 2026-09-04查出的乘法重複根因已經在上面 nextMulPair() 用洗牌袋治好了。這裡「跟上一題
@@ -990,21 +1026,24 @@ function makeQ(weak, prev){
   }
   return makeQOnce(weak, prev);
 }
+let _allRot = 0;
 function makeQOnce(weak, prev){
   let t = Topic.get();
   if(!Topic.lang && Topic.isLang(t)) t = 'mul';   // 這一頁不支援語文題就照舊出乘法
   if(t === 'addsub') t = Math.random() < .5 ? 'add' : 'sub';
-  if(t === 'all')    t = ['add','sub','mul'][(Math.random()*3)|0];
+  if(t === 'all'){
+    t = Order.get() === 'seq' ? ['add','sub','mul'][(_allRot++) % 3] : ['add','sub','mul'][(Math.random()*3)|0];
+  }
   /* 語文題：答案是符號不是數字，也沒有弱點加倍那回事 */
   if(t === 'zhuyin'){
-    const i = (Math.random()*ZHUYIN_LIST.length)|0, s = ZHUYIN_LIST[i];
+    const i = bagPick('zy', ZHUYIN_LIST.map((_, k) => k)), s = ZHUYIN_LIST[i];
     return {a:null, b:null, op:'', ans:s, text:s, key:s, kind:t,
             weak:false, sym:true, clip:'zy_' + String(i+1).padStart(2,'0')};
   }
   if(t === 'abc'){
-    const i = (Math.random()*ABC_LIST.length)|0, c = ABC_LIST[i];
+    const pick = bagPick('abc', ABC_LIST.flatMap((_, k) => [[k, true], [k, false]])), c = ABC_LIST[pick[0]];
     /* 大小寫都要練，但同一題四個選項一定同一種寫法，才不會出現兩個都對 */
-    const up = Math.random() < .5;
+    const up = pick[1];
     const s = up ? c : c.toLowerCase();
     return {a:null, b:null, op:'', ans:s, text:s, key:c, kind:t, upper:up,
             weak:false, sym:true, clip:'ab_' + c.toLowerCase()};
@@ -1012,13 +1051,13 @@ function makeQOnce(weak, prev){
   let a, b, op, ans;
   if(t === 'add'){
     const r = Range.get();
-    a = 1 + (Math.random()*(r - 5)|0);
-    b = 1 + (Math.random()*(r - a)|0);
+    [a, b] = bagPick('add' + r, pairsOf('add' + r, () => {
+      const l = []; for(let x = 1; x <= r - 5; x++) for(let y = 1; y <= r - x; y++) l.push([x, y]); return l; }));
     op = '＋'; ans = a + b;
   }else if(t === 'sub'){
     const r = Range.get();
-    a = 3 + (Math.random()*(r - 2)|0);     // 被減數 3～r
-    b = 1 + (Math.random()*(a - 1)|0);     // 減數比它小，答案不會是負的
+    [a, b] = bagPick('sub' + r, pairsOf('sub' + r, () => {     // 被減數 3～r，減數比它小，答案不會是負的
+      const l = []; for(let x = 3; x <= r; x++) for(let y = 1; y < x; y++) l.push([x, y]); return l; }));
     op = '－'; ans = a - b;
   }else{
     [a, b] = nextMulPair();

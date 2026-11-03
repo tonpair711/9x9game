@@ -1705,7 +1705,7 @@ body.playing .combat{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20261103d"></script>
+<script src="assets/common.js?v=20261103f"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -1839,7 +1839,7 @@ const ARCADE_ATK_MODE = 'button';
    STAGE_Q（每幾隻問一次）可以登入調整成10~100，跟這個新要求直接衝突，改成固定
    STAGE_Q=1（每打死1隻就問），拿掉「每一關要打死幾隻怪」那組可調整UI（StageQ模組
    已從common.js移除，見那邊的說明）。 */
-const STAGE_Q = 1;
+const STAGE_Q = 5;   // 2026-11-03 Steve：每打死 5 隻才問要不要繼續（中間每隻照樣過關往下一關走）
 const STAGE_MAX = 50;   // 2026-11-03：10 → 50 關（40 隻一般怪＋10 隻 Boss，素材剛好夠，每 5 關一隻 Boss）
 /* 2026-09-06：Steve回報「打死怪物都沒顯示是否繼續」——查到是 stageNo/stageQ 沒存檔，
    玩到一半離開戰鬥畫面（回大廳、重整）就歸零，湊不滿一批10隻就永遠看不到彈窗
@@ -2349,7 +2349,7 @@ const SPR = {
      很小、四周都是黑」的構圖焼進去，模型才不會自己拉近。抽幀時額外用 `--crop` 只切
      角色所在的那一小塊（不然雪碧圖會有一大堆浪費掉的黑邊）。這個做法之後遇到同樣
      「怎麼生都被拉近特寫」的怪物可以直接照抄 */
-  gargoyle_atk:{img:'assets/spr_gargoyle_atk.webp',cols:6, rows:9, n:52, ar:1, fps:15, scale:1.35},
+  gargoyle_atk:{img:'assets/spr_gargoyle_atk.webp',cols:6, rows:4, n:22, ar:1, fps:15, scale:1.35},
   /* 2026-09-01：虎王石像（第一隻 Boss）。這隻 `flip:true`——來源圖跟這支逐幀影片
      都是「自然朝右」，不用先翻轉，遊戲既有的 `.mobflip{scaleX(-1)}` 包在 #mob 外面，
      連逐幀模式的 background 一起鏡像，不用另外處理 */
@@ -3406,6 +3406,8 @@ function stageKillAdvance(){
     pendingFinal = stageNo >= STAGE_MAX;
     stagePending = (Stage.get() === 'ask' || pendingFinal) ? 'finale' : 'clear';
     if(Cloud.logged()) History.add(stageRight, stageWrong);
+  }else{
+    stagePending = 'clear';             // 還沒滿 5 隻：只提示過關、直接進下一關，不彈窗
   }
   Save.d.stageQ = stageQ; Save.put();   // 2026-09-06：存檔，離開再回來不會歸零
 }
@@ -4054,7 +4056,7 @@ const MOB_ATK = {
   boar:    {from:0, to:51, fps:28, hit:.50, back:28, rush:-110},   /* 助跑衝撞，跟黏黏怪/香菇同一類全力衝刺 */
   bee:     {from:0, to:51, fps:22, hit:.55, back:10, rush:-30},    /* 魔杖遠遠一揮，不用真的撲過來 */
   ninja:   {from:0, to:51, fps:30, hit:.45, back:20, rush:-80},    /* 快、丟飛鏢，跟浣熊同一類敏捷型 */
-  gargoyle:{from:0, to:51, fps:24, hit:.62, back:14, rush:-50},    /* 重甲盾牌怪，動作慢一點、位移小 */
+  gargoyle:{from:0, to:21, fps:14, hit:.62, back:14, rush:-50},    /* 重甲盾牌怪，動作慢一點、位移小 */
   bosstiger:{from:0, to:51, fps:22, hit:.42, back:26, rush:-100},  /* Boss 撲擊，位移比小怪略大 */
   firefly: {from:0, to:42, fps:24, hit:.45, back:16, rush:-60},    /* 小蟲俯衝一撲 */
   thorn:   {from:0, to:51, fps:24, hit:.5,  back:20, rush:-90},    /* 藤蔓甩鞭 */

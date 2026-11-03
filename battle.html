@@ -199,6 +199,10 @@ body{padding-bottom:16px}
 .field.cam1{animation:impactCam .3s cubic-bezier(.36,.07,.19,.97)}
 .field.cam2{animation:impactCamMid .38s cubic-bezier(.36,.07,.19,.97)}
 .field.cam3{animation:impactCamHeavy .46s cubic-bezier(.36,.07,.19,.97)}
+/* 系統設定開了「減少動畫」（暈眩、癲癇敏感的人）就不震畫面，其餘特效照常 */
+@media (prefers-reduced-motion:reduce){
+  .field.cam1,.field.cam2,.field.cam3{animation:none}
+}
 @keyframes impactCam{
   0%{transform:none}
   10%{transform:translate(7px,-5px)}
@@ -800,6 +804,8 @@ body.lowfx .shard{animation-duration:.35s}
   padding:5px 10px;font-size:12px;line-height:1.7;color:var(--dim);
 }
 body.playing .combatLog{display:block}
+/* 矮螢幕（小手機）把訊息框縮矮，答案區才不會被擠到畫面外（2026-11-03） */
+@media (max-height:700px){ .combatLog{height:46px} }
 .combatLog .ln{opacity:0;animation:logIn .25s ease-out forwards}
 @keyframes logIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .combatLog .ln b{font-weight:800}
@@ -1330,6 +1336,17 @@ body.playing .combat{display:flex}
 }
 .skillsToggle:active{transform:translateY(1px)}
 
+/* 2026-11-03 手機版：打怪中右下角的「音量／鎖定縮放」浮動鈕會蓋住答案鈕與必殺技鈕、
+   小朋友容易誤觸，所以戰鬥進行中先收起來，暫停（body.paused）或還沒開打時才出現。
+   這兩顆是 assets/audio.js、lock.js 動態插進來的（z-index:60），所以用 !important 壓過。
+   寬螢幕（≥900px）本來就不會擋到答案，維持原樣。 */
+@media (max-width:899px){
+  body.playing:not(.paused) .audiobtn,
+  body.playing:not(.paused) .zoomlock,
+  body.playing:not(.paused) .zoomtip,
+  body.playing:not(.paused) #audioPanel{display:none !important}
+}
+
 @media (max-width:520px){
   body{padding-bottom:96px}
   .topbar{gap:5px;flex-wrap:wrap}
@@ -1688,7 +1705,7 @@ body.playing .combat{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20261103a"></script>
+<script src="assets/common.js?v=20261103d"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -1823,7 +1840,7 @@ const ARCADE_ATK_MODE = 'button';
    STAGE_Q=1（每打死1隻就問），拿掉「每一關要打死幾隻怪」那組可調整UI（StageQ模組
    已從common.js移除，見那邊的說明）。 */
 const STAGE_Q = 1;
-const STAGE_MAX = 10;
+const STAGE_MAX = 50;   // 2026-11-03：10 → 50 關（40 隻一般怪＋10 隻 Boss，素材剛好夠，每 5 關一隻 Boss）
 /* 2026-09-06：Steve回報「打死怪物都沒顯示是否繼續」——查到是 stageNo/stageQ 沒存檔，
    玩到一半離開戰鬥畫面（回大廳、重整）就歸零，湊不滿一批10隻就永遠看不到彈窗
    （現在1隻怪要答對10題才能擊敗，湊滿10隻＝100題正確，很難一次玩完不中斷）。
@@ -1867,7 +1884,10 @@ const DIFFS = {
 function difKey(){ try{ const d = localStorage.getItem(DIFF_KEY); return DIFFS[d] ? d : 'normal'; }catch(e){ return 'normal'; } }
 const D = () => DIFFS[difKey()];
 const ATK_CD = 2500;   // 普通攻擊冷卻固定2.5秒，硬性規定，難度／PERFECT都不影響
-const ULT_GAIN_MUL = 0.1;   // 2026-09-02第十九輪：Steve回報必殺充能太快，全部來源統一砍到原本的0.1倍
+/* 必殺充能倍率。2026-09-02 為了「太快」砍到 0.1，結果每打一下只加約 1%，玩家看到的條永遠是 0，
+   等於必殺技不存在（2026-11-03 Steve：「我看到的是 0」）。調成 0.5：約 15 下命中充滿
+   （大約打兩隻怪），閃避、被打也照比例回，不會一下就滿。 */
+const ULT_GAIN_MUL = 0.5;
 let turnTime = ANSWER_TIME;        // 這一回合的倒數總長（兩種模式不一樣）
 let atkReady = true, dodgeReady = true, invuln = 0, hits = 0, taken = 0;
 let telegraphed = false;        // 這一回合的攻擊預告放過了沒
@@ -2296,7 +2316,7 @@ const SPR = {
   mage_atk:       {img:'assets/spr_mage_atk.webp',       cols:5, rows:4, n:20, ar:1, fps:62},
   mage_skillcast: {img:'assets/spr_mage_skillcast.webp', cols:6, rows:9, n:53, ar:1, fps:16},
   slime_idle:  {img:'assets/spr_slime_idle.webp',  cols:5, rows:4, n:16, ar:224/125, fps:8},
-  slime_atk:   {img:'assets/spr_slime_atk.webp',   cols:6, rows:5, n:29, ar:224/125, fps:20, scale:1.25},
+  slime_atk:   {img:'assets/spr_slime_atk.webp',   cols:6, rows:5, n:29, ar:224/125, fps:20, scale:1.25, tint:'hue-rotate(112deg) saturate(1.15)'},
   dragon_idle: {img:'assets/spr_dragon_idle.webp', cols:6, rows:4, n:24, ar:224/211, fps:10},
   dragon_atk:  {img:'assets/spr_dragon_atk.webp',  cols:6, rows:5, n:30, ar:224/211, fps:14, scale:1.13},
   /* 2026-08-30：Gemini Vids 生的攻擊動畫，只有攻擊沒有待機（IDLE_SPRITE() 平常是關的，
@@ -2392,6 +2412,9 @@ const Spr = {
       el.style.backgroundImage = 'url(' + d.img + ')';
       el.style.backgroundSize = (d.cols*100) + '% ' + (d.rows*100) + '%';
       el.style.setProperty('--sprScale', d.scale || 1);   // 見 #hero2/#mob 那條 CSS 的說明
+      /* tint：這組逐幀圖的顏色跟靜圖對不上時，用 CSS filter 校色（2026-11-03 黏黏怪的出手動畫
+         是青綠色，平常是紫色，出手一瞬間像換了一隻怪）。沒設就清掉，不影響其他怪。 */
+      el.style.filter = d.tint || '';
     }
     return true;
   },
@@ -2401,6 +2424,7 @@ const Spr = {
       el.classList.remove('sprmode');
       el.style.aspectRatio = el.style.backgroundImage = el.style.backgroundSize = '';
       el.style.removeProperty('--sprScale');   // 換回靜圖，靜圖本來就大小一致，不需要補償
+      el.style.filter = '';
       this.stop(el);
     }
     el.src = src;
@@ -2518,7 +2542,8 @@ function dust(x, y, n){
 }
 /* 每一大關換一種景：紫夜森林 → 火山 → 冰原 → 黃金神殿，之後循環 */
 function applyScene(){
-  const f = F(), n = ((round - 1) % 4) + 1;
+  /* 練習模式的場景跟著關卡換（每 13 關一種，50 關走完四種）；娛樂模式仍照輪數 */
+  const f = F(), n = arcade ? ((round - 1) % 4) + 1 : (Math.floor((stageNo - 1) / 13) % 4) + 1;
   f.classList.remove('sc1','sc2','sc3','sc4');
   f.classList.add('sc' + n);
 }
@@ -3556,11 +3581,16 @@ function comboVisualTier(c){
 function armFinisher(){
   if(combo - finisherFiredAt >= 8 && !finisherReady) finisherReady = true;
 }
-/* 終結技：combo 滿 8 後的下一擊 100% 觸發，扣 8 層 combo（允許疊到 16+ 連續觸發）。
-   一般小怪直接秒殺、Boss 走 3 倍傷害，跟 spellFor()/COMBO_MILESTONES 各自獨立，
-   共用 combo 只在扣層那一下互動，觸發門檻不整除撞號。 */
+/* 終結技：combo 滿 8 後的下一擊 100% 觸發（連擊繼續往上疊，不扣層，見 finisherFiredAt）。
+   2026-11-03 Steve：「連續攻擊產生的終結技是無效的」。查到三個吃掉它的地方：
+   ①Boss 只打普通傷害的 3 倍（約 75，對 430 血的 Boss 沒感覺）②護甲怪把傷害打折，
+   「秒殺」變成沒殺掉 ③召喚護盾／偶數護盾把整發吸收或壓成 1 點。
+   現在終結技無視護甲與護盾（先拆掉再打），一般怪直接倒，Boss 扣 35% 最大血量加 4 倍普通傷害。 */
 function playFinisher(baseDmg, isEven){
-  const dmg = mob.boss ? Math.round(baseDmg * 3) : mobHp;
+  const dmg = mob.boss ? Math.min(mobHp, Math.round(mob.hp * 0.35 + baseDmg * 4)) : mobHp;
+  if(shield > 0){ shield = 0; shieldMax = 0; $('mobWrap').classList.remove('shielded'); }
+  if(evenShield > 0){ evenShield = 0; $('mobWrap').classList.remove('evenshield'); }
+  const armor = mob.armor; mob.armor = 0;
   Sfx.milestone(4);
   camPush(true);
   F().classList.add('slowmo'); slowmoField(500, .55);
@@ -3568,7 +3598,8 @@ function playFinisher(baseDmg, isEven){
   const ff = $('finisherFlash');
   ff.querySelector('b').textContent = mob.boss ? '會心一擊！' : '終結技！';
   ff.classList.remove('on'); void ff.offsetWidth; ff.classList.add('on');
-  const dead = applyHit(dmg, true, false, mob.boss ? '' : '終結技 ', isEven);
+  const dead = applyHit(dmg, true, false, '終結技 ', true);
+  mob.armor = armor;
   return dead;
 }
 function finisherSwing(onHit){
@@ -4490,6 +4521,9 @@ function paintUlt(){
   const btn = $('ultBtn');
   btn.disabled = ult < 100 || !running || skillBusy();
   btn.classList.toggle('ready', ult >= 100 && running && !skillBusy());
+  /* 按鈕上直接寫充能百分比，玩家才知道它有在累積、還差多少（以前一直是死灰色的「王者裁決」） */
+  const t = ult >= 100 ? '王者裁決　發動！' : '王者裁決　' + Math.floor(ult) + '%';
+  if(btn.textContent !== t) btn.textContent = t;
 }
 function useUlt(){
   if(paused) return;
@@ -4501,7 +4535,9 @@ function useUlt(){
   Sfx.win();
   ultimateCast();
   setTimeout(()=>{
-    const dmg = Math.round(mob.hp * 0.3 + P.atk * 2.2);
+    /* 2026-11-03 加強：原本 30% 血量＋2.2 倍攻擊，比第 9 級的普通技能（3.2 倍）還弱，
+       打出去沒感覺。改成一半血量＋8 倍攻擊（比終極斬 6.4 倍還高），一般怪一發倒、Boss 掉大半。 */
+    const dmg = Math.round(mob.hp * 0.5 + P.atk * 8);
     mobHp = Math.max(0, mobHp - dmg);
     totalDmg += dmg;
     hitEffect(true, true, mobDead());
@@ -4686,7 +4722,7 @@ function over(win){
 function stageFinale(isFinal){
   running = false;
   $('sfTitle').textContent = isFinal ? '🎉 今天的練習完成了！' : ('🎉 第 ' + stageNo + ' 關過關！');
-  $('sfBig').textContent = isFinal ? '10 關' : ('第 ' + stageNo + ' 關');
+  $('sfBig').textContent = isFinal ? (STAGE_MAX + ' 關') : ('第 ' + stageNo + ' 關');
   /* 2026-08-31 Steve：這一輪對錯幾題、錯在哪，登入才看得到——沒登入的話連數字都不顯示，
      不是只藏錯題清單，逼玩家用帳號才能真的知道自己練得怎樣 */
   const logged = Cloud.logged();

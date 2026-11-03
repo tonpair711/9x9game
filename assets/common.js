@@ -164,7 +164,15 @@ const DEFAULT_SAVE = {
 const Save = {
   d: (() => {
     try{ return fixGear(Object.assign({}, DEFAULT_SAVE, JSON.parse(localStorage.getItem(sk(SAVE_KEY))) || {})); }
-    catch(e){ return fixGear(Object.assign({}, DEFAULT_SAVE)); }
+    catch(e){
+      /* 存檔讀不起來（壞檔）：先把原文備份到 *_corrupted_bak 再用預設值開局，
+         不然下一次 put() 一覆蓋，玩家的進度就永遠救不回來（2026-11-03） */
+      try{
+        const raw = localStorage.getItem(sk(SAVE_KEY));
+        if(raw) localStorage.setItem(sk(SAVE_KEY) + '_corrupted_bak', raw);
+      }catch(_){}
+      return fixGear(Object.assign({}, DEFAULT_SAVE));
+    }
   })(),
   put(){
     this.d.lastPlay = new Date().toISOString().slice(0,10);
@@ -443,6 +451,19 @@ function gearLine(it){
 
 /* ---------- 音效（WebAudio 現場合成，不用外部檔案） ---------- */
 let _ac = null;
+/* 所有合成音效共用的出口（2026-11-03）：先過一顆壓縮器再出聲，連擊、技能、打擊音疊在一起時
+   不會爆音破音。第一次用到才建，建失敗就退回直接出聲，不影響遊戲。 */
+let _comp = null;
+function acDest(){
+  if(_comp && _comp.context === _ac) return _comp;
+  try{
+    _comp = _ac.createDynamicsCompressor();
+    _comp.threshold.value = -14; _comp.knee.value = 12; _comp.ratio.value = 6;
+    _comp.attack.value = .003;   _comp.release.value = .18;
+    _comp.connect(_ac.destination);
+    return _comp;
+  }catch(e){ return _ac.destination; }
+}
 /* 音量設定由 assets/audio.js 提供（沒載入時就當作全開） */
 function sfxGain(){ const a = window.__audio; return a ? a.sfx : 1; }
 function beep(freq, dur, type, gain){
@@ -454,7 +475,7 @@ function beep(freq, dur, type, gain){
     if(gv <= 0) return;
     g.gain.setValueAtTime(gv, _ac.currentTime);
     g.gain.exponentialRampToValueAtTime(.0001, _ac.currentTime + dur);
-    o.connect(g); g.connect(_ac.destination);
+    o.connect(g); g.connect(acDest());
     o.start(); o.stop(_ac.currentTime + dur);
   }catch(e){}
 }
@@ -497,7 +518,7 @@ const Sfx = {
       g.gain.setValueAtTime(0, t);
       g.gain.linearRampToValueAtTime(gv, t + .04);
       g.gain.exponentialRampToValueAtTime(.0001, t + .2);
-      o.connect(g); g.connect(_ac.destination); o.start(t); o.stop(t + .22);
+      o.connect(g); g.connect(acDest()); o.start(t); o.stop(t + .22);
     }catch(e){}
   },
   /* 打擊音：低頻悶響＋高頻碎裂＋極短「喀」一聲咬字，三層疊起來才有份量。
@@ -517,13 +538,13 @@ const Sfx = {
       if(gv <= 0) return;
       g.gain.setValueAtTime(gv, t);
       g.gain.exponentialRampToValueAtTime(.0001, t + .2);
-      o.connect(g); g.connect(_ac.destination); o.start(t); o.stop(t + .22);
+      o.connect(g); g.connect(acDest()); o.start(t); o.stop(t + .22);
       // 極短咬字：命中那一瞬間先給一記清脆的「喀」，crit更尖更亮
       const c = _ac.createOscillator(), cg = _ac.createGain();
       c.type = 'triangle'; c.frequency.setValueAtTime(crit ? 3200 : 2200, t);
       cg.gain.setValueAtTime((crit ? .16 : .1) * sfxGain(), t);
       cg.gain.exponentialRampToValueAtTime(.0001, t + .03);
-      c.connect(cg); cg.connect(_ac.destination); c.start(t); c.stop(t + .04);
+      c.connect(cg); cg.connect(acDest()); c.start(t); c.stop(t + .04);
       // 高頻：白噪音短爆，做碎裂感
       const len = Math.floor(_ac.sampleRate * .1);
       const buf = _ac.createBuffer(1, len, _ac.sampleRate);
@@ -532,7 +553,7 @@ const Sfx = {
       const n = _ac.createBufferSource(); n.buffer = buf;
       const ng = _ac.createGain(); ng.gain.value = (crit ? .3 : .19) * sfxGain();
       const hp = _ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1400;
-      n.connect(hp); hp.connect(ng); ng.connect(_ac.destination); n.start(t);
+      n.connect(hp); hp.connect(ng); ng.connect(acDest()); n.start(t);
     }catch(e){}
   },
   hurt: () => {
@@ -547,7 +568,7 @@ const Sfx = {
       if(gv <= 0) return;
       g.gain.setValueAtTime(gv, t);
       g.gain.exponentialRampToValueAtTime(.0001, t + .28);
-      o.connect(g); g.connect(_ac.destination); o.start(t); o.stop(t + .3);
+      o.connect(g); g.connect(acDest()); o.start(t); o.stop(t + .3);
       // 補一層低通悶噪音，原本只有單一方波音太乾淨，加點「挨了一下」的粗糙質感
       const len = Math.floor(_ac.sampleRate * .16);
       const buf = _ac.createBuffer(1, len, _ac.sampleRate);
@@ -556,7 +577,7 @@ const Sfx = {
       const n = _ac.createBufferSource(); n.buffer = buf;
       const ng = _ac.createGain(); ng.gain.value = .1 * sfxGain();
       const lp = _ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
-      n.connect(lp); lp.connect(ng); ng.connect(_ac.destination); n.start(t);
+      n.connect(lp); lp.connect(ng); ng.connect(acDest()); n.start(t);
     }catch(e){}
   }
 };
@@ -606,7 +627,7 @@ const SkillSfx = (() => {
       g.gain.setValueAtTime(0, t);
       g.gain.linearRampToValueAtTime(gv, t + Math.min(.02, dur * .2));
       g.gain.exponentialRampToValueAtTime(.0001, t + dur);
-      o.connect(g); g.connect(_ac.destination);
+      o.connect(g); g.connect(acDest());
       o.start(t); o.stop(t + dur + .02);
     }catch(e){}
   }
@@ -624,7 +645,7 @@ const SkillSfx = (() => {
       if(gv <= 0) return;
       g.gain.setValueAtTime(gv, t);
       const f = _ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hpFreq;
-      n.connect(f); f.connect(g); g.connect(_ac.destination);
+      n.connect(f); f.connect(g); g.connect(acDest());
       n.start(t);
     }catch(e){}
   }
@@ -1594,3 +1615,42 @@ const ComboMagic = {
     return true;
   }
 };
+
+
+/* ---------- 全域錯誤提示（2026-11-03） ----------
+   程式出錯時不要讓小朋友看到一片死寂：頂端掉一條不擋操作的小提示，可以重新載入或關掉。
+   每次開頁只提示一次；瀏覽器擋自動播放（NotAllowedError）、播放被中斷（AbortError）這類
+   無害的錯誤不算。真正的錯誤內容仍然完整印在 console。 */
+(function(){
+  let shown = false;
+  function bar(code){
+    if(shown) return; shown = true;
+    const d = document.createElement('div');
+    d.setAttribute('role', 'alert');
+    d.style.cssText = 'position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9999;' +
+      'max-width:min(92vw,420px);display:flex;gap:10px;align-items:center;padding:10px 14px;' +
+      'border-radius:14px;background:#2a1636f2;border:1px solid #f6c453;color:#ffe9a8;' +
+      'font:700 14px/1.4 inherit;box-shadow:0 8px 24px #000a';
+    const t = document.createElement('span');
+    t.textContent = '小勇士，遊戲打了個瞌睡！（錯號 ' + code + '）';
+    const r = document.createElement('button');
+    r.textContent = '重新載入'; r.style.cssText = 'padding:6px 10px;border-radius:10px;border:0;' +
+      'background:#f6c453;color:#3a2200;font:800 13px inherit;cursor:pointer;white-space:nowrap';
+    r.onclick = () => location.reload();
+    const x = document.createElement('button');
+    x.textContent = '×'; x.setAttribute('aria-label', '關閉');
+    x.style.cssText = 'border:0;background:none;color:#ffe9a8;font:800 18px inherit;cursor:pointer';
+    x.onclick = () => d.remove();
+    d.append(t, r, x); document.body.appendChild(d);
+  }
+  window.addEventListener('error', e => {
+    if(!e.error && !e.message) return;             // 圖片載入失敗之類不算
+    if(/ResizeObserver loop/.test(e.message || '')) return;
+    bar('E102');
+  });
+  window.addEventListener('unhandledrejection', e => {
+    const n = e.reason && e.reason.name;
+    if(n === 'NotAllowedError' || n === 'AbortError') return;
+    bar('E103');
+  });
+})();

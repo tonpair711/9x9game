@@ -1699,7 +1699,7 @@ body.playing .combat{display:flex}
 <!-- 10 關全部練完：不是輸贏，是「今天的練習」做完了，讓小朋友自己決定要不要繼續 -->
 <div class="over" id="stageFinale">
   <div class="card">
-    <h2 id="sfTitle">🎉 今天的練習完成了！</h2>
+    <h2 id="sfTitle">過關！</h2>
     <div class="big" id="sfBig">10 關</div>
     <div id="sfScoreBlock">
       <div class="line">答對 <span id="sfRight">0</span></div>
@@ -4767,7 +4767,7 @@ function over(win){
    選繼續：一般過關關卡數往上疊，全破才把關卡數歸零重算，戰鬥狀態都不受影響；選休息就回大廳。 */
 function stageFinale(isFinal){
   running = false;
-  $('sfTitle').textContent = isFinal ? '🎉 今天的練習完成了！' : ('🎉 第 ' + stageNo + ' 關過關！');
+  $('sfTitle').textContent = isFinal ? '今天的練習完成了！' : '過關！';   // 下面的大字已經寫第幾關，標題不再重複
   $('sfBig').textContent = isFinal ? (STAGE_MAX + ' 關') : ('第 ' + stageNo + ' 關');
   /* 2026-08-31 Steve：這一輪對錯幾題、錯在哪，登入才看得到——沒登入的話連數字都不顯示，
      不是只藏錯題清單，逼玩家用帳號才能真的知道自己練得怎樣 */

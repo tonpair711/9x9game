@@ -263,3 +263,5 @@ select,input{background:#fff!important;color:#2b2140!important;border:1.5px soli
 .gearwin .row button:not(:disabled){background:#fff!important;color:#3a2470!important;border:1.5px solid #bda8e2!important}
 .slot .st2,.slot .nm,.slot .st{color:#4b3f66!important}.slot .nm{font-weight:800}
 .slot .enh,.slot .enhinfo{background:#f3ecff!important;color:#2b2140!important}
+#autoEq,#sellAllBtn,.gearwin .bulkrow button,.gearwin #autoEq+button{background:#fff!important;color:#3a2470!important;border:1.5px solid #bda8e2!important;opacity:1!important}
+#autoEq:disabled,.gearwin .bulkrow button:disabled,.gearwin #autoEq+button:disabled{background:#ece6f5!important;color:#5f5278!important;border-color:#cbbbe8!important;opacity:1!important}

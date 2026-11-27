@@ -154,3 +154,6 @@ html{background:#110b1c}
 @media (min-width:900px) and (max-height:690px){body:has(.combat) .wrap{zoom:.76}}
 @media (min-width:900px) and (max-height:640px){body:has(.combat) .wrap{zoom:.7}}
 @media (min-width:900px) and (max-height:580px){body:has(.combat) .wrap{zoom:.62}}
+
+/* 題目文字左右各留出喇叭鈕的寬度，長題目（錢幣找錢）不會被鈕蓋住 */
+.qbox .q{padding-left:54px;padding-right:54px;box-sizing:border-box;text-wrap:balance}

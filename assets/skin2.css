@@ -137,3 +137,8 @@ html{background:#110b1c}
 /* 技能按鈕上的 emoji 統一成金色單色，跟全站線條圖示同一個調性（鎖定的技能再暗一點） */
 .skill .emj{display:inline-block;margin-right:4px;filter:grayscale(1) sepia(1) saturate(3.2) hue-rotate(-8deg) brightness(1.1)}
 .skill.locked .emj{opacity:.6}
+
+/* 施法動畫：原本整體提亮 1.3 倍、飽和 1.2 倍，角色看起來像換了一套造型，調回接近待機畫面；
+   第一格的左緣是硬切邊，用遮罩淡出左側 12% */
+#hero2.sprmode.poseCast{filter:brightness(1.04) saturate(1.05)}
+#hero2.sprmode.poseCast{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 12%);mask-image:linear-gradient(90deg,transparent 0,#000 12%)}

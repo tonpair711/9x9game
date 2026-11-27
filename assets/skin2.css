@@ -111,3 +111,7 @@ body.playing .combatLog{display:flex}
   .zoomtip{top:58px!important;bottom:auto!important}
   #audioPanel{top:58px!important;bottom:auto!important}
 }
+
+/* 訊息框裡的數字要跟文字同一行；等級旁的經驗條軌道調亮，不再像一顆髒點 */
+.combatLog .ln b{display:inline;margin-left:4px}
+.expbar{width:84px;height:9px;background:#4a3670;border:1px solid #6b4a9b;flex:none}

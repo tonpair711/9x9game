@@ -252,3 +252,14 @@ select,input{background:#fff!important;color:#2b2140!important;border:1.5px soli
 .setgroup button.on small,.topicbar button.on small{color:#5a3d00!important}
 /* logo 圖檔本身是白字，白底看不見：角標改深紫底 */
 .brandBadge{background:#2d1f4d!important;border-color:#2d1f4d!important}
+
+/* 裝備視窗補漏：強化卷軸列、一鍵裝備／一鍵賣出（停用時也要看得清）、強化資訊 */
+.scrollbar{background:#f3ecff!important;border:1px solid #d8cdea!important;color:#2b2140!important}
+.scrollbar,.scrollbar span{color:#2b2140!important}
+.scrollbar b{color:#5b3a9b!important}
+.scrollbar button{background:#ffe38a!important;color:#2b2140!important;border:1.5px solid #c9941d!important}
+.scrollbar button.no{background:#ece6f5!important;color:#6b5d88!important;border-color:#cbbbe8!important}
+.gearwin button:disabled,.gearwin .row button:disabled,#autoEquip:disabled,#sellAll:disabled{background:#ece6f5!important;color:#6b5d88!important;border:1.5px solid #cbbbe8!important;opacity:1!important;box-shadow:none!important}
+.gearwin .row button:not(:disabled){background:#fff!important;color:#3a2470!important;border:1.5px solid #bda8e2!important}
+.slot .st2,.slot .nm,.slot .st{color:#4b3f66!important}.slot .nm{font-weight:800}
+.slot .enh,.slot .enhinfo{background:#f3ecff!important;color:#2b2140!important}

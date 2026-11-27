@@ -36,8 +36,22 @@
     var key = ch.replace(/️/g, "").trim();
     return S[key] === "" ? "" : '<span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24">' + S[key] + "</svg></span>";
   }
+  var PICT = /(\p{Extended_Pictographic}️?)/gu;
+  function tintSkill(t) {   // 技能按鈕上的彩色 emoji：包起來，由 skin2.css 統一調成金色單色
+    var s = t.nodeValue;
+    if (!/\p{Extended_Pictographic}/u.test(s)) return false;
+    var frag = document.createDocumentFragment();
+    s.split(PICT).forEach(function (part) {
+      if (!part) return;
+      if (/^\p{Extended_Pictographic}/u.test(part)) { var e = document.createElement("span"); e.className = "emj"; e.textContent = part; frag.appendChild(e); }
+      else frag.appendChild(document.createTextNode(part));
+    });
+    t.parentNode.replaceChild(frag, t);
+    return true;
+  }
   function swapNode(t) {
     var s = t.nodeValue;
+    if (t.parentNode && t.parentNode.closest && t.parentNode.closest('.skill')) { if (!t.parentNode.classList.contains('emj')) tintSkill(t); return; }
     RE.lastIndex = 0;
     if (!RE.test(s)) return;
     RE.lastIndex = 0;

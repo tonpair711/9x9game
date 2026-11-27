@@ -133,3 +133,7 @@ html{background:#110b1c}
 .skill{min-height:66px!important;padding-top:20px!important}
 .skill{padding-top:6px!important;min-height:58px!important}
 .skill:has(i:not(:empty)){padding-top:20px!important;min-height:66px!important}
+
+/* 技能按鈕上的 emoji 統一成金色單色，跟全站線條圖示同一個調性（鎖定的技能再暗一點） */
+.skill .emj{display:inline-block;margin-right:4px;filter:grayscale(1) sepia(1) saturate(3.2) hue-rotate(-8deg) brightness(1.1)}
+.skill.locked .emj{opacity:.6}

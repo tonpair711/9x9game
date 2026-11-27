@@ -68,3 +68,11 @@ body.needChar .slot.empty{border-color:var(--sk-gold);border-style:solid}
 #s3 .welcome .big{grid-area:big;text-align:left;align-self:end}
 #s3 .welcome .sub{grid-area:sub;text-align:left;align-self:start;margin:0;line-height:1.6}
 #s3 .welcome .portal{grid-area:portal;width:min(32vw,190px);height:min(32vw,190px);margin:0}
+
+/* 答案按鈕的對錯瞬間回饋（2026-11-27）：答對彈一下，答錯左右抖一下。
+   只用 transform，不動版面；開了「減少動態」就不播 */
+@keyframes ansPop{0%{transform:scale(1)}40%{transform:scale(1.07) translateY(-2px)}100%{transform:scale(1)}}
+@keyframes ansShake{20%{transform:translateX(-7px)}45%{transform:translateX(6px)}70%{transform:translateX(-3px)}100%{transform:none}}
+.ans button.right{animation:ansPop .36s cubic-bezier(.2,1.5,.4,1)}
+.ans button.wrong{animation:ansShake .34s ease-out}
+@media (prefers-reduced-motion:reduce){.ans button.right,.ans button.wrong{animation:none}}

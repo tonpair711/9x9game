@@ -244,3 +244,11 @@ select,input{background:#fff!important;color:#2b2140!important;border:1.5px soli
 #audioPanel,.zoomtip{background:#fff!important;color:#2b2140!important;border:1px solid var(--line)!important}
 .game .txt b{color:#3a2470!important}.game .txt small{color:var(--dim)!important}
 .game .go{background:#f6c453!important;color:#2b2140!important}
+
+/* 補漏：設定頁各組選項（.topicbar 等）未選取＝白底深字，選取＝金底；全部用結構選擇器，不靠個別 class */
+.setgroup button:not(.on):not(.primary),.topicbar button:not(.on){background:#fff!important;color:#3a2470!important;border:1.5px solid #bda8e2!important;box-shadow:0 3px 0 #d8cdea!important;text-shadow:none!important}
+.setgroup button:not(.on) small,.topicbar button:not(.on) small{color:#5f5278!important}
+.setgroup button.on,.topicbar button.on{background:linear-gradient(180deg,#ffe38a,#f6c453)!important;color:#2b2140!important;border:1.5px solid #c9941d!important;box-shadow:0 3px 0 #c9941d!important}
+.setgroup button.on small,.topicbar button.on small{color:#5a3d00!important}
+/* logo 圖檔本身是白字，白底看不見：角標改深紫底 */
+.brandBadge{background:#2d1f4d!important;border-color:#2d1f4d!important}

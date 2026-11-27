@@ -1,0 +1,68 @@
+/* 把「介面」上的 emoji 換成同一套線條 SVG（2026-11-27）。
+   為什麼用執行時替換：這些 emoji 散在 index.html、battle.html、common.js 組出來的字串裡，
+   逐個改要動幾百處而且容易漏；這支只換下面表列的介面符號，裝備與怪物圖示（也是 emoji）不在表內，不受影響。
+   換掉的文字節點外面包 <span class="ico">，樣式在 skin2.css。出錯就整支停手，頁面維持原樣。 */
+(function () {
+  "use strict";
+  var S = {
+    "🎮": '<path d="M6 9h12a4 4 0 014 4v2a3 3 0 01-5.200 2L15 15H9l-1.800 2A3 3 0 012 15v-2a4 4 0 014-4z"/><path d="M8 11.500v3M6.500 13h3M16 12.500h.01M18 14.500h.01"/>',
+    "🔑": '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l2 2"/>',
+    "✨": '<path d="M12 3l1.800 5.200L19 10l-5.200 1.800L12 17l-1.800-5.200L5 10l5.200-1.800zM19 16l.8 2.200L22 19l-2.200.8L19 22l-.8-2.200L16 19l2.200-.8z"/>',
+    "📖": '<path d="M12 6.500C10 5 7 4.500 4 5v13c3-.5 6 0 8 1.500 2-1.500 5-2 8-1.500V5c-3-.5-6 0-8 1.500zM12 6.500v13"/>',
+    "🎒": '<path d="M8 7V6a4 4 0 018 0v1M6 7h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2zM4 13h16M10 13v2h4v-2"/>',
+    "⚔": '<path d="M5 4l10 10M20 4L10 14M12 16l-3 3M16 12l3 3M7 14l-2 2"/>',
+    "📊": '<path d="M5 20V10M12 20V4M19 20v-7"/>',
+    "🔒": '<path d="M6 11h12v9H6zM8 11V8a4 4 0 018 0v3"/>',
+    "🏠": '<path d="M4 11l8-7 8 7M6 10v10h12V10M10 20v-5h4v5"/>',
+    "👋": ""
+  };
+  var RE = /(🎮|🔑|✨|📖|🎒|⚔️?|📊|🔒|🏠|👋)\s?/g;
+  var busy = false;
+
+  function svg(ch) {
+    var key = ch.replace(/️/g, "").trim();
+    return S[key] === "" ? "" : '<span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24">' + S[key] + "</svg></span>";
+  }
+  function swapNode(t) {
+    var s = t.nodeValue;
+    RE.lastIndex = 0;
+    if (!RE.test(s)) return;
+    RE.lastIndex = 0;
+    var frag = document.createDocumentFragment(), last = 0, m;
+    while ((m = RE.exec(s))) {
+      if (m.index > last) frag.appendChild(document.createTextNode(s.slice(last, m.index)));
+      var h = svg(m[1]);
+      if (h) { var w = document.createElement("span"); w.innerHTML = h; frag.appendChild(w.firstChild); frag.appendChild(document.createTextNode(" ")); }
+      last = m.index + m[0].length;
+    }
+    if (last < s.length) frag.appendChild(document.createTextNode(s.slice(last)));
+    t.parentNode.replaceChild(frag, t);
+  }
+  function walk(root) {
+    if (!root || root.nodeType === 8) return;
+    if (root.nodeType === 3) { if (root.parentNode) swapNode(root); return; }
+    if (root.nodeType !== 1 || /^(SCRIPT|STYLE|TEXTAREA|INPUT|SVG)$/i.test(root.nodeName) || root.classList.contains("ico")) return;
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (n) {
+        var p = n.parentNode;
+        return p && !/^(SCRIPT|STYLE|TEXTAREA)$/i.test(p.nodeName) && !(p.closest && p.closest(".ico")) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      }
+    });
+    var list = [], n;
+    while ((n = w.nextNode())) list.push(n);
+    list.forEach(swapNode);
+  }
+  function run(root) {
+    if (busy) return;
+    busy = true;
+    try { walk(root); } finally { busy = false; }
+  }
+  try {
+    run(document.body);
+    new MutationObserver(function (ms) {
+      if (busy) return;
+      busy = true;
+      try { ms.forEach(function (m) { m.addedNodes.forEach(walk); if (m.type === "characterData") walk(m.target); }); } finally { busy = false; }
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  } catch (e) { /* 換不成就維持 emoji，不影響遊戲 */ }
+})();

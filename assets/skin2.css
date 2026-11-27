@@ -1,0 +1,70 @@
+/* 邊玩邊變強：v2 外觀（2026-11-27，Steve 說太醜）。
+   放在 index.html 與 battle.html 內嵌樣式「之後」載入，只覆蓋外觀，不動結構與遊戲邏輯。
+   對照 impeccable-zh craft-floor 的拒絕清單處理：
+   ① 無位移的彩色光暈（人物背後金紫光、標題背光、步驟點光暈、插槽呼吸光）→ 拿掉，改位移陰影或實線
+   ② 飄在標題與卡片上的背景金幣 → 拿掉（只是雜訊）
+   ③ 11px 以下的小字 → 提到 13px 以上（血條、標籤、說明）
+   ④ 標題字距 5～6px 讓名字被斷在中間 → 字距收到 2px＋文字平均斷行
+   ⑤ 漸層卡片 → 扁平面＋細框＋往下的柔和陰影
+   ⑥ 桌機被擠在 620px 窄欄 → 寬螢幕放寬到 840px
+   ⑦ 瀏覽器自帶部分：選取色、捲軸色、焦點框、勾選色 */
+:root{--sk-bg:#140f22;--sk-surface:#1f1634;--sk-surface-2:#271b40;--sk-line:#3b2c59;--sk-gold:#f6c453}
+html{scrollbar-color:#6b4a9b #120d1d;accent-color:var(--sk-gold)}
+::selection{background:var(--sk-gold);color:#2a1a00}
+:focus-visible{outline:3px solid var(--sk-gold);outline-offset:3px}
+body{background:linear-gradient(180deg,#1b1430 0,#150f24 420px,#110b1c 100%) fixed}
+
+/* ② 背景金幣 */
+.coin{display:none!important}
+
+/* ⑥ 寬螢幕 */
+@media (min-width:1000px){.wrap{width:min(92vw,840px)}}
+/* 矮螢幕：人物圖縮小，讓下面的帳號卡片在第一屏就看得到 */
+@media (max-height:780px){.portal{width:min(60vw,160px);height:min(60vw,160px);margin-top:2px}}
+
+/* ① 光暈 */
+.portal::before,.logo::after{display:none}
+.portal img{filter:drop-shadow(0 10px 8px #0008)}
+.stepbar b.on{box-shadow:0 3px 0 #a97a12}
+body.needChar .slots{animation:none}
+body.needChar .slot.empty{border-color:var(--sk-gold);border-style:solid}
+
+/* ④ 標題 */
+.welcome .big,.logo h1{letter-spacing:2px;text-wrap:balance;text-shadow:0 3px 0 #5e3a00}
+.welcome .sub{font-size:15px;letter-spacing:1px}
+.logo p{font-size:13px;letter-spacing:1px}
+
+/* ⑤ 面 */
+.panel,.setgroup,.userbar.guest{background:var(--sk-surface);border:1px solid var(--sk-line);box-shadow:0 2px 0 #0a0612,0 12px 24px #0006}
+.userbar.guest{background:repeating-linear-gradient(135deg,#ffffff05 0 2px,transparent 2px 14px),var(--sk-surface)}
+.welcome{background:var(--sk-surface-2);border:1px solid var(--sk-line);box-shadow:0 2px 0 #0a0612,0 12px 24px #0006}
+.acctIcon{background:var(--sk-surface-2);box-shadow:none}
+.navbar{background:#120b1e;box-shadow:0 -6px 16px #0007}
+
+/* ③ 小字 */
+.acctHead b{font-size:16px}
+.acctHead small,.acctnote,.slotcap,.hint,.charhint,.acctrow3 .btn small,.modebar button small,.statlink,
+.welcome small,.welcome .wchips span,.welcome .wnext,.navbar .next small{font-size:13px}
+.acctrow3 .btn .recTag{font-size:11px;letter-spacing:1px}
+.stepnow span{font-size:14px;letter-spacing:.5px;background:none;border:0;padding:0}
+.sec h2{font-size:16px}
+.topbar .chip b{font-size:13px}
+.bar span{font-size:12px}
+.bar.heromp{height:11px}
+.bar.heromp span{font-size:11px}
+
+/* 自畫圖示（assets/chrome-icons.js 把介面 emoji 換成它） */
+.ico{display:inline-block;width:1.2em;height:1.2em;vertical-align:-.22em;flex:none}
+.ico svg{display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.modebar button i .ico{width:26px;height:26px}
+
+/* 標題：遊戲名整個不斷行；圖示放大一點才跟文字等重；次要按鈕的字提高對比 */
+.nb{white-space:nowrap}
+.acctrow3 .btn .ico,.navbar .ico,.modebar .ico{width:1.4em;height:1.4em}
+.acctrow3 .btn.ghost{color:#efe6ff;border-color:#7a5aa8}
+
+/* 歡迎區：左邊標題＋副標題疊起來，右邊人物；窄手機上副標題才不會被擠成直排 */
+#s3 .welcome{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"big portal" "sub portal";align-items:center;column-gap:14px;row-gap:6px;padding:16px 18px}
+#s3 .welcome .big{grid-area:big;text-align:left;align-self:end}
+#s3 .welcome .sub{grid-area:sub;text-align:left;align-self:start;margin:0;line-height:1.6}
+#s3 .welcome .portal{grid-area:portal;width:min(32vw,190px);height:min(32vw,190px);margin:0}

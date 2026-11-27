@@ -51,7 +51,7 @@
   }
   function swapNode(t) {
     var s = t.nodeValue;
-    if (t.parentNode && t.parentNode.closest && t.parentNode.closest('.skill')) { if (!t.parentNode.classList.contains('emj')) tintSkill(t); return; }
+    if (t.parentNode && t.parentNode.closest && t.parentNode.closest('.skill, .slot .ic, .gearwin .ic, .gearwin .nm, .drop .ic, .drop b, #bag .ic, .shopItem .ic')) { if (!t.parentNode.classList.contains('emj')) tintSkill(t); return; }
     RE.lastIndex = 0;
     if (!RE.test(s)) return;
     RE.lastIndex = 0;

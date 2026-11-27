@@ -157,3 +157,6 @@ html{background:#110b1c}
 
 /* 題目文字左右各留出喇叭鈕的寬度，長題目（錢幣找錢）不會被鈕蓋住 */
 .qbox .q{padding-left:54px;padding-right:54px;box-sizing:border-box;text-wrap:balance}
+
+/* 裝備欄、掉寶、背包的 emoji 同樣統一成金色單色 */
+.slot .emj,.gearwin .emj,.drop .emj,#bag .emj,.shopItem .emj{display:inline-block;filter:grayscale(1) sepia(1) saturate(3.2) hue-rotate(-8deg) brightness(1.1)}

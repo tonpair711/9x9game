@@ -142,3 +142,7 @@ html{background:#110b1c}
    第一格的左緣是硬切邊，用遮罩淡出左側 12% */
 #hero2.sprmode.poseCast{filter:brightness(1.04) saturate(1.05)}
 #hero2.sprmode.poseCast{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 12%);mask-image:linear-gradient(90deg,transparent 0,#000 12%)}
+
+/* 桌機：欄寬放寬到 840 之後，這幾條原本寫死 560～620 的橫條要一起撐滿，左右才對齊 */
+.wrap > .combatLog,.wrap > .modeshow,.wrap > .ult,.wrap > .ans,.wrap > .qbox{width:100%!important;max-width:none!important;box-sizing:border-box}
+.topicsel select,.setgroup select{width:100%!important}

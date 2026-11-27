@@ -12,7 +12,7 @@
    每次要發布（`publish.ps1 -Go`）前先確認這個數字有沒有跟著這次的改動更新，
    跟共用檔的 `?v=` 快取版號是兩件事——`?v=` 只是防瀏覽器快取，這個號碼是給
    Steve／玩家回報問題時對版本用的，八頁角落都看得到（見 common.js 的 pagectrl）。 */
-const GAME_VERSION = '1.3.86';
+const GAME_VERSION = '1.3.87';
 
 const $ = id => document.getElementById(id);
 
@@ -483,7 +483,7 @@ const Sfx = {
   /* 2026-08-30：加隨機微幅音高變化（±14Hz），連續點按鈕（上一步/下一步那種）
      不會每次都是同一個死板的音高，質感更像真的手感回饋而不是機器嗶聲 */
   ok:   n => beep(520 + Math.min(n||0,8)*70 + (Math.random()*28 - 14), .18, 'triangle', .10),
-  bad:  () => { beep(180,.22,'sawtooth',.09); setTimeout(()=>beep(120,.22,'sawtooth',.07), 70); },
+  bad:  () => { beep(330,.16,'sine',.08); setTimeout(()=>beep(247,.24,'sine',.07), 110); },   // 2026-11-27 鋸齒波蜂鳴聽起來像警報、帶挫折感，改柔和下行雙音（小朋友答錯不被嚇到）
   next: () => { beep(660,.12,'sine',.09); setTimeout(()=>beep(880,.16,'sine',.09), 110); },
   win:  () => { [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.22,'sine',.09), i*110)); },
   lose: () => { beep(392,.2,'sine',.09); setTimeout(()=>beep(294,.32,'sine',.09), 190); },

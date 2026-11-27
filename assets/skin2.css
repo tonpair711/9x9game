@@ -160,3 +160,12 @@ html{background:#110b1c}
 
 /* 裝備欄、掉寶、背包的 emoji 同樣統一成金色單色 */
 .slot .emj,.gearwin .emj,.drop .emj,#bag .emj,.shopItem .emj{display:inline-block;filter:grayscale(1) sepia(1) saturate(3.2) hue-rotate(-8deg) brightness(1.1)}
+
+/* 觸控目標至少 44px（實測手機上說明、暫停、必殺技、展開技能、返回等只有 32~38px，小朋友容易按不到） */
+@media (pointer:coarse),(max-width:899px){
+  #bagBtn,#helpBtn,#pauseBtn{min-width:44px!important;min-height:44px!important}
+  .ult button,#ultBtn{min-height:44px!important}
+  #skillsToggle{min-height:44px!important}
+  .pagectrl .pcbtn{min-width:44px!important;min-height:44px!important;height:44px!important}
+  .pagectrl .pcbtn[data-act="back"]{width:auto!important;padding-inline:14px}
+}

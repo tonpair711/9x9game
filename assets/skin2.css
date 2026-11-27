@@ -147,3 +147,10 @@ html{background:#110b1c}
 .wrap > .combatLog,.wrap > .modeshow,.wrap > .ult,.wrap > .ans,.wrap > .qbox{width:100%!important;max-width:none!important;box-sizing:border-box}
 .topicsel select,.setgroup select{width:100%!important}
 .wrap > .combat{width:100%!important;max-width:none!important;box-sizing:border-box}
+
+/* 桌機／筆電視窗比較矮時，戰鬥頁整欄等比縮小，讓題目與四個答案不用捲動就按得到（實測 1366x657 答案有一半在畫面外） */
+@media (min-width:900px) and (max-height:800px){body:has(.combat) .wrap{zoom:.9}}
+@media (min-width:900px) and (max-height:740px){body:has(.combat) .wrap{zoom:.82}}
+@media (min-width:900px) and (max-height:690px){body:has(.combat) .wrap{zoom:.76}}
+@media (min-width:900px) and (max-height:640px){body:has(.combat) .wrap{zoom:.7}}
+@media (min-width:900px) and (max-height:580px){body:has(.combat) .wrap{zoom:.62}}

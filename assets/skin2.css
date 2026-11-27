@@ -76,3 +76,23 @@ body.needChar .slot.empty{border-color:var(--sk-gold);border-style:solid}
 .ans button.right{animation:ansPop .36s cubic-bezier(.2,1.5,.4,1)}
 .ans button.wrong{animation:ansShake .34s ease-out}
 @media (prefers-reduced-motion:reduce){.ans button.right,.ans button.wrong{animation:none}}
+
+/* ===== 2026-11-27 走查修正：全站通用 ===== */
+/* 設定頁卡片被切掉：這些元素用 width:100% 又有內距，沒設 border-box，每個多出 28px，連整頁都橫向溢出 */
+.setgroup *,.modebar,.modebar button,.topicsel,.topicsel select{box-sizing:border-box}
+.setgroup .modebar,.setgroup .topicsel,.setgroup select{max-width:100%;min-width:0}
+html,body{overflow-x:clip}
+/* 浮動的音量／鎖鈕原本跟彈窗同一層（z-index 60），彈窗打開時反而浮在最上面 */
+.modalwrap{z-index:80}
+.gearwin{z-index:75}
+.audiobtn,.zoomlock{opacity:.78}
+/* 遊戲卡：拿掉左側粗金邊與光暈，說明文字不再被截斷 */
+.game::before{display:none}
+#gamesMain .game .txt small{-webkit-line-clamp:unset;overflow:visible;display:block}
+.game .go{position:relative;z-index:2}
+/* 戰鬥訊息框：行與行不疊、字夠大，最新一行最亮 */
+.combatLog{height:78px;font-size:13px;line-height:1.55;padding:6px 12px;background:#120b1e;scrollbar-width:thin}
+.combatLog .ln{border:0;background:none;border-radius:0;padding:1px 0;margin:0;opacity:.72;animation:none}
+.combatLog .ln:last-child{opacity:1;color:#fff}
+@media (max-width:520px){.combatLog{height:74px;font-size:13px;padding:6px 10px}}
+@media (max-height:700px){.combatLog{height:56px}}

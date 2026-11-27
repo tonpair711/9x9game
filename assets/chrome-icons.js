@@ -14,9 +14,22 @@
     "📊": '<path d="M5 20V10M12 20V4M19 20v-7"/>',
     "🔒": '<path d="M6 11h12v9H6zM8 11V8a4 4 0 018 0v3"/>',
     "🏠": '<path d="M4 11l8-7 8 7M6 10v10h12V10M10 20v-5h4v5"/>',
+    "➕": '<path d="M12 5v14M5 12h14"/>',
+    "📜": '<path d="M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7M7 4a2 2 0 00-2 2v1h3M7 4v16M10 9h6M10 13h6"/>',
+    "💰": '<circle cx="12" cy="13" r="7"/><path d="M12 9.500v7M14 11h-3a1.500 1.500 0 000 3h2a1.500 1.500 0 010 3h-3"/>',
+    "⚠": '<path d="M12 4l9 16H3zM12 10v4.500M12 17.500h.01"/>',
+    "✕": '<path d="M6 6l12 12M18 6L6 18"/>',
+    "⚙": '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.600 5.600l2.100 2.100M16.300 16.300l2.100 2.100M18.400 5.600l-2.100 2.100M7.700 16.300l-2.100 2.100"/>',
+    "👉": '<path d="M4 12h14M13 7l5 5-5 5"/>',
+    "👆": '<path d="M12 20V6M7 11l5-5 5 5"/>',
+    "⬆": '<path d="M12 20V6M7 11l5-5 5 5"/>',
+    "🛒": '<path d="M3 4h3l2 11h10l2-8H7"/><circle cx="9" cy="19" r="1.300"/><circle cx="17" cy="19" r="1.300"/>',
+    "✅": '<circle cx="12" cy="12" r="9"/><path d="M8 12.500l3 3 5-6"/>',
+    "❌": '<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>',
+    "⏳": '<path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"/>',
     "👋": ""
   };
-  var RE = /(🎮|🔑|✨|📖|🎒|⚔️?|📊|🔒|🏠|👋)\s?/g;
+  var RE = /(🎮|🔑|✨|📖|🎒|⚔️?|📊|🔒|🏠|👋|➕|📜|💰|⚠️?|✕|⚙️?|👉|👆|⬆️?|🛒|✅|❌|⏳)\s?/g;
   var busy = false;
 
   function svg(ch) {
@@ -40,12 +53,12 @@
   }
   function walk(root) {
     if (!root || root.nodeType === 8) return;
-    if (root.nodeType === 3) { if (root.parentNode) swapNode(root); return; }
+    if (root.nodeType === 3) { var pp = root.parentNode; if (pp && !(pp.closest && pp.closest(".ico, .qbox, .ans, .topbar .mname"))) swapNode(root); return; }
     if (root.nodeType !== 1 || /^(SCRIPT|STYLE|TEXTAREA|INPUT|SVG)$/i.test(root.nodeName) || root.classList.contains("ico")) return;
     var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode: function (n) {
         var p = n.parentNode;
-        return p && !/^(SCRIPT|STYLE|TEXTAREA)$/i.test(p.nodeName) && !(p.closest && p.closest(".ico")) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        return p && !/^(SCRIPT|STYLE|TEXTAREA)$/i.test(p.nodeName) && !(p.closest && p.closest(".ico, .qbox, .ans, .topbar .mname")) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
       }
     });
     var list = [], n;

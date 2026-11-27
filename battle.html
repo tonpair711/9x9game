@@ -1399,8 +1399,8 @@ body.playing .combat{display:flex}
   .modalbox{padding:18px 14px 14px}
 }
 </style>
-<link rel="stylesheet" href="assets/skin2.css?v=20261127e">
-<script src="assets/chrome-icons.js?v=20261127e" defer></script>
+<link rel="stylesheet" href="assets/skin2.css?v=20261127f">
+<script src="assets/chrome-icons.js?v=20261127f" defer></script>
 </head>
 <body>
 <h1>勇 者 出 擊</h1>
@@ -1693,6 +1693,7 @@ body.playing .combat{display:flex}
     <div class="line">獲得金幣 <span id="ovGold">0</span></div>
     <div class="weak" id="ovWeakWrap"><h3>最該再練的乘法</h3><ul id="ovWeak"></ul></div>
     <button class="btn" id="again">再 挑 戰 一 次</button>
+    <button class="btn ghost" id="ovHome" onclick="location.href='index.html'">回 大 廳</button>
   </div>
 </div>
 
@@ -1715,8 +1716,8 @@ body.playing .combat{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20261127e"></script>
-<script src="assets/topics-extra.js?v=20261127e"></script>
+<script src="assets/common.js?v=20261127f"></script>
+<script src="assets/topics-extra.js?v=20261127f"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -4750,7 +4751,7 @@ function over(win){
   document.body.classList.remove('playing');
   Save.put();
   $('ovTitle').textContent = win ? '全部打倒了！' : '這次沒過關';
-  $('ovBig').textContent = win ? '🏆 第 ' + round + ' 輪' : round + '-' + (wave+1);
+  $('ovBig').textContent = arcade ? (win ? '第 ' + round + ' 輪全破' : round + '-' + (wave+1)) : ('第 ' + stageNo + ' 關');   // 練習模式顯示第幾關，輪數-波數是娛樂模式的算法
   $('ovKill').textContent = kills + ' 隻';
   $('ovDmg').textContent = fmtN(totalDmg);
   $('ovQAline').firstChild.textContent = arcade ? '出手／被打 ' : '答對／答錯 ';

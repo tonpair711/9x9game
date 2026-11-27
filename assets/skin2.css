@@ -115,3 +115,7 @@ body.playing .combatLog{display:flex}
 /* 訊息框裡的數字要跟文字同一行；等級旁的經驗條軌道調亮，不再像一顆髒點 */
 .combatLog .ln b{display:inline;margin-left:4px}
 .expbar{width:84px;height:9px;background:#4a3670;border:1px solid #6b4a9b;flex:none}
+
+/* 結算視窗：蓋過浮動鈕；次要按鈕（回大廳）放主按鈕下面 */
+.over{z-index:90}
+.over .card .btn.ghost{display:block;width:100%;margin-top:10px;background:none;border:1px solid #7a5aa8;color:#efe6ff;box-shadow:none;min-height:48px;border-radius:14px;font-weight:800;letter-spacing:4px;cursor:pointer}

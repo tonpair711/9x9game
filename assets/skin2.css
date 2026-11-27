@@ -96,3 +96,18 @@ html,body{overflow-x:clip}
 .combatLog .ln:last-child{opacity:1;color:#fff}
 @media (max-width:520px){.combatLog{height:74px;font-size:13px;padding:6px 10px}}
 @media (max-height:700px){.combatLog{height:56px}}
+
+/* 訊息框的行名剛好跟頂列的 .exp／.gold 撞名，被套上整塊樣式（置中、拆行）；這裡明確還原成一般文字行 */
+.combatLog .ln,.combatLog .ln.exp,.combatLog .ln.gold,.combatLog .ln.item,.combatLog .ln.lv{
+  display:block;text-align:left;width:auto;min-width:0;flex:none;position:static;
+  border:0;background:none;box-shadow:none;border-radius:0;padding:1px 0;margin:0;font:inherit;font-size:13px;line-height:1.55;height:auto}
+.combatLog{display:none;flex-direction:column;justify-content:flex-end}
+body.playing .combatLog{display:flex}
+
+/* 手機：浮動音量／鎖鈕改放右上角，不再蓋住內容與答案（桌機的右上角是品牌角標，維持原位） */
+@media (max-width:899px){
+  .audiobtn{top:10px!important;bottom:auto!important;right:10px!important;width:40px!important;height:40px!important}
+  .zoomlock{top:10px!important;bottom:auto!important;right:56px!important;width:40px!important;height:40px!important}
+  .zoomtip{top:58px!important;bottom:auto!important}
+  #audioPanel{top:58px!important;bottom:auto!important}
+}

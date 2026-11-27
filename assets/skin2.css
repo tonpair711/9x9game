@@ -131,3 +131,5 @@ body.playing .combatLog{display:flex}
 /* 頁面底部不再露出白底（內容比螢幕短時） */
 html{background:#110b1c}
 .skill{min-height:66px!important;padding-top:20px!important}
+.skill{padding-top:6px!important;min-height:58px!important}
+.skill:has(i:not(:empty)){padding-top:20px!important;min-height:66px!important}

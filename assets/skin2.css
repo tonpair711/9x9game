@@ -130,3 +130,4 @@ body.playing .combatLog{display:flex}
 #sWeak li,#sHistory li{padding:4px 11px;border-radius:999px;background:#271b40;border:1px solid #3b2c59;color:#e7dcf7}
 /* 頁面底部不再露出白底（內容比螢幕短時） */
 html{background:#110b1c}
+.skill{min-height:66px!important;padding-top:20px!important}

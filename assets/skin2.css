@@ -169,3 +169,78 @@ html{background:#110b1c}
   .pagectrl .pcbtn{min-width:44px!important;min-height:44px!important;height:44px!important}
   .pagectrl .pcbtn[data-act="back"]{width:auto!important;padding-inline:14px}
 }
+
+/* ===================== 淺色系（2026-11-27 Steve：深色很多按鈕介面看不清楚） =====================
+   色票：米白底 #f7f2e8、白卡片、深紫文字 #2b2140、次要字 #5f5278、線 #d8cdea、主色紫 #5b3a9b、強調金 #f6c453（只當填色，字用深色）*/
+:root{--bg:#f7f2e8;--panel:#ffffff;--line:#d8cdea;--text:#2b2140;--dim:#5f5278;--gold2:#5b3a9b;--sk-bg:#f7f2e8;--sk-surface:#ffffff;--sk-surface-2:#f3ecff;--sk-line:#d8cdea;color-scheme:light}
+html{background:#f7f2e8;scrollbar-color:#b9a6dc #f1eadc}
+body{background:linear-gradient(180deg,#fbf7ef 0,#f4ecdf 100%) fixed!important;color:var(--text)}
+::selection{background:#f6c453;color:#2b2140}
+:focus-visible{outline-color:#5b3a9b}
+
+/* 卡片與面板 */
+.panel,.setgroup,.userbar.guest,.welcome,#s3 .welcome,.game,.slot,.modalbox,.over .card,.gearbox,.gearwin .gearbox{background:#fff!important;border:1px solid var(--line)!important;box-shadow:0 2px 0 #e6dcf3,0 10px 22px #4a3a7013!important;color:var(--text)}
+.userbar.guest{background:#fff!important}
+.welcome .big,.logo h1,h1,h2,.sec h2,.acctHead b,.over h2,.modalbox h2,.modalbox h3,.gearbox h2{color:#3a2470!important;text-shadow:none!important}
+.welcome .big{text-shadow:none!important}
+.welcome .sub,.acctHead small,.acctnote,.hint,.slotcap,small,.note,.sub,.logo p,.welcome small,.wnext{color:var(--dim)!important}
+.hint b,.charhint b{color:#3a2470}
+.sec i{background:linear-gradient(90deg,#cbbbe8,transparent)!important}
+.charhint{background:#fff4d6!important;border-color:#ecd28a!important;color:#5a3d00!important}
+
+/* 步驟列 */
+.stepbar b{background:#fff!important;border:1px solid #cbbbe8!important;color:#7a6a99!important;box-shadow:none!important}
+.stepbar b.on{background:#f6c453!important;border-color:#c9941d!important;color:#2b2140!important;box-shadow:0 3px 0 #c9941d!important}
+.stepbar b.done{background:#e9defa!important;color:#5b3a9b!important;border-color:#b9a0e3!important}
+.stepbar i{background:#d8cdea!important}.stepbar i.done{background:#8a63c9!important}
+.stepnow span{color:#3a2470!important}
+
+/* 按鈕：主要＝金底深字，次要＝白底紫字紫框 */
+.btn,.navbar button,.acctrow3 .btn,.modebar button,.statlink,.clearbtn,.pcbtn,.topbar .chip,.audiobtn,.zoomlock,.xbtn,.skill,#skillsToggle,.ult button,.sound button{background:#fff!important;color:#3a2470!important;border:1.5px solid #bda8e2!important;box-shadow:0 3px 0 #d8cdea!important;text-shadow:none!important}
+.navbar{background:#fff!important;border-top:1px solid var(--line)!important;box-shadow:0 -6px 16px #4a3a7014!important}
+.navbar .next,.btn.primary,#start,#hpOk,#again,.ult button.ready,.over .btn:not(.ghost){background:linear-gradient(180deg,#ffe38a,#f6c453)!important;color:#2b2140!important;border:1.5px solid #c9941d!important;box-shadow:0 4px 0 #c9941d!important}
+.navbar .next small{color:#5a3d00!important}
+.acctrow3 .btn.ghost,.over .btn.ghost{background:#fff!important;color:#3a2470!important;border:1.5px solid #bda8e2!important}
+.acctrow3 .btn small,.modebar button small{color:var(--dim)!important}
+.modebar button.on{background:#efe5ff!important;border-color:#5b3a9b!important;box-shadow:0 3px 0 #b9a0e3!important}
+.modebar button.on b,.modebar button b{color:#3a2470!important}
+.acctrow3 .btn .recTag{background:#5b3a9b!important;color:#fff!important;border:0!important}
+select,input{background:#fff!important;color:#2b2140!important;border:1.5px solid #bda8e2!important}
+.setgroup button.on,.setgroup .opt.on{background:linear-gradient(180deg,#ffe38a,#f6c453)!important;color:#2b2140!important;border-color:#c9941d!important}
+
+/* 戰鬥頁：題目與答案 */
+.qbox{background:#fff!important;border:1.5px solid #cbbbe8!important;box-shadow:0 3px 0 #e6dcf3!important}
+.qbox .q{color:#2b2140!important;text-shadow:none!important}
+.qbox .q b,.qbox .q span{color:#b4700a}
+.ans button{background:#fff!important;color:#2b2140!important;border:2px solid #bda8e2!important;box-shadow:0 5px 0 #d8cdea!important;text-shadow:none!important}
+.ans button.right{background:#c9f2d6!important;color:#0b4a23!important;border-color:#2fa95b!important;box-shadow:0 5px 0 #2fa95b!important}
+.ans button.wrong{background:#ffd6d6!important;color:#7a1111!important;border-color:#d64545!important;box-shadow:0 5px 0 #d64545!important}
+.ult,.combatLog{background:#fff!important;border:1px solid var(--line)!important;color:var(--text)!important}
+.combatLog .ln{color:#4b3f66!important}.combatLog .ln:last-child{color:#2b2140!important}
+.combatLog .ln.exp b{color:#2456c9}.combatLog .ln.gold b{color:#a86a00}.combatLog .ln.item b{color:#7a3fc4}.combatLog .ln.lv b{color:#c0560a}
+.ult b,.ult span{color:#3a2470!important}
+.ult .bar2{background:#e9defa!important}
+.skill b{color:#3a2470!important}.skill small{color:var(--dim)!important}
+.skill i{background:#5b3a9b!important;color:#fff!important;border:0!important}
+.skill em{background:#f3ecffee!important;color:#3a2470!important}
+.skill.locked{opacity:.85}.skill.locked b{opacity:.7}
+.topbar .chip b{color:var(--dim)!important}
+.expbar{background:#e9defa!important;border-color:#bda8e2!important}
+
+/* 彈窗背景與文字 */
+.modalwrap,.over,.gearwin{background:#2b214099!important}
+.modalbox,.gearbox,.over .card{color:var(--text)!important}
+.modalbox li,.gearbox .slot .nm,.gearbox .slot .st2{color:var(--text)!important}
+.nums div,.power div{background:#f3ecff!important;border:1px solid #d8cdea!important;color:#2b2140!important}
+.nums b,.power b{color:var(--dim)!important}
+#sWeak li,#sHistory li{background:#f3ecff!important;border-color:#d8cdea!important;color:#2b2140!important}
+.heroes .hero,.heroes>*{background:#fff!important;border-color:#cbbbe8!important;color:#2b2140!important}
+.over .line{color:var(--text)!important;border-color:#e3d9f2!important}.over .big{color:#3a2470!important;text-shadow:none!important}
+
+/* 品牌角標與浮動鈕 */
+.brandBadge{background:#fff!important;border:1px solid var(--line)!important;box-shadow:0 2px 8px #4a3a7018!important}
+.pagectrl .pcbtn,.pcbtn{background:#fff!important;color:#3a2470!important}
+.pagectrl .pcbtn[data-act="back"]{background:#ffe38a!important;color:#2b2140!important;border-color:#c9941d!important}
+#audioPanel,.zoomtip{background:#fff!important;color:#2b2140!important;border:1px solid var(--line)!important}
+.game .txt b{color:#3a2470!important}.game .txt small{color:var(--dim)!important}
+.game .go{background:#f6c453!important;color:#2b2140!important}

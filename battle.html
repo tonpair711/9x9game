@@ -1399,8 +1399,8 @@ body.playing .combat{display:flex}
   .modalbox{padding:18px 14px 14px}
 }
 </style>
-<link rel="stylesheet" href="assets/skin2.css?v=20261127r">
-<script src="assets/chrome-icons.js?v=20261127r" defer></script>
+<link rel="stylesheet" href="assets/skin2.css?v=20261127s">
+<script src="assets/chrome-icons.js?v=20261127s" defer></script>
 </head>
 <body>
 <h1>勇 者 出 擊</h1>
@@ -1716,8 +1716,8 @@ body.playing .combat{display:flex}
   </div>
 </div>
 
-<script src="assets/common.js?v=20261127r"></script>
-<script src="assets/topics-extra.js?v=20261127r"></script>
+<script src="assets/common.js?v=20261127s"></script>
+<script src="assets/topics-extra.js?v=20261127s"></script>
 <script>Topic.lang = true;   /* 這一頁做得起注音／字母題（2026-08-27） */</script>
 <script>
 /* 2026-08-30：這幾隻只有攻擊逐幀、沒有待機逐幀（SPR 字典本身要到後面才宣告，
@@ -2023,8 +2023,11 @@ function heroFrame(k, castKey){
       /* 2026-11-04 Steve：共用施法圖（<prefix>_skillcast）是角色背面、法杖舉在左邊，看起來像放反方向。
          沒有專屬圖的招式用個別屬性 scale 水平翻面（不會蓋掉 heroCast 用的 transform 動畫），播完還原 */
       const generic = key === pfx + '_skillcast';
-      el.style.scale = generic ? '-1 1' : '';
-      Spr.play(el, key, {from:CAST_FROM, fps:CAST_FPS, done:() => { el.style.scale = ''; el.classList.remove('poseCast'); rest(); }});
+      el.style.scale = '';
+      /* 2026-11-27 Steve：施法逐幀是另一套影片素材，髮色服裝與待機圖不同、方向還會相反，看起來跳來跳去。
+         改成沿用普通攻擊同一套素材（外觀一致、朝向正確），施法感靠縮放脈衝與既有技能特效 */
+      try{ el.animate([{transform:'scale(1)'},{transform:'scale(1.07) translateX(14px)',offset:.35},{transform:'scale(1)'}],{duration:520,easing:'cubic-bezier(.2,1,.3,1)'}); }catch(e){}
+      Spr.play(el, pfx + '_atk', {from:HERO.atkFrom, to:HERO.atkTo, fps:HERO.atkFps, done:() => { el.classList.remove('poseCast'); rest(); }});
     }
     else if(k === 'hurt'){
       if(IDLE_SPRITE()) Spr.play(el, pfx + '_idle', {from:0, to:1});
@@ -2184,7 +2187,7 @@ function ultimateCast(){
   if(!HERO.frames || !SPR[pfx + '_idle']) return;   // 沒有這組逐幀的角色直接跳過，不報錯
   const h = $('hero2');
   h.classList.remove('poseSwing','poseHurt'); h.classList.add('poseCast');
-  Spr.play(h, pfx + '_skillcast', {from:HERO.ultFrom, to:HERO.ultTo, fps:24, done:() => {
+  Spr.play(h, pfx + '_atk', {from:HERO.atkFrom, to:HERO.atkTo, fps:HERO.atkFps, done:() => {
     h.classList.remove('poseCast');
     IDLE_SPRITE() ? Spr.play(h, pfx + '_idle', {loop:true}) : Spr.off(h, HERO.img);
   }});
@@ -4215,8 +4218,7 @@ function mobAttack(){
     const a = MOB_ATK[key];
     const total = Math.round((a.to - a.from) / a.fps * 1000);
     hitDelay = Math.round(total * a.hit);
-    Spr.play(el, key + '_atk', {from:a.from, to:a.to, fps:a.fps,
-      done:() => IDLE_SPRITE() ? Spr.play(el, key + '_idle', {loop:true}) : Spr.off(el, mob.img)});
+    /* 2026-11-27 怪物出招的逐幀是另一套造型（史萊姆變成別隻），不再換圖，維持待機圖＋位移撲擊，時機照原本算 */
     if(mob.ranged){
       /* 2026-09-01：遠程但也有逐幀圖（目前只有仙人掌）——原地播完整套「蓄力→噴刺」動畫，
          不疊 rush 位移（不撲過來），命中時機配合逐幀動畫節奏發射投射物，而不是動畫一開始就噴 */

@@ -119,3 +119,14 @@ body.playing .combatLog{display:flex}
 /* 結算視窗：蓋過浮動鈕；次要按鈕（回大廳）放主按鈕下面 */
 .over{z-index:90}
 .over .card .btn.ghost{display:block;width:100%;margin-top:10px;background:none;border:1px solid #7a5aa8;color:#efe6ff;box-shadow:none;min-height:48px;border-radius:14px;font-weight:800;letter-spacing:4px;cursor:pointer}
+
+/* 技能面板：Lv 徽章不再蓋住技能名稱（上方多留一行給徽章） */
+.skill{min-height:66px;padding-top:20px}
+.skill i{top:3px;right:4px;font-size:11px}
+.skill b{font-size:14px}
+/* 練習狀況視窗：標題與清單改成跟全站同一套，不用瀏覽器預設樣式 */
+#statswin h3,.modalbox h3{font-size:15px;color:var(--gold2,#f6c453);letter-spacing:1px;margin:16px 0 8px;font-weight:800}
+#sWeak,#sHistory{list-style:none;margin:0 0 6px;padding:0;display:flex;flex-wrap:wrap;gap:8px;font-size:14px;line-height:1.5}
+#sWeak li,#sHistory li{padding:4px 11px;border-radius:999px;background:#271b40;border:1px solid #3b2c59;color:#e7dcf7}
+/* 頁面底部不再露出白底（內容比螢幕短時） */
+html{background:#110b1c}
